@@ -47,9 +47,13 @@ const flatten = (arr: any[]) => [].concat(...arr);
 //define C p5
 //define Y p6
 
-export function Eval_roots(POLY: U) {
+// Normalizes a call expression of the form `f(expr, x)` or `f(lhs == rhs, x)`
+// into a [POLY1, X1] pair where POLY1 is `lhs - rhs` (or the bare expr) and
+// X1 is the given variable, or a guessed one if omitted. Shared by roots()
+// and solve(), which both solve POLY1 == 0 for X1, just via different means.
+export function normalizeEquation(callExpr: U): [U, U] {
   // A == B -> A - B
-  let X = cadr(POLY);
+  let X = cadr(callExpr);
   let POLY1: U;
   if (car(X) === symbol(SETQ) || car(X) === symbol(TESTEQ)) {
     POLY1 = subtract(Eval(cadr(X)), Eval(caddr(X)));
@@ -63,9 +67,15 @@ export function Eval_roots(POLY: U) {
   }
 
   // 2nd arg, x
-  X = Eval(caddr(POLY));
+  X = Eval(caddr(callExpr));
 
   const X1 = X === symbol(NIL) ? guess(POLY1) : X;
+
+  return [POLY1, X1];
+}
+
+export function Eval_roots(POLY: U) {
+  const [POLY1, X1] = normalizeEquation(POLY);
 
   if (!ispolyexpandedform(POLY1, X1)) {
     stop('roots: 1st argument is not a polynomial in the variable ' + X1);

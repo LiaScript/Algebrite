@@ -25,6 +25,7 @@ import { makeList } from './list';
 import { cmp_expr, equal } from './misc';
 import { multiply, negate } from './multiply';
 import { print_list } from './print';
+import { addQuantities } from './quantity';
 import { tensor_plus_tensor } from './tensor';
 
 /*
@@ -64,6 +65,11 @@ export function Eval_add(p1: Cons) {
 
 // Add terms, returns one expression.
 function add_terms(terms: U[]): U {
+  const unitResult = addQuantities(terms);
+  if (unitResult !== undefined) {
+    return unitResult;
+  }
+
   // ensure no infinite loop, use "for"
   if (DEBUG) {
     for (const term of terms) {

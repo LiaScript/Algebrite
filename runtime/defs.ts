@@ -56,6 +56,11 @@ class Defs {
 
   public expanding = false;
   public evaluatingAsFloats = false;
+  // gates whether multiply/power auto-fold bare unit symbols (m, kg, ...)
+  // into Quantity values — see sources/quantity.ts. Off by default so
+  // predefining these symbols doesn't change existing scripts' behavior;
+  // toggled via the units() builtin. quantity() works regardless.
+  public unitsAutoDetect = false;
   public evaluatingPolar = false;
   public esc_flag = false;
   public trigmode: 0 | 1 | 2 = 0;
@@ -195,6 +200,11 @@ export class Sym extends BaseAtom {
   }
 
   public keyword:(p1:Cons)=>U;
+
+  // Set for predefined unit symbols (m, kg, N, ...) — see sources/unit.ts.
+  // Dormant unless defs.unitsAutoDetect is on or quantity() is called
+  // explicitly, so attaching it doesn't change how a bare symbol behaves.
+  public unitDef?: { dim: number[]; scale: Num };
 }
 
 export type U = Cons | Num | Double | Str | Tensor | Sym;
@@ -242,6 +252,7 @@ export const COFACTOR = 'cofactor';
 export const CONDENSE = 'condense';
 export const CONJ = 'conj';
 export const CONTRACT = 'contract';
+export const CONVERT = 'convert';
 export const COS = 'cos';
 export const COSH = 'cosh';
 export const DECOMP = 'decomp';
@@ -251,6 +262,7 @@ export const DENOMINATOR = 'denominator';
 export const DERIVATIVE = 'derivative';
 export const DET = 'det';
 export const DIM = 'dim';
+export const DIMENSIONOF = 'dimensionof';
 export const DIRAC = 'dirac';
 export const DIVISORS = 'divisors';
 export const DO = 'do';
@@ -292,6 +304,7 @@ export const LAGUERRE = 'laguerre';
 export const LCM = 'lcm';
 export const LEADING = 'leading';
 export const LEGENDRE = 'legendre';
+export const LIMIT = 'limit';
 export const LOG = 'log';
 export const LOOKUP = 'lookup';
 export const MOD = 'mod';
@@ -317,6 +330,7 @@ export const PRINTLATEX = 'printlatex';
 export const PRINTLIST = 'printlist';
 export const PRINTPLAIN = 'printhuman';
 export const PRODUCT = 'product';
+export const QUANTITY = 'quantity';
 export const QUOTE = 'quote';
 export const QUOTIENT = 'quotient';
 export const RANK = 'rank';
@@ -332,6 +346,7 @@ export const SIMPLIFY = 'simplify';
 export const SIN = 'sin';
 export const SINH = 'sinh';
 export const SHAPE = 'shape';
+export const SOLVE = 'solve';
 export const SQRT = 'sqrt';
 export const STOP = 'stop';
 export const SUBST = 'subst';
@@ -348,6 +363,7 @@ export const TESTLE = 'testle';
 export const TESTLT = 'testlt';
 export const TRANSPOSE = 'transpose';
 export const UNIT = 'unit';
+export const UNITS = 'units';
 export const ZERO = 'zero';
 
 // ALL THE SYMBOLS ABOVE NIL ARE KEYWORDS,

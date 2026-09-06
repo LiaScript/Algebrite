@@ -10,7 +10,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const defs_1 = require("./runtime/defs");
 const find_1 = require("./runtime/find");
 const init_1 = require("./runtime/init");
-const stack_1 = require("./runtime/stack");
 const symbol_1 = require("./runtime/symbol");
 const zombocom_1 = require("./runtime/zombocom");
 const is_1 = require("./sources/is");
@@ -49,7 +48,7 @@ $.cddaddr = defs_1.cddaddr;
 $.caddadr = defs_1.caddadr;
 $.cdddaddr = defs_1.cdddaddr;
 $.caddaddr = defs_1.caddaddr;
-$.symbol = defs_1.symbol;
+$.symbol = symbol_1.symbol;
 $.iscons = defs_1.iscons;
 $.isrational = defs_1.isrational;
 $.isdouble = defs_1.isdouble;
@@ -57,7 +56,7 @@ $.isNumericAtom = defs_1.isNumericAtom;
 $.isstr = defs_1.isstr;
 $.istensor = defs_1.istensor;
 $.issymbol = defs_1.issymbol;
-$.iskeyword = defs_1.iskeyword;
+$.iskeyword = symbol_1.iskeyword;
 $.CONS = defs_1.CONS;
 $.NUM = defs_1.NUM;
 $.DOUBLE = defs_1.DOUBLE;
@@ -95,12 +94,6 @@ $.equal = misc_1.equal;
 $.length = misc_1.length;
 $.scan = scan_1.scan;
 $.Find = find_1.Find;
-$.dupl = stack_1.dupl;
-$.swap = stack_1.swap;
-$.restore = stack_1.restore;
-$.save = stack_1.save;
-$.push = stack_1.push;
-$.pop = stack_1.pop;
 $.get_binding = symbol_1.get_binding;
 $.set_binding = symbol_1.set_binding;
 $.usr_symbol = symbol_1.usr_symbol;
@@ -140,6 +133,7 @@ const builtin_fns = [
     'condense',
     'conj',
     'contract',
+    'convert',
     'cos',
     'cosh',
     'decomp',
@@ -149,6 +143,7 @@ const builtin_fns = [
     'det',
     'derivative',
     'dim',
+    'dimensionof',
     'dirac',
     'divisors',
     'do',
@@ -188,6 +183,7 @@ const builtin_fns = [
     'lcm',
     'leading',
     'legendre',
+    'limit',
     'log',
     'mod',
     'multiply',
@@ -210,6 +206,7 @@ const builtin_fns = [
     'printlist',
     'printhuman',
     'product',
+    'quantity',
     'quote',
     'quotient',
     'rank',
@@ -225,6 +222,7 @@ const builtin_fns = [
     'simplify',
     'sin',
     'sinh',
+    'solve',
     'sqrt',
     'stop',
     'subst',
@@ -241,6 +239,7 @@ const builtin_fns = [
     'testlt',
     'transpose',
     'unit',
+    'units',
     'zero',
 ];
 Array.from(builtin_fns).map(fn => ($[fn] = zombocom_1.exec.bind(this, fn)));

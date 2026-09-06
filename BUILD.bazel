@@ -113,6 +113,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_units",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/units.ts",
+)
+
+nodejs_test(
     name = "test_transpose",
     data = [
         ":tsc",
@@ -191,6 +200,15 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/strings.ts",
+)
+
+nodejs_test(
+    name = "test_solve",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/solve.ts",
 )
 
 nodejs_test(
@@ -491,6 +509,15 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/log.ts",
+)
+
+nodejs_test(
+    name = "test_limit",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/limit.ts",
 )
 
 nodejs_test(

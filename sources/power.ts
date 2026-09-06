@@ -62,6 +62,7 @@ import {
 import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { qpow } from './qpow';
+import { powerUnitAware } from './quantity';
 import { rect } from './rect';
 import { sine } from './sin';
 import { power_tensor } from './tensor';
@@ -119,6 +120,12 @@ function yypower(base: U, exponent: U): U {
       console.log(`   power of ${inputBase} ^ ${inputExp}: ${base}`);
     }
     return base;
+  }
+
+  // is the base a Quantity, or (with units() on) a bare unit symbol?
+  const unitResult = powerUnitAware(base, exponent);
+  if (unitResult !== undefined) {
+    return unitResult;
   }
 
   //   -1 ^ -1    ->  -1

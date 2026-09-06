@@ -3,7 +3,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.power = exports.Eval_power = void 0;
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
-const stack_1 = require("../runtime/stack");
 const symbol_1 = require("../runtime/symbol");
 const misc_1 = require("../sources/misc");
 const abs_1 = require("./abs");
@@ -19,13 +18,14 @@ const is_1 = require("./is");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const qpow_1 = require("./qpow");
+const quantity_1 = require("./quantity");
 const rect_1 = require("./rect");
 const sin_1 = require("./sin");
 const tensor_1 = require("./tensor");
 /* Power function
 
   Input:    push  Base
-            push  Exponent
+      push  Exponent
 
   Output:    Result on stack
 */
@@ -34,9 +34,9 @@ function Eval_power(p1) {
     if (DEBUG_POWER) {
         defs_1.breakpoint;
     }
-    const exponent = eval_1.Eval(defs_1.caddr(p1));
     const base = eval_1.Eval(defs_1.cadr(p1));
-    stack_1.push(power(base, exponent));
+    const exponent = eval_1.Eval(defs_1.caddr(p1));
+    return power(base, exponent);
 }
 exports.Eval_power = Eval_power;
 function power(p1, p2) {
@@ -69,6 +69,11 @@ function yypower(base, exponent) {
             console.log(`   power of ${inputBase} ^ ${inputExp}: ${base}`);
         }
         return base;
+    }
+    // is the base a Quantity, or (with units() on) a bare unit symbol?
+    const unitResult = quantity_1.powerUnitAware(base, exponent);
+    if (unitResult !== undefined) {
+        return unitResult;
     }
     //   -1 ^ -1    ->  -1
     if (is_1.isminusone(base) && is_1.isminusone(exponent)) {
@@ -107,10 +112,10 @@ function yypower(base, exponent) {
             console.log(` trick: exponent.q.a , exponent.q.b ${exponent.q.a} , ${exponent.q.b}`);
         }
         if (exponent.q.a < exponent.q.b) {
-            tmp = list_1.makeList(defs_1.symbol(defs_1.POWER), base, exponent);
+            tmp = list_1.makeList(symbol_1.symbol(defs_1.POWER), base, exponent);
         }
         else {
-            tmp = list_1.makeList(defs_1.symbol(defs_1.MULTIPLY), base, list_1.makeList(defs_1.symbol(defs_1.POWER), base, bignum_1.rational(exponent.q.a.mod(exponent.q.b), exponent.q.b)));
+            tmp = list_1.makeList(symbol_1.symbol(defs_1.MULTIPLY), base, list_1.makeList(symbol_1.symbol(defs_1.POWER), base, bignum_1.rational(exponent.q.a.mod(exponent.q.b), exponent.q.b)));
             if (DEBUG_POWER) {
                 console.log(` trick applied : ${tmp}`);
             }
@@ -155,9 +160,9 @@ function yypower(base, exponent) {
     }
     // if we only assume variables to be real, then |a|^2 = a^2
     // (if x is complex this doesn't hold e.g. i, which makes 1 and -1
-    if (defs_1.car(base) === defs_1.symbol(defs_1.ABS) &&
+    if (defs_1.car(base) === symbol_1.symbol(defs_1.ABS) &&
         is_1.iseveninteger(exponent) &&
-        !is_1.isZeroAtomOrTensor(symbol_1.get_binding(defs_1.symbol(defs_1.ASSUME_REAL_VARIABLES)))) {
+        !is_1.isZeroAtomOrTensor(symbol_1.get_binding(symbol_1.symbol(defs_1.ASSUME_REAL_VARIABLES)))) {
         const result = power(defs_1.cadr(base), exponent);
         if (DEBUG_POWER) {
             console.log('   power: even power of absolute of real value ');
@@ -166,7 +171,7 @@ function yypower(base, exponent) {
         return result;
     }
     // e^log(...)
-    if (base === defs_1.symbol(defs_1.E) && defs_1.car(exponent) === defs_1.symbol(defs_1.LOG)) {
+    if (base === symbol_1.symbol(defs_1.E) && defs_1.car(exponent) === symbol_1.symbol(defs_1.LOG)) {
         const result = defs_1.cadr(exponent);
         if (DEBUG_POWER) {
             console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);
@@ -174,7 +179,7 @@ function yypower(base, exponent) {
         return result;
     }
     // e^some_float
-    if (base === defs_1.symbol(defs_1.E) && defs_1.isdouble(exponent)) {
+    if (base === symbol_1.symbol(defs_1.E) && defs_1.isdouble(exponent)) {
         const result = bignum_1.double(Math.exp(exponent.d));
         if (DEBUG_POWER) {
             console.log('   power: base == symbol(E) && isdouble(exponent) ');
@@ -185,16 +190,16 @@ function yypower(base, exponent) {
     // complex number in exponential form, get it to rectangular
     // but only if we are not in the process of calculating a polar form,
     // otherwise we'd just undo the work we want to do
-    if (base === defs_1.symbol(defs_1.E) &&
+    if (base === symbol_1.symbol(defs_1.E) &&
         find_1.Find(exponent, defs_1.Constants.imaginaryunit) &&
-        find_1.Find(exponent, defs_1.symbol(defs_1.PI)) &&
+        find_1.Find(exponent, symbol_1.symbol(defs_1.PI)) &&
         !defs_1.defs.evaluatingPolar) {
-        let tmp = list_1.makeList(defs_1.symbol(defs_1.POWER), base, exponent);
+        let tmp = list_1.makeList(symbol_1.symbol(defs_1.POWER), base, exponent);
         if (DEBUG_POWER) {
-            console.log(`   power: turning complex exponential to rect: ${stack_1.top()}`);
+            console.log(`   power: turning complex exponential to rect: ${tmp}`);
         }
         const hopefullySimplified = rect_1.rect(tmp); // put new (hopefully simplified expr) in exponent
-        if (!find_1.Find(hopefullySimplified, defs_1.symbol(defs_1.PI))) {
+        if (!find_1.Find(hopefullySimplified, symbol_1.symbol(defs_1.PI))) {
             if (DEBUG_POWER) {
                 console.log(`   power: turned complex exponential to rect: ${hopefullySimplified}`);
             }
@@ -272,7 +277,7 @@ function yypower(base, exponent) {
     }
     //  sin(x) ^ 2n -> (1 - cos(x) ^ 2) ^ n
     if (defs_1.defs.trigmode === 1 &&
-        defs_1.car(base) === defs_1.symbol(defs_1.SIN) &&
+        defs_1.car(base) === symbol_1.symbol(defs_1.SIN) &&
         is_1.iseveninteger(exponent)) {
         const result = power(add_1.subtract(defs_1.Constants.one, power(cos_1.cosine(defs_1.cadr(base)), bignum_1.integer(2))), multiply_1.multiply(exponent, bignum_1.rational(1, 2)));
         if (DEBUG_POWER) {
@@ -283,7 +288,7 @@ function yypower(base, exponent) {
     }
     //  cos(x) ^ 2n -> (1 - sin(x) ^ 2) ^ n
     if (defs_1.defs.trigmode === 2 &&
-        defs_1.car(base) === defs_1.symbol(defs_1.COS) &&
+        defs_1.car(base) === symbol_1.symbol(defs_1.COS) &&
         is_1.iseveninteger(exponent)) {
         const result = power(add_1.subtract(defs_1.Constants.one, power(sin_1.sine(defs_1.cadr(base)), bignum_1.integer(2))), multiply_1.multiply(exponent, bignum_1.rational(1, 2)));
         if (DEBUG_POWER) {
@@ -326,15 +331,15 @@ function yypower(base, exponent) {
             const pi = defs_1.defs.evaluatingAsFloats ||
                 (is_1.iscomplexnumberdouble(base) && defs_1.isdouble(exponent))
                 ? bignum_1.double(Math.PI)
-                : defs_1.symbol(defs_1.PI);
+                : symbol_1.symbol(defs_1.PI);
             let tmp = multiply_1.multiply(power(abs_1.abs(base), exponent), power(defs_1.Constants.negOne, multiply_1.divide(multiply_1.multiply(arg_1.arg(base), exponent), pi)));
             // if we calculate the power making use of arctan:
             //  * it prevents nested radicals from being simplified
             //  * results become really hard to manipulate afterwards
             //  * we can't go back to other forms.
             // so leave the power as it is.
-            if (defs_1.avoidCalculatingPowersIntoArctans && find_1.Find(tmp, defs_1.symbol(defs_1.ARCTAN))) {
-                tmp = list_1.makeList(defs_1.symbol(defs_1.POWER), base, exponent);
+            if (defs_1.avoidCalculatingPowersIntoArctans && find_1.Find(tmp, symbol_1.symbol(defs_1.ARCTAN))) {
+                tmp = list_1.makeList(symbol_1.symbol(defs_1.POWER), base, exponent);
             }
             if (DEBUG_POWER) {
                 console.log(`   power of ${inputBase} ^ ${inputExp}: ${tmp}`);
@@ -349,7 +354,7 @@ function yypower(base, exponent) {
         }
         return polarResult;
     }
-    const result = list_1.makeList(defs_1.symbol(defs_1.POWER), base, exponent);
+    const result = list_1.makeList(symbol_1.symbol(defs_1.POWER), base, exponent);
     if (DEBUG_POWER) {
         console.log('   power: nothing can be done ');
         console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);

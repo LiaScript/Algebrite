@@ -37,9 +37,11 @@ import {
 import { doubleToReasonableString } from '../runtime/otherCFunctions';
 import {get_printname, symbol} from '../runtime/symbol';
 import { absval } from './abs';
-import { mp_denominator, mp_numerator } from './bignum';
+import { mp_denominator, mp_numerator, nativeDouble } from './bignum';
 import { isfraction, isminusone, isnegativenumber, isplusone } from './is';
 import { printline } from './print';
+import { isQuantity } from './quantity';
+import { formatDimension } from './unit';
 
 /*
 
@@ -510,6 +512,11 @@ function emit_factor(p: U) {
     return;
   }
 
+  if (isQuantity(p)) {
+    emit_quantity(p);
+    return;
+  }
+
   if (iscons(p)) {
     //if (car(p) == symbol(FORMAL) && cadr(p).k == SYM)
     //  emit_symbol(cadr(p))
@@ -535,6 +542,15 @@ function emit_factor(p: U) {
   if (isstr(p)) {
     emit_string(p);
   }
+}
+
+function emit_quantity(p: U) {
+  const magnitude = cadr(p);
+  const dimTensor = caddr(p) as Tensor;
+  const dim = dimTensor.tensor.elem.map((e) => nativeDouble(e));
+  emit_factor(magnitude);
+  __emit_char(' ');
+  __emit_str(formatDimension(dim));
 }
 
 function emit_numerical_fraction(p: U) {

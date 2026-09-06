@@ -63,6 +63,7 @@ import {
   PRINT_LEAVE_E_ALONE,
   PRINT_LEAVE_X_ALONE,
   PRODUCT,
+  QUANTITY,
   ROUND,
   SETQ,
   SIN,
@@ -85,7 +86,7 @@ import {
 import { get_binding, get_printname, set_binding, symbol } from '../runtime/symbol';
 import { lessp } from '../sources/misc';
 import { absval } from './abs';
-import { mp_denominator, mp_numerator, print_number } from './bignum';
+import { mp_denominator, mp_numerator, nativeDouble, print_number } from './bignum';
 import { denominator } from './denominator';
 import { Eval } from './eval';
 import {
@@ -103,6 +104,7 @@ import { multiply, negate } from './multiply';
 import { numerator } from './numerator';
 import { print2dascii } from './print2d';
 import { scan } from './scan';
+import { formatDimension, formatDimensionLatex } from './unit';
 
 const power_str = '^';
 
@@ -1409,6 +1411,18 @@ function print_index_function(p: BaseAtom): string {
   return accumulator;
 }
 
+function print_QUANTITY(p: BaseAtom): string {
+  const magnitude = cadr(p);
+  const dimTensor = caddr(p) as Tensor;
+  const dim = dimTensor.tensor.elem.map((e) => nativeDouble(e));
+  if (defs.printMode === PRINTMODE_LATEX) {
+    return print_factor(magnitude) + '\\ ' + formatDimensionLatex(dim);
+  }
+  const unitName = formatDimension(dim);
+  const sep = defs.printMode === PRINTMODE_HUMAN && !defs.test_flag ? ' ' : '*';
+  return print_factor(magnitude) + sep + unitName;
+}
+
 function print_factor(
   p: BaseAtom,
   omitParens = false,
@@ -1748,6 +1762,9 @@ function print_factor(
       accumulator += print_expr(caddr(p));
       return accumulator;
     }
+  } else if (car(p) === symbol(QUANTITY)) {
+    accumulator += print_QUANTITY(p);
+    return accumulator;
   }
 
   if (iscons(p)) {

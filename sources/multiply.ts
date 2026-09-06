@@ -38,6 +38,7 @@ import { Eval } from './eval';
 import { equaln, isfraction, isinteger, isminusone, isnegativenumber, isplusone, isZeroAtom } from './is';
 import { makeList } from './list';
 import { power } from './power';
+import { multiplyUnitAware } from './quantity';
 import { scalar_times_tensor, tensor_times_scalar } from './tensor';
 
 // Symbolic multiplication
@@ -78,6 +79,12 @@ function yymultiply(p1: U, p2: U): U {
   // is either operand zero?
   if (isZeroAtom(p1) || isZeroAtom(p2)) {
     return Constants.Zero();
+  }
+
+  // is either operand a Quantity, or (with units() on) a bare unit symbol?
+  const unitResult = multiplyUnitAware(p1, p2);
+  if (unitResult !== undefined) {
+    return unitResult;
   }
 
   // is either operand a sum?

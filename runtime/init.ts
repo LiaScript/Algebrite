@@ -80,6 +80,7 @@ import { Eval_laguerre } from '../sources/laguerre';
 import { Eval_lcm } from '../sources/lcm';
 import { Eval_leading } from '../sources/leading';
 import { Eval_legendre } from '../sources/legendre';
+import { Eval_limit } from '../sources/limit';
 import { makeList } from '../sources/list';
 import { Eval_log } from '../sources/log';
 import { Eval_lookup } from '../sources/lookup';
@@ -94,6 +95,7 @@ import { Eval_power } from '../sources/power';
 import { Eval_prime } from '../sources/prime';
 import { Eval_print, Eval_print2dascii, Eval_printcomputer, Eval_printhuman, Eval_printlatex, Eval_printlist, print_list } from '../sources/print';
 import { Eval_product } from '../sources/product';
+import { Eval_convert, Eval_dimensionof, Eval_quantity, Eval_units } from '../sources/quantity';
 import { Eval_quotient } from '../sources/quotient';
 import { Eval_rationalize } from '../sources/rationalize';
 import { Eval_real } from '../sources/real';
@@ -106,12 +108,14 @@ import { Eval_shape } from '../sources/shape';
 import { Eval_simplify } from '../sources/simplify';
 import { Eval_sin } from '../sources/sin';
 import { Eval_sinh } from '../sources/sinh';
+import { Eval_solve } from '../sources/solve';
 import { Eval_sum } from '../sources/sum';
 import { Eval_tan } from '../sources/tan';
 import { Eval_tanh } from '../sources/tanh';
 import { Eval_taylor } from '../sources/taylor';
 import { Eval_and, Eval_not, Eval_or, Eval_test, Eval_testeq, Eval_testge, Eval_testgt, Eval_testle, Eval_testlt } from '../sources/test';
 import { Eval_transpose } from '../sources/transpose';
+import { defineUnits } from '../sources/unit';
 import { Eval_zero } from '../sources/zero';
 import {
   ABS,
@@ -154,6 +158,7 @@ import {
   CONJ,
   Constants,
   CONTRACT,
+  CONVERT,
   COS,
   COSH,
   DEBUG,
@@ -165,6 +170,7 @@ import {
   DERIVATIVE,
   DET,
   DIM,
+  DIMENSIONOF,
   DIRAC,
   DIVISORS,
   DO,
@@ -214,6 +220,7 @@ import {
   LCM,
   LEADING,
   LEGENDRE,
+  LIMIT,
   LOG,
   LOOKUP,
   MAX_FIXED_PRINTOUT_DIGITS,
@@ -245,6 +252,7 @@ import {
   PRINT_LEAVE_E_ALONE,
   PRINT_LEAVE_X_ALONE,
   PRODUCT,
+  QUANTITY,
   QUOTE,
   QUOTIENT,
   RANK,
@@ -261,6 +269,7 @@ import {
   SIMPLIFY,
   SIN,
   SINH,
+  SOLVE,
   SQRT,
   STOP,
   SUBST,
@@ -295,6 +304,7 @@ import {
   TRACE,
   TRANSPOSE,
   UNIT,
+  UNITS,
   version,
   VERSION,
   YYE,
@@ -414,6 +424,7 @@ export function defn() {
   std_symbol(CONDENSE, Eval_condense);
   std_symbol(CONJ, Eval_conj);
   std_symbol(CONTRACT, Eval_contract);
+  std_symbol(CONVERT, Eval_convert);
   std_symbol(COS, Eval_cos);
   std_symbol(COSH, Eval_cosh);
   std_symbol(DECOMP, Eval_decomp);
@@ -423,6 +434,7 @@ export function defn() {
   std_symbol(DET, Eval_det);
   std_symbol(DERIVATIVE, Eval_derivative);
   std_symbol(DIM, Eval_dim);
+  std_symbol(DIMENSIONOF, Eval_dimensionof);
   std_symbol(DIRAC, Eval_dirac);
   std_symbol(DIVISORS, Eval_divisors);
   std_symbol(DO, Eval_do);
@@ -464,6 +476,7 @@ export function defn() {
   std_symbol(LCM, Eval_lcm);
   std_symbol(LEADING, Eval_leading);
   std_symbol(LEGENDRE, Eval_legendre);
+  std_symbol(LIMIT, Eval_limit);
   std_symbol(LOG, Eval_log);
   std_symbol(LOOKUP, Eval_lookup);
   std_symbol(MOD, Eval_mod);
@@ -489,6 +502,7 @@ export function defn() {
   std_symbol(PRINT_LEAVE_E_ALONE);
   std_symbol(PRINT_LEAVE_X_ALONE);
   std_symbol(PRODUCT, Eval_product);
+  std_symbol(QUANTITY, Eval_quantity);
   std_symbol(QUOTE, Eval_quote);
   std_symbol(QUOTIENT, Eval_quotient);
   std_symbol(RANK, Eval_rank);
@@ -504,6 +518,7 @@ export function defn() {
   std_symbol(SIN, Eval_sin);
   std_symbol(SINH, Eval_sinh);
   std_symbol(SHAPE, Eval_shape);
+  std_symbol(SOLVE, Eval_solve);
   std_symbol(SQRT, Eval_sqrt);
   std_symbol(STOP, Eval_stop);
   std_symbol(SUBST, Eval_subst);
@@ -520,6 +535,7 @@ export function defn() {
   std_symbol(TESTLT, Eval_testlt);
   std_symbol(TRANSPOSE, Eval_transpose);
   std_symbol(UNIT, Eval_unit);
+  std_symbol(UNITS, Eval_units);
   std_symbol(ZERO, Eval_zero);
 
   std_symbol(NIL);
@@ -580,6 +596,7 @@ export function defn() {
   std_symbol(C6);
 
   defineSomeHandyConstants();
+  defineUnits();
 
   // don't add all these functions to the
   // symbolsDependencies, clone the original

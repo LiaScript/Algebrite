@@ -1,5 +1,5 @@
 import { countsize } from './count';
-import { BaseAtom, car, cdr, Cons, iscons, issymbol, istensor, NIL, Str, Sym, SYM, U } from './defs';
+import { BaseAtom, car, cdr, Cons, iscons, issymbol, istensor, NIL, Num, Str, Sym, SYM, U } from './defs';
 import { stop } from './run';
 
 // The symbol table is a simple array of struct U.
@@ -107,6 +107,22 @@ export function std_symbol(s: string, keyword?:(p1:Cons)=>U) {
   const sym = keywordScope.getOrCreate(s);
   sym.latexPrint = s;
   sym.keyword = keyword;
+}
+
+// Registers a unit symbol (m, kg, N, ...): redefinable like pi/x, with its
+// dimension vector and SI-normalizing scale attached as metadata. See
+// sources/unit.ts / sources/quantity.ts.
+//
+// Deliberately registered into userScope (via usr_symbol), NOT
+// keywordScope: is_usr_symbol() below treats "exists in keywordScope" as
+// "not a plain user symbol", which is otherwise correct for real keywords
+// but would wrongly exclude ordinary short variable names that happen to
+// collide with a unit or prefix (e.g. "g" for gram) from user-symbol /
+// dependency-tracking treatment, even with no keyword attached.
+export function std_unit_symbol(s: string, dim: number[], scale: Num) {
+  const sym = usr_symbol(s);
+  sym.latexPrint = s;
+  sym.unitDef = { dim, scale };
 }
 
 // symbol lookup, or symbol creation if symbol doesn't exist yet
