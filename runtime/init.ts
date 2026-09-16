@@ -304,7 +304,6 @@ import {
   TESTGT,
   TESTLE,
   TESTLT,
-  TRACE,
   TRANSPOSE,
   UNIT,
   UNITS,
@@ -376,7 +375,6 @@ const defn_str = [
   'xrange=[-10,10]',
   'yrange=[-10,10]',
   'last=0',
-  'trace=0',
   'forceFixedPrintout=1',
   'maxFixedPrintoutDigits=6',
   'printLeaveEAlone=1',
@@ -406,6 +404,8 @@ const defn_str = [
   // heaviside(0)=1/2; d(heaviside(x),x)=dirac(x) via the sgn derivative
   'heaviside(x)=(1+sgn(x))/2',
   'identity(n)=unit(n)',
+  'trace(M)=contract(M)',
+  'charpoly(M,x)=det(M-x*identity(dim(M)))',
 ];
 
 export function defn() {
@@ -570,7 +570,6 @@ export function defn() {
   std_symbol(LAST_LIST_PRINT);
   std_symbol(LAST_PLAIN_PRINT);
 
-  std_symbol(TRACE);
 
   std_symbol(FORCE_FIXED_PRINTOUT);
   std_symbol(MAX_FIXED_PRINTOUT_DIGITS);

@@ -42,4 +42,29 @@ run_test([
 
   'log(-1.0)',
   '3.141593...*i',
+
+  // log(x, base) = log(x)/log(base); the quotient is not reduced further
+  'log(8,2)',
+  'log(8)/log(2)',
+
+  'log(x,b)',
+  'log(x)/log(b)',
+
+  'float(log(8,2))',
+  '3.0',
+
+  'log(8.0,2)',
+  '3.0',
+
+  'log(e,e)',
+  '1',
+
+  'log(1,5)',
+  '0',
+
+  'log(1/8,2)',
+  '-log(8)/log(2)',
+
+  'd(log(x,2),x)',
+  '1/(x*log(2))',
 ]);

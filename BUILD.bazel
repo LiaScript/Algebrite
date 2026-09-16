@@ -1095,3 +1095,21 @@ nodejs_test(
     ],
     entry_point = ":tests/minmax.ts",
 )
+
+nodejs_test(
+    name = "test_trace",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/trace.ts",
+)
+
+nodejs_test(
+    name = "test_charpoly",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/charpoly.ts",
+)

@@ -383,7 +383,6 @@ export const LAST_PLAIN_PRINT = 'lastplainprint';
 export const AUTOEXPAND = 'autoexpand';
 export const BAKE = 'bake';
 export const ASSUME_REAL_VARIABLES = 'assumeRealVariables';
-export const TRACE = 'trace';
 export const FORCE_FIXED_PRINTOUT = 'forceFixedPrintout';
 export const MAX_FIXED_PRINTOUT_DIGITS = 'maxFixedPrintoutDigits';
 

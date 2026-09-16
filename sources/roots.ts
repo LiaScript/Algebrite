@@ -146,7 +146,6 @@ export function roots(POLY: U, X: U): U {
   for (let i = 0; i < n; i++) {
     tensor.tensor.elem[i] = results[i];
   }
-  console.log(`roots returning ${tensor}`);
   return tensor;
 }
 

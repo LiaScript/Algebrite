@@ -1,9 +1,11 @@
 import {
   caddr,
   cadr,
+  cddr,
   Constants,
   E,
   isdouble,
+  iscons,
   ismultiply,
   ispower,
   LOG,
@@ -16,7 +18,7 @@ import { denominator } from './denominator';
 import { Eval } from './eval';
 import { equaln, isfraction, isnegativenumber } from './is';
 import { makeList } from './list';
-import { multiply, negate } from './multiply';
+import { divide, multiply, negate } from './multiply';
 import { numerator } from './numerator';
 
 // Natural logarithm.
@@ -27,8 +29,13 @@ import { numerator } from './numerator';
 // In engineering, biology, astronomy, "log" can stand instead
 // for the "common" logarithm i.e. base 10. Also note that Google
 // calculations use log for the common logarithm.
+// log(x) is the natural logarithm; log(x, base) = log(x)/log(base).
 export function Eval_log(p1: U) {
-  return logarithm(Eval(cadr(p1)));
+  const result = logarithm(Eval(cadr(p1)));
+  if (iscons(cddr(p1))) {
+    return divide(result, logarithm(Eval(caddr(p1))));
+  }
+  return result;
 }
 
 export function logarithm(p1: U): U {
