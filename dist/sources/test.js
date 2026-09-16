@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_or = exports.Eval_and = exports.Eval_not = exports.Eval_testlt = exports.Eval_testle = exports.Eval_testgt = exports.Eval_testge = exports.Eval_testeq = exports.Eval_test = void 0;
+exports.cmp_values = exports.Eval_or = exports.Eval_and = exports.Eval_not = exports.Eval_testlt = exports.Eval_testle = exports.Eval_testgt = exports.Eval_testge = exports.Eval_testeq = exports.Eval_test = void 0;
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
 const add_1 = require("./add");
@@ -271,10 +271,12 @@ exports.Eval_or = Eval_or;
 // of "relational operator: cannot determine..."
 // a bit like we do in Eval_testeq
 function cmp_args(p1) {
+    return cmp_values(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+}
+// Sign of arg1 - arg2 (both already evaluated), or null when undecidable.
+function cmp_values(arg1, arg2) {
     let t = 0;
-    const arg1 = simplify_1.simplify(eval_1.Eval(defs_1.cadr(p1)));
-    const arg2 = simplify_1.simplify(eval_1.Eval(defs_1.caddr(p1)));
-    p1 = add_1.subtract(arg1, arg2);
+    let p1 = add_1.subtract(simplify_1.simplify(arg1), simplify_1.simplify(arg2));
     // try floating point if necessary
     if (p1.k !== defs_1.NUM && p1.k !== defs_1.DOUBLE) {
         p1 = eval_1.Eval(float_1.yyfloat(p1));
@@ -308,3 +310,4 @@ function cmp_args(p1) {
     }
     return t;
 }
+exports.cmp_values = cmp_values;

@@ -84,6 +84,7 @@ import { Eval_limit } from '../sources/limit';
 import { makeList } from '../sources/list';
 import { Eval_log } from '../sources/log';
 import { Eval_lookup } from '../sources/lookup';
+import { Eval_max, Eval_min } from '../sources/minmax';
 import { Eval_mod } from '../sources/mod';
 import { Eval_multiply } from '../sources/multiply';
 import { Eval_nroots } from '../sources/nroots';
@@ -223,10 +224,12 @@ import {
   LIMIT,
   LOG,
   LOOKUP,
+  MAX,
   MAX_FIXED_PRINTOUT_DIGITS,
   METAA,
   METAB,
   METAX,
+  MIN,
   MOD,
   MULTIPLY,
   NIL,
@@ -391,6 +394,18 @@ const defn_str = [
   // for the "common" logarithm i.e. base 10. Also note that Google
   // calculations use log for the common logarithm.
   'ln(x)=log(x)',
+  // sec/csc/cot and inverses rewrite to the existing trig functions, so
+  // derivative, integral, float and simplify work with no extra code.
+  'sec(x)=1/cos(x)',
+  'csc(x)=1/sin(x)',
+  'cot(x)=1/tan(x)',
+  'arcsec(x)=arccos(1/x)',
+  'arccsc(x)=arcsin(1/x)',
+  // ponytail: arccot(0) stops with divide-by-zero; real arccot.ts if needed
+  'arccot(x)=arctan(1/x)',
+  // heaviside(0)=1/2; d(heaviside(x),x)=dirac(x) via the sgn derivative
+  'heaviside(x)=(1+sgn(x))/2',
+  'identity(n)=unit(n)',
 ];
 
 export function defn() {
@@ -479,6 +494,8 @@ export function defn() {
   std_symbol(LIMIT, Eval_limit);
   std_symbol(LOG, Eval_log);
   std_symbol(LOOKUP, Eval_lookup);
+  std_symbol(MAX, Eval_max);
+  std_symbol(MIN, Eval_min);
   std_symbol(MOD, Eval_mod);
   std_symbol(MULTIPLY, Eval_multiply);
   std_symbol(NOT, Eval_not);

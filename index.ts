@@ -263,6 +263,8 @@ const builtin_fns = [
   'legendre',
   'limit',
   'log',
+  'max',
+  'min',
   'mod',
   'multiply',
   'not',

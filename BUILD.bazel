@@ -1050,3 +1050,48 @@ nodejs_test(
     ],
     entry_point = ":tests/det.ts",
 )
+
+nodejs_test(
+    name = "test_sec",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/sec.ts",
+)
+
+nodejs_test(
+    name = "test_arcsec",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/arcsec.ts",
+)
+
+nodejs_test(
+    name = "test_heaviside",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/heaviside.ts",
+)
+
+nodejs_test(
+    name = "test_identity",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/identity.ts",
+)
+
+nodejs_test(
+    name = "test_minmax",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/minmax.ts",
+)

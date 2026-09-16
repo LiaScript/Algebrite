@@ -13322,6 +13322,238 @@ FACTOR=${p8}`);
     }
   });
 
+  // bazel-out/k8-fastbuild/bin/sources/test.js
+  var require_test = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/test.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.cmp_values = exports.Eval_or = exports.Eval_and = exports.Eval_not = exports.Eval_testlt = exports.Eval_testle = exports.Eval_testgt = exports.Eval_testge = exports.Eval_testeq = exports.Eval_test = void 0;
+      var defs_1 = require_defs();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var eval_1 = require_eval();
+      var float_1 = require_float();
+      var is_1 = require_is();
+      var simplify_1 = require_simplify();
+      function Eval_test(p1) {
+        const orig = p1;
+        p1 = defs_1.cdr(p1);
+        while (defs_1.iscons(p1)) {
+          if (defs_1.cdr(p1) === symbol_1.symbol(defs_1.NIL)) {
+            return eval_1.Eval(defs_1.car(p1));
+          }
+          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(p1));
+          if (checkResult == null) {
+            return orig;
+          } else if (checkResult) {
+            return eval_1.Eval(defs_1.cadr(p1));
+          } else {
+            p1 = defs_1.cddr(p1);
+          }
+        }
+        return defs_1.Constants.zero;
+      }
+      exports.Eval_test = Eval_test;
+      function Eval_testeq(p1) {
+        const orig = p1;
+        let subtractionResult = add_1.subtract(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+        let checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(subtractionResult);
+        if (checkResult) {
+          return defs_1.Constants.zero;
+        } else if (checkResult != null && !checkResult) {
+          return defs_1.Constants.one;
+        }
+        const arg1 = simplify_1.simplify(eval_1.Eval(defs_1.cadr(p1)));
+        const arg2 = simplify_1.simplify(eval_1.Eval(defs_1.caddr(p1)));
+        subtractionResult = add_1.subtract(arg1, arg2);
+        checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(subtractionResult);
+        if (checkResult) {
+          return defs_1.Constants.zero;
+        } else if (checkResult != null && !checkResult) {
+          return defs_1.Constants.one;
+        }
+        return orig;
+      }
+      exports.Eval_testeq = Eval_testeq;
+      function Eval_testge(p1) {
+        const orig = p1;
+        const comparison = cmp_args(p1);
+        if (comparison == null) {
+          return orig;
+        }
+        if (comparison >= 0) {
+          return defs_1.Constants.one;
+        } else {
+          return defs_1.Constants.zero;
+        }
+      }
+      exports.Eval_testge = Eval_testge;
+      function Eval_testgt(p1) {
+        const orig = p1;
+        const comparison = cmp_args(p1);
+        if (comparison == null) {
+          return orig;
+        }
+        if (comparison > 0) {
+          return defs_1.Constants.one;
+        } else {
+          return defs_1.Constants.zero;
+        }
+      }
+      exports.Eval_testgt = Eval_testgt;
+      function Eval_testle(p1) {
+        const orig = p1;
+        const comparison = cmp_args(p1);
+        if (comparison == null) {
+          return orig;
+        }
+        if (comparison <= 0) {
+          return defs_1.Constants.one;
+        } else {
+          return defs_1.Constants.zero;
+        }
+      }
+      exports.Eval_testle = Eval_testle;
+      function Eval_testlt(p1) {
+        const orig = p1;
+        const comparison = cmp_args(p1);
+        if (comparison == null) {
+          return orig;
+        }
+        if (comparison < 0) {
+          return defs_1.Constants.one;
+        } else {
+          return defs_1.Constants.zero;
+        }
+      }
+      exports.Eval_testlt = Eval_testlt;
+      function Eval_not(p1) {
+        const wholeAndExpression = p1;
+        const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.cadr(p1));
+        if (checkResult == null) {
+          return wholeAndExpression;
+        } else if (checkResult) {
+          return defs_1.Constants.zero;
+        } else {
+          return defs_1.Constants.one;
+        }
+      }
+      exports.Eval_not = Eval_not;
+      function Eval_and(p1) {
+        const wholeAndExpression = p1;
+        let andPredicates = defs_1.cdr(wholeAndExpression);
+        let somePredicateUnknown = false;
+        while (defs_1.iscons(andPredicates)) {
+          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(andPredicates));
+          if (checkResult == null) {
+            somePredicateUnknown = true;
+            andPredicates = defs_1.cdr(andPredicates);
+          } else if (checkResult) {
+            andPredicates = defs_1.cdr(andPredicates);
+          } else if (!checkResult) {
+            return defs_1.Constants.zero;
+          }
+        }
+        if (somePredicateUnknown) {
+          return wholeAndExpression;
+        } else {
+          return defs_1.Constants.one;
+        }
+      }
+      exports.Eval_and = Eval_and;
+      function Eval_or(p1) {
+        const wholeOrExpression = p1;
+        let orPredicates = defs_1.cdr(wholeOrExpression);
+        let somePredicateUnknown = false;
+        while (defs_1.iscons(orPredicates)) {
+          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(orPredicates));
+          if (checkResult == null) {
+            somePredicateUnknown = true;
+            orPredicates = defs_1.cdr(orPredicates);
+          } else if (checkResult) {
+            return defs_1.Constants.one;
+          } else if (!checkResult) {
+            orPredicates = defs_1.cdr(orPredicates);
+          }
+        }
+        if (somePredicateUnknown) {
+          return wholeOrExpression;
+        } else {
+          return defs_1.Constants.zero;
+        }
+      }
+      exports.Eval_or = Eval_or;
+      function cmp_args(p1) {
+        return cmp_values(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+      }
+      function cmp_values(arg1, arg2) {
+        let t = 0;
+        let p1 = add_1.subtract(simplify_1.simplify(arg1), simplify_1.simplify(arg2));
+        if (p1.k !== defs_1.NUM && p1.k !== defs_1.DOUBLE) {
+          p1 = eval_1.Eval(float_1.yyfloat(p1));
+        }
+        if (is_1.isZeroAtomOrTensor(p1)) {
+          return 0;
+        }
+        switch (p1.k) {
+          case defs_1.NUM:
+            if (defs_1.MSIGN(p1.q.a) === -1) {
+              t = -1;
+            } else {
+              t = 1;
+            }
+            break;
+          case defs_1.DOUBLE:
+            if (p1.d < 0) {
+              t = -1;
+            } else {
+              t = 1;
+            }
+            break;
+          default:
+            t = null;
+        }
+        return t;
+      }
+      exports.cmp_values = cmp_values;
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/minmax.js
+  var require_minmax = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/minmax.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.Eval_max = exports.Eval_min = void 0;
+      var defs_1 = require_defs();
+      var eval_1 = require_eval();
+      var list_1 = require_list();
+      var test_1 = require_test();
+      function extremum(p1, pick) {
+        const args = p1.tail().map(eval_1.Eval);
+        let best = args[0];
+        for (const a of args.slice(1)) {
+          const c = test_1.cmp_values(a, best);
+          if (c === null) {
+            return list_1.makeList(defs_1.car(p1), ...args);
+          }
+          if (c === pick) {
+            best = a;
+          }
+        }
+        return best;
+      }
+      function Eval_min(p1) {
+        return extremum(p1, -1);
+      }
+      exports.Eval_min = Eval_min;
+      function Eval_max(p1) {
+        return extremum(p1, 1);
+      }
+      exports.Eval_max = Eval_max;
+    }
+  });
+
   // bazel-out/k8-fastbuild/bin/sources/mod.js
   var require_mod = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/mod.js"(exports) {
@@ -14048,201 +14280,6 @@ FACTOR=${p8}`);
     }
   });
 
-  // bazel-out/k8-fastbuild/bin/sources/test.js
-  var require_test = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/test.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.Eval_or = exports.Eval_and = exports.Eval_not = exports.Eval_testlt = exports.Eval_testle = exports.Eval_testgt = exports.Eval_testge = exports.Eval_testeq = exports.Eval_test = void 0;
-      var defs_1 = require_defs();
-      var symbol_1 = require_symbol();
-      var add_1 = require_add();
-      var eval_1 = require_eval();
-      var float_1 = require_float();
-      var is_1 = require_is();
-      var simplify_1 = require_simplify();
-      function Eval_test(p1) {
-        const orig = p1;
-        p1 = defs_1.cdr(p1);
-        while (defs_1.iscons(p1)) {
-          if (defs_1.cdr(p1) === symbol_1.symbol(defs_1.NIL)) {
-            return eval_1.Eval(defs_1.car(p1));
-          }
-          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(p1));
-          if (checkResult == null) {
-            return orig;
-          } else if (checkResult) {
-            return eval_1.Eval(defs_1.cadr(p1));
-          } else {
-            p1 = defs_1.cddr(p1);
-          }
-        }
-        return defs_1.Constants.zero;
-      }
-      exports.Eval_test = Eval_test;
-      function Eval_testeq(p1) {
-        const orig = p1;
-        let subtractionResult = add_1.subtract(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
-        let checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(subtractionResult);
-        if (checkResult) {
-          return defs_1.Constants.zero;
-        } else if (checkResult != null && !checkResult) {
-          return defs_1.Constants.one;
-        }
-        const arg1 = simplify_1.simplify(eval_1.Eval(defs_1.cadr(p1)));
-        const arg2 = simplify_1.simplify(eval_1.Eval(defs_1.caddr(p1)));
-        subtractionResult = add_1.subtract(arg1, arg2);
-        checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(subtractionResult);
-        if (checkResult) {
-          return defs_1.Constants.zero;
-        } else if (checkResult != null && !checkResult) {
-          return defs_1.Constants.one;
-        }
-        return orig;
-      }
-      exports.Eval_testeq = Eval_testeq;
-      function Eval_testge(p1) {
-        const orig = p1;
-        const comparison = cmp_args(p1);
-        if (comparison == null) {
-          return orig;
-        }
-        if (comparison >= 0) {
-          return defs_1.Constants.one;
-        } else {
-          return defs_1.Constants.zero;
-        }
-      }
-      exports.Eval_testge = Eval_testge;
-      function Eval_testgt(p1) {
-        const orig = p1;
-        const comparison = cmp_args(p1);
-        if (comparison == null) {
-          return orig;
-        }
-        if (comparison > 0) {
-          return defs_1.Constants.one;
-        } else {
-          return defs_1.Constants.zero;
-        }
-      }
-      exports.Eval_testgt = Eval_testgt;
-      function Eval_testle(p1) {
-        const orig = p1;
-        const comparison = cmp_args(p1);
-        if (comparison == null) {
-          return orig;
-        }
-        if (comparison <= 0) {
-          return defs_1.Constants.one;
-        } else {
-          return defs_1.Constants.zero;
-        }
-      }
-      exports.Eval_testle = Eval_testle;
-      function Eval_testlt(p1) {
-        const orig = p1;
-        const comparison = cmp_args(p1);
-        if (comparison == null) {
-          return orig;
-        }
-        if (comparison < 0) {
-          return defs_1.Constants.one;
-        } else {
-          return defs_1.Constants.zero;
-        }
-      }
-      exports.Eval_testlt = Eval_testlt;
-      function Eval_not(p1) {
-        const wholeAndExpression = p1;
-        const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.cadr(p1));
-        if (checkResult == null) {
-          return wholeAndExpression;
-        } else if (checkResult) {
-          return defs_1.Constants.zero;
-        } else {
-          return defs_1.Constants.one;
-        }
-      }
-      exports.Eval_not = Eval_not;
-      function Eval_and(p1) {
-        const wholeAndExpression = p1;
-        let andPredicates = defs_1.cdr(wholeAndExpression);
-        let somePredicateUnknown = false;
-        while (defs_1.iscons(andPredicates)) {
-          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(andPredicates));
-          if (checkResult == null) {
-            somePredicateUnknown = true;
-            andPredicates = defs_1.cdr(andPredicates);
-          } else if (checkResult) {
-            andPredicates = defs_1.cdr(andPredicates);
-          } else if (!checkResult) {
-            return defs_1.Constants.zero;
-          }
-        }
-        if (somePredicateUnknown) {
-          return wholeAndExpression;
-        } else {
-          return defs_1.Constants.one;
-        }
-      }
-      exports.Eval_and = Eval_and;
-      function Eval_or(p1) {
-        const wholeOrExpression = p1;
-        let orPredicates = defs_1.cdr(wholeOrExpression);
-        let somePredicateUnknown = false;
-        while (defs_1.iscons(orPredicates)) {
-          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(orPredicates));
-          if (checkResult == null) {
-            somePredicateUnknown = true;
-            orPredicates = defs_1.cdr(orPredicates);
-          } else if (checkResult) {
-            return defs_1.Constants.one;
-          } else if (!checkResult) {
-            orPredicates = defs_1.cdr(orPredicates);
-          }
-        }
-        if (somePredicateUnknown) {
-          return wholeOrExpression;
-        } else {
-          return defs_1.Constants.zero;
-        }
-      }
-      exports.Eval_or = Eval_or;
-      function cmp_args(p1) {
-        let t = 0;
-        const arg1 = simplify_1.simplify(eval_1.Eval(defs_1.cadr(p1)));
-        const arg2 = simplify_1.simplify(eval_1.Eval(defs_1.caddr(p1)));
-        p1 = add_1.subtract(arg1, arg2);
-        if (p1.k !== defs_1.NUM && p1.k !== defs_1.DOUBLE) {
-          p1 = eval_1.Eval(float_1.yyfloat(p1));
-        }
-        if (is_1.isZeroAtomOrTensor(p1)) {
-          return 0;
-        }
-        switch (p1.k) {
-          case defs_1.NUM:
-            if (defs_1.MSIGN(p1.q.a) === -1) {
-              t = -1;
-            } else {
-              t = 1;
-            }
-            break;
-          case defs_1.DOUBLE:
-            if (p1.d < 0) {
-              t = -1;
-            } else {
-              t = 1;
-            }
-            break;
-          default:
-            t = null;
-        }
-        return t;
-      }
-    }
-  });
-
   // bazel-out/k8-fastbuild/bin/sources/zero.js
   var require_zero = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/zero.js"(exports) {
@@ -14346,6 +14383,7 @@ FACTOR=${p8}`);
       var list_1 = require_list();
       var log_1 = require_log();
       var lookup_1 = require_lookup();
+      var minmax_1 = require_minmax();
       var mod_1 = require_mod();
       var multiply_1 = require_multiply();
       var nroots_1 = require_nroots();
@@ -14412,7 +14450,15 @@ FACTOR=${p8}`);
         "cross(u,v)=[u[2]*v[3]-u[3]*v[2],u[3]*v[1]-u[1]*v[3],u[1]*v[2]-u[2]*v[1]]",
         "curl(v)=[d(v[3],y)-d(v[2],z),d(v[1],z)-d(v[3],x),d(v[2],x)-d(v[1],y)]",
         "div(v)=d(v[1],x)+d(v[2],y)+d(v[3],z)",
-        "ln(x)=log(x)"
+        "ln(x)=log(x)",
+        "sec(x)=1/cos(x)",
+        "csc(x)=1/sin(x)",
+        "cot(x)=1/tan(x)",
+        "arcsec(x)=arccos(1/x)",
+        "arccsc(x)=arcsin(1/x)",
+        "arccot(x)=arctan(1/x)",
+        "heaviside(x)=(1+sgn(x))/2",
+        "identity(n)=unit(n)"
       ];
       function defn() {
         symbol_1.std_symbol(defs_1.ABS, abs_1.Eval_abs);
@@ -14499,6 +14545,8 @@ FACTOR=${p8}`);
         symbol_1.std_symbol(defs_1.LIMIT, limit_1.Eval_limit);
         symbol_1.std_symbol(defs_1.LOG, log_1.Eval_log);
         symbol_1.std_symbol(defs_1.LOOKUP, lookup_1.Eval_lookup);
+        symbol_1.std_symbol(defs_1.MAX, minmax_1.Eval_max);
+        symbol_1.std_symbol(defs_1.MIN, minmax_1.Eval_min);
         symbol_1.std_symbol(defs_1.MOD, mod_1.Eval_mod);
         symbol_1.std_symbol(defs_1.MULTIPLY, multiply_1.Eval_multiply);
         symbol_1.std_symbol(defs_1.NOT, test_1.Eval_not);
@@ -18116,10 +18164,10 @@ FACTOR=${p8}`);
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.CLEARALL = exports.CLEAR = exports.CIRCEXP = exports.CHOOSE = exports.CHECK = exports.CEILING = exports.BINOMIAL = exports.BINDING = exports.BESSELY = exports.BESSELJ = exports.ATOMIZE = exports.ARG = exports.ARCTANH = exports.ARCTAN = exports.ARCSINH = exports.ARCSIN = exports.ARCCOSH = exports.ARCCOS = exports.APPROXRATIO = exports.AND = exports.ADJ = exports.ADD = exports.ABS = exports.SYM = exports.TENSOR = exports.STR = exports.DOUBLE = exports.NUM = exports.CONS = exports.Sym = exports.Tensor = exports.Str = exports.Double = exports.Num = exports.Cons = exports.BaseAtom = exports.avoidCalculatingPowersIntoArctans = exports.do_simplify_nested_radicals = exports.dontCreateNewRadicalsInDenominatorWhenEvalingMultiplication = exports.defs = exports.PRINTMODE_LIST = exports.PRINTMODE_HUMAN = exports.PRINTMODE_COMPUTER = exports.PRINTMODE_2DASCII = exports.PRINTMODE_LATEX = exports.PRINTOUTRESULT = exports.DEBUG = exports.NSYM = exports.version = exports.breakpoint = void 0;
       exports.INTEGRAL = exports.INNER = exports.INDEX = exports.IMAG = exports.HILBERT = exports.HERMITE = exports.GCD = exports.GAMMA = exports.FUNCTION = exports.FOR = exports.FLOOR = exports.FLOATF = exports.FILTER = exports.FACTORPOLY = exports.FACTORIAL = exports.FACTOR = exports.EXPSIN = exports.EXPCOS = exports.EXPAND = exports.EXP = exports.EVAL = exports.ERFC = exports.ERF = exports.EIGENVEC = exports.EIGENVAL = exports.EIGEN = exports.DSOLVE = exports.DRAW = exports.DOT = exports.DO = exports.DIVISORS = exports.DIRAC = exports.DIMENSIONOF = exports.DIM = exports.DET = exports.DERIVATIVE = exports.DENOMINATOR = exports.DEGREE = exports.DEFINT = exports.DECOMP = exports.COSH = exports.COS = exports.CONVERT = exports.CONTRACT = exports.CONJ = exports.CONDENSE = exports.COFACTOR = exports.COEFF = exports.CLOCK = exports.CLEARPATTERNS = void 0;
-      exports.SHAPE = exports.SINH = exports.SIN = exports.SIMPLIFY = exports.SILENTPATTERN = exports.SGN = exports.SETQ = exports.ROOTS = exports.YYRECT = exports.ROUND = exports.REAL = exports.RATIONALIZE = exports.RANK = exports.QUOTIENT = exports.QUOTE = exports.QUANTITY = exports.PRODUCT = exports.PRINTPLAIN = exports.PRINTLIST = exports.PRINTLATEX = exports.PRINTFULL = exports.PRINT2DASCII = exports.PRINT = exports.PRINT_LEAVE_X_ALONE = exports.PRINT_LEAVE_E_ALONE = exports.PRIME = exports.POWER = exports.POLAR = exports.PATTERNSINFO = exports.PATTERN = exports.OUTER = exports.OR = exports.OPERATOR = exports.NUMERATOR = exports.NUMBER = exports.NROOTS = exports.NOT = exports.MULTIPLY = exports.MOD = exports.LOOKUP = exports.LOG = exports.LIMIT = exports.LEGENDRE = exports.LEADING = exports.LCM = exports.LAGUERRE = exports.ISPRIME = exports.ISINTEGER = exports.INVG = exports.INV = void 0;
-      exports.SYMBOL_S = exports.SYMBOL_R = exports.SYMBOL_N = exports.SYMBOL_J = exports.SYMBOL_I = exports.SYMBOL_D = exports.SYMBOL_C = exports.SYMBOL_B = exports.SYMBOL_A = exports.PI = exports.VERSION = exports.SECRETX = exports.METAX = exports.METAB = exports.METAA = exports.DRAWX = exports.YYE = exports.MAX_FIXED_PRINTOUT_DIGITS = exports.FORCE_FIXED_PRINTOUT = exports.TRACE = exports.ASSUME_REAL_VARIABLES = exports.BAKE = exports.AUTOEXPAND = exports.LAST_PLAIN_PRINT = exports.LAST_LIST_PRINT = exports.LAST_LATEX_PRINT = exports.LAST_FULL_PRINT = exports.LAST_2DASCII_PRINT = exports.LAST_PRINT = exports.LAST = exports.NIL = exports.ZERO = exports.UNITS = exports.UNIT = exports.TRANSPOSE = exports.TESTLT = exports.TESTLE = exports.TESTGT = exports.TESTGE = exports.TESTEQ = exports.TEST = exports.TAYLOR = exports.TANH = exports.TAN = exports.SYMBOLSINFO = exports.SUM = exports.SUBST = exports.STOP = exports.SQRT = exports.SOLVE = void 0;
-      exports.cdaddr = exports.caddar = exports.cadadr = exports.caaddr = exports.cdddr = exports.cddar = exports.cdadr = exports.cadar = exports.caddr = exports.caadr = exports.cddr = exports.cdar = exports.cadr = exports.caar = exports.cdr = exports.car = exports.issymbol = exports.isNumericAtomOrTensor = exports.istensor = exports.isstr = exports.isNumericAtom = exports.isdouble = exports.isrational = exports.iscons = exports.dotprod_unicode = exports.transpose_unicode = exports.logbuf = exports.mtotal = exports.primetab = exports.parse_time_simplifications = exports.predefinedSymbolsInGlobalScope_doNotTrackInDependencies = exports.MAXDIM = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES = exports.MAXPRIMETAB = exports.E = exports.C6 = exports.C5 = exports.C4 = exports.C3 = exports.C2 = exports.C1 = exports.SYMBOL_X_UNDERSCORE = exports.SYMBOL_B_UNDERSCORE = exports.SYMBOL_A_UNDERSCORE = exports.SYMBOL_IDENTITY_MATRIX = exports.SYMBOL_Z = exports.SYMBOL_Y = exports.SYMBOL_X = exports.SYMBOL_T = void 0;
-      exports.evalFloats = exports.evalPolar = exports.doexpand = exports.noexpand = exports.Constants = exports.$ = exports.reset_after_error = exports.MEQUAL = exports.MZERO = exports.MSIGN = exports.isidentitymatrix = exports.isinv = exports.istranspose = exports.isinnerordot = exports.isfactorial = exports.ispower = exports.ismultiply = exports.isadd = exports.caddaddr = exports.cdddaddr = exports.caddadr = exports.cddaddr = exports.cadaddr = exports.caddddr = exports.cddddr = exports.cadddr = void 0;
+      exports.SIN = exports.SIMPLIFY = exports.SILENTPATTERN = exports.SGN = exports.SETQ = exports.ROOTS = exports.YYRECT = exports.ROUND = exports.REAL = exports.RATIONALIZE = exports.RANK = exports.QUOTIENT = exports.QUOTE = exports.QUANTITY = exports.PRODUCT = exports.PRINTPLAIN = exports.PRINTLIST = exports.PRINTLATEX = exports.PRINTFULL = exports.PRINT2DASCII = exports.PRINT = exports.PRINT_LEAVE_X_ALONE = exports.PRINT_LEAVE_E_ALONE = exports.PRIME = exports.POWER = exports.POLAR = exports.PATTERNSINFO = exports.PATTERN = exports.OUTER = exports.OR = exports.OPERATOR = exports.NUMERATOR = exports.NUMBER = exports.NROOTS = exports.NOT = exports.MULTIPLY = exports.MOD = exports.MIN = exports.MAX = exports.LOOKUP = exports.LOG = exports.LIMIT = exports.LEGENDRE = exports.LEADING = exports.LCM = exports.LAGUERRE = exports.ISPRIME = exports.ISINTEGER = exports.INVG = exports.INV = void 0;
+      exports.SYMBOL_N = exports.SYMBOL_J = exports.SYMBOL_I = exports.SYMBOL_D = exports.SYMBOL_C = exports.SYMBOL_B = exports.SYMBOL_A = exports.PI = exports.VERSION = exports.SECRETX = exports.METAX = exports.METAB = exports.METAA = exports.DRAWX = exports.YYE = exports.MAX_FIXED_PRINTOUT_DIGITS = exports.FORCE_FIXED_PRINTOUT = exports.TRACE = exports.ASSUME_REAL_VARIABLES = exports.BAKE = exports.AUTOEXPAND = exports.LAST_PLAIN_PRINT = exports.LAST_LIST_PRINT = exports.LAST_LATEX_PRINT = exports.LAST_FULL_PRINT = exports.LAST_2DASCII_PRINT = exports.LAST_PRINT = exports.LAST = exports.NIL = exports.ZERO = exports.UNITS = exports.UNIT = exports.TRANSPOSE = exports.TESTLT = exports.TESTLE = exports.TESTGT = exports.TESTGE = exports.TESTEQ = exports.TEST = exports.TAYLOR = exports.TANH = exports.TAN = exports.SYMBOLSINFO = exports.SUM = exports.SUBST = exports.STOP = exports.SQRT = exports.SOLVE = exports.SHAPE = exports.SINH = void 0;
+      exports.cadadr = exports.caaddr = exports.cdddr = exports.cddar = exports.cdadr = exports.cadar = exports.caddr = exports.caadr = exports.cddr = exports.cdar = exports.cadr = exports.caar = exports.cdr = exports.car = exports.issymbol = exports.isNumericAtomOrTensor = exports.istensor = exports.isstr = exports.isNumericAtom = exports.isdouble = exports.isrational = exports.iscons = exports.dotprod_unicode = exports.transpose_unicode = exports.logbuf = exports.mtotal = exports.primetab = exports.parse_time_simplifications = exports.predefinedSymbolsInGlobalScope_doNotTrackInDependencies = exports.MAXDIM = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES = exports.MAXPRIMETAB = exports.E = exports.C6 = exports.C5 = exports.C4 = exports.C3 = exports.C2 = exports.C1 = exports.SYMBOL_X_UNDERSCORE = exports.SYMBOL_B_UNDERSCORE = exports.SYMBOL_A_UNDERSCORE = exports.SYMBOL_IDENTITY_MATRIX = exports.SYMBOL_Z = exports.SYMBOL_Y = exports.SYMBOL_X = exports.SYMBOL_T = exports.SYMBOL_S = exports.SYMBOL_R = void 0;
+      exports.evalFloats = exports.evalPolar = exports.doexpand = exports.noexpand = exports.Constants = exports.$ = exports.reset_after_error = exports.MEQUAL = exports.MZERO = exports.MSIGN = exports.isidentitymatrix = exports.isinv = exports.istranspose = exports.isinnerordot = exports.isfactorial = exports.ispower = exports.ismultiply = exports.isadd = exports.caddaddr = exports.cdddaddr = exports.caddadr = exports.cddaddr = exports.cadaddr = exports.caddddr = exports.cddddr = exports.cadddr = exports.cdaddr = exports.caddar = void 0;
       var big_integer_1 = __importDefault(require_BigInteger());
       var print_1 = require_print();
       var symbol_1 = require_symbol();
@@ -18342,6 +18390,8 @@ FACTOR=${p8}`);
       exports.LIMIT = "limit";
       exports.LOG = "log";
       exports.LOOKUP = "lookup";
+      exports.MAX = "max";
+      exports.MIN = "min";
       exports.MOD = "mod";
       exports.MULTIPLY = "multiply";
       exports.NOT = "not";
@@ -19026,6 +19076,8 @@ FACTOR=${p8}`);
         "legendre",
         "limit",
         "log",
+        "max",
+        "min",
         "mod",
         "multiply",
         "not",

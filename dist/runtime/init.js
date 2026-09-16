@@ -61,6 +61,7 @@ const limit_1 = require("../sources/limit");
 const list_1 = require("../sources/list");
 const log_1 = require("../sources/log");
 const lookup_1 = require("../sources/lookup");
+const minmax_1 = require("../sources/minmax");
 const mod_1 = require("../sources/mod");
 const multiply_1 = require("../sources/multiply");
 const nroots_1 = require("../sources/nroots");
@@ -167,6 +168,18 @@ const defn_str = [
     // for the "common" logarithm i.e. base 10. Also note that Google
     // calculations use log for the common logarithm.
     'ln(x)=log(x)',
+    // sec/csc/cot and inverses rewrite to the existing trig functions, so
+    // derivative, integral, float and simplify work with no extra code.
+    'sec(x)=1/cos(x)',
+    'csc(x)=1/sin(x)',
+    'cot(x)=1/tan(x)',
+    'arcsec(x)=arccos(1/x)',
+    'arccsc(x)=arcsin(1/x)',
+    // ponytail: arccot(0) stops with divide-by-zero; real arccot.ts if needed
+    'arccot(x)=arctan(1/x)',
+    // heaviside(0)=1/2; d(heaviside(x),x)=dirac(x) via the sgn derivative
+    'heaviside(x)=(1+sgn(x))/2',
+    'identity(n)=unit(n)',
 ];
 function defn() {
     symbol_1.std_symbol(defs_1.ABS, abs_1.Eval_abs);
@@ -254,6 +267,8 @@ function defn() {
     symbol_1.std_symbol(defs_1.LIMIT, limit_1.Eval_limit);
     symbol_1.std_symbol(defs_1.LOG, log_1.Eval_log);
     symbol_1.std_symbol(defs_1.LOOKUP, lookup_1.Eval_lookup);
+    symbol_1.std_symbol(defs_1.MAX, minmax_1.Eval_max);
+    symbol_1.std_symbol(defs_1.MIN, minmax_1.Eval_min);
     symbol_1.std_symbol(defs_1.MOD, mod_1.Eval_mod);
     symbol_1.std_symbol(defs_1.MULTIPLY, multiply_1.Eval_multiply);
     symbol_1.std_symbol(defs_1.NOT, test_1.Eval_not);

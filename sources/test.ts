@@ -294,10 +294,13 @@ export function Eval_or(p1: U) {
 // of "relational operator: cannot determine..."
 // a bit like we do in Eval_testeq
 function cmp_args(p1: U): Sign {
+  return cmp_values(Eval(cadr(p1)), Eval(caddr(p1)));
+}
+
+// Sign of arg1 - arg2 (both already evaluated), or null when undecidable.
+export function cmp_values(arg1: U, arg2: U): Sign {
   let t: Sign = 0;
-  const arg1 = simplify(Eval(cadr(p1)));
-  const arg2 = simplify(Eval(caddr(p1)));
-  p1 = subtract(arg1, arg2);
+  let p1 = subtract(simplify(arg1), simplify(arg2));
 
   // try floating point if necessary
   if (p1.k !== NUM && p1.k !== DOUBLE) {
