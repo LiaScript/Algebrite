@@ -13319,6 +13319,7 @@ FACTOR=${p8}`);
       var denominator_1 = require_denominator();
       var float_1 = require_float();
       var is_1 = require_is();
+      var list_1 = require_list();
       var misc_1 = require_misc();
       var multiply_1 = require_multiply();
       var numerator_1 = require_numerator();
@@ -13395,7 +13396,62 @@ FACTOR=${p8}`);
         }
         return positive[0] ? symbol_1.symbol(defs_1.INF) : multiply_1.negate(symbol_1.symbol(defs_1.INF));
       }
+      function isJumpFunction(head) {
+        return [defs_1.SGN, defs_1.ABS, defs_1.FLOOR, defs_1.CEILING].some((f) => head === symbol_1.symbol(f));
+      }
+      function hasJump(p) {
+        return defs_1.iscons(p) && (isJumpFunction(defs_1.car(p)) || p.tail().some(hasJump));
+      }
+      function resolveJumps(p, X, beside) {
+        if (!defs_1.iscons(p)) {
+          return p;
+        }
+        const head = defs_1.car(p);
+        if (isJumpFunction(head)) {
+          const g = defs_1.cadr(p);
+          const v = float_1.zzfloat(subst_1.subst(g, X, bignum_1.double(beside)));
+          if (defs_1.isdouble(v)) {
+            const inner = resolveJumps(g, X, beside);
+            switch (head) {
+              case symbol_1.symbol(defs_1.SGN):
+                return bignum_1.integer(Math.sign(v.d));
+              case symbol_1.symbol(defs_1.ABS):
+                return v.d < 0 ? multiply_1.negate(inner) : inner;
+              case symbol_1.symbol(defs_1.FLOOR):
+                return bignum_1.integer(Math.floor(v.d));
+              default:
+                return bignum_1.integer(Math.ceil(v.d));
+            }
+          }
+        }
+        return list_1.makeList(head, ...p.tail().map((q) => resolveJumps(q, X, beside)));
+      }
+      function limitWithJumps(F, X, A, sides) {
+        const a = float_1.zzfloat(A);
+        if (!defs_1.isdouble(a)) {
+          return void 0;
+        }
+        const eps = 1e-6 * Math.max(1, Math.abs(a.d));
+        const results = [];
+        for (const side of sides) {
+          const smooth = eval_1.Eval(resolveJumps(F, X, a.d + side * eps));
+          if (hasJump(smooth)) {
+            return void 0;
+          }
+          results.push(limitAt(smooth, X, A, [side]));
+        }
+        if (results.some((r) => !misc_1.equal(r, results[0]))) {
+          run_1.stop("limit: left and right limits differ \u2014 limit does not exist");
+        }
+        return results[0];
+      }
       function limitAt(F, X, A, sides) {
+        if (hasJump(F)) {
+          const resolved = limitWithJumps(F, X, A, sides);
+          if (resolved !== void 0) {
+            return resolved;
+          }
+        }
         let result = tryEvalAt(F, X, A);
         if (result !== INDETERMINATE) {
           return hasPole(result) ? infiniteLimit(F, X, A, sides) : result;

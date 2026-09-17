@@ -104,6 +104,63 @@ run_test([
   'limit(log(x),x,0)',
   'Stop: limit: could not determine a real sign beside the point — try a one-sided limit',
 
+  // jump functions (sgn, abs, floor, ceiling): each side is solved with the
+  // function replaced by what it equals on that side, then compared
+  'limit(abs(x)/x,x,0)',
+  'Stop: limit: left and right limits differ — limit does not exist',
+
+  'limit(abs(x)/x,x,0,1)',
+  '1',
+
+  'limit(abs(x)/x,x,0,-1)',
+  '-1',
+
+  'limit(abs(x),x,0)',
+  '0',
+
+  'limit(abs(x-1)/(x-1),x,1,1)',
+  '1',
+
+  'limit(sgn(x),x,0,1)',
+  '1',
+
+  'limit(sgn(x),x,0,-1)',
+  '-1',
+
+  'limit(sgn(x),x,0)',
+  'Stop: limit: left and right limits differ — limit does not exist',
+
+  'limit(sgn(x)*x,x,0)',
+  '0',
+
+  'limit(heaviside(x),x,0,1)',
+  '1',
+
+  'limit(heaviside(x),x,0,-1)',
+  '0',
+
+  'limit(floor(x),x,2,-1)',
+  '1',
+
+  'limit(floor(x),x,2,1)',
+  '2',
+
+  'limit(floor(x),x,5/2)',
+  '2',
+
+  'limit(ceiling(x),x,2,1)',
+  '3',
+
+  'limit(abs(x)/x,x,inf)',
+  '1',
+
+  'limit(abs(x)/x,x,-inf)',
+  '-1',
+
+  // the sign of a*x cannot be probed, so this falls back to substitution
+  'limit(abs(a*x),x,0)',
+  '0',
+
   // L'Hopital only applies to 0/0: an expression that cannot be evaluated
   // at the point must stop rather than produce a wrong answer (pi/2 here)
   'limit(arctan(x),x,inf)',
