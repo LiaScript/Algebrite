@@ -1043,6 +1043,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_atomize",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/atomize.ts",
+)
+
+nodejs_test(
     name = "test_det",
     data = [
         ":tsc",

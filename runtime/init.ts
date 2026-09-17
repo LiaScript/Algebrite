@@ -9,6 +9,7 @@ import { Eval_arcsinh } from '../sources/arcsinh';
 import { Eval_arctan } from '../sources/arctan';
 import { Eval_arctanh } from '../sources/arctanh';
 import { Eval_arg } from '../sources/arg';
+import { Eval_atomize } from '../sources/atomize';
 import { Eval_besselj } from '../sources/besselj';
 import { Eval_bessely } from '../sources/bessely';
 import { integer, rational } from '../sources/bignum';
@@ -444,7 +445,7 @@ export function defn() {
   std_symbol(ARCTAN, Eval_arctan);
   std_symbol(ARCTANH, Eval_arctanh);
   std_symbol(ARG, Eval_arg);
-  std_symbol(ATOMIZE);
+  std_symbol(ATOMIZE, Eval_atomize);
   std_symbol(BESSELJ, Eval_besselj);
   std_symbol(BESSELY, Eval_bessely);
   std_symbol(BINDING, Eval_binding);

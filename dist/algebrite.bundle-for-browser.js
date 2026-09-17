@@ -12114,6 +12114,37 @@ FACTOR=${p8}`);
     }
   });
 
+  // bazel-out/k8-fastbuild/bin/sources/atomize.js
+  var require_atomize = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/atomize.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.atomize = exports.Eval_atomize = void 0;
+      var alloc_1 = require_alloc();
+      var defs_1 = require_defs();
+      var eval_1 = require_eval();
+      function Eval_atomize(p1) {
+        return atomize(eval_1.Eval(defs_1.cadr(p1)));
+      }
+      exports.Eval_atomize = Eval_atomize;
+      function atomize(p1) {
+        if (!defs_1.iscons(p1)) {
+          return p1;
+        }
+        const args = p1.tail();
+        if (args.length === 1) {
+          return args[0];
+        }
+        const t = alloc_1.alloc_tensor(args.length);
+        t.tensor.ndim = 1;
+        t.tensor.dim[0] = args.length;
+        t.tensor.elem = args;
+        return t;
+      }
+      exports.atomize = atomize;
+    }
+  });
+
   // bazel-out/k8-fastbuild/bin/sources/binomial.js
   var require_binomial = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/binomial.js"(exports) {
@@ -14800,6 +14831,7 @@ FACTOR=${p8}`);
       var arctan_1 = require_arctan();
       var arctanh_1 = require_arctanh();
       var arg_1 = require_arg();
+      var atomize_1 = require_atomize();
       var besselj_1 = require_besselj();
       var bessely_1 = require_bessely();
       var bignum_1 = require_bignum();
@@ -14953,7 +14985,7 @@ FACTOR=${p8}`);
         symbol_1.std_symbol(defs_1.ARCTAN, arctan_1.Eval_arctan);
         symbol_1.std_symbol(defs_1.ARCTANH, arctanh_1.Eval_arctanh);
         symbol_1.std_symbol(defs_1.ARG, arg_1.Eval_arg);
-        symbol_1.std_symbol(defs_1.ATOMIZE);
+        symbol_1.std_symbol(defs_1.ATOMIZE, atomize_1.Eval_atomize);
         symbol_1.std_symbol(defs_1.BESSELJ, besselj_1.Eval_besselj);
         symbol_1.std_symbol(defs_1.BESSELY, bessely_1.Eval_bessely);
         symbol_1.std_symbol(defs_1.BINDING, eval_1.Eval_binding);
