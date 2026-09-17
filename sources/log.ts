@@ -8,18 +8,21 @@ import {
   iscons,
   ismultiply,
   ispower,
+  isrational,
   LOG,
   U
 } from '../runtime/defs';
 import { symbol } from "../runtime/symbol";
 import { add, subtract } from './add';
-import { double } from './bignum';
+import { double, integer, nativeDouble } from './bignum';
 import { denominator } from './denominator';
 import { Eval } from './eval';
 import { equaln, isfraction, isnegativenumber } from './is';
 import { makeList } from './list';
+import { equal } from './misc';
 import { divide, multiply, negate } from './multiply';
 import { numerator } from './numerator';
+import { power } from './power';
 
 // Natural logarithm.
 //
@@ -31,11 +34,27 @@ import { numerator } from './numerator';
 // calculations use log for the common logarithm.
 // log(x) is the natural logarithm; log(x, base) = log(x)/log(base).
 export function Eval_log(p1: U) {
-  const result = logarithm(Eval(cadr(p1)));
-  if (iscons(cddr(p1))) {
-    return divide(result, logarithm(Eval(caddr(p1))));
+  const x = Eval(cadr(p1));
+  if (!iscons(cddr(p1))) {
+    return logarithm(x);
   }
-  return result;
+  const base = Eval(caddr(p1));
+  return exactLog(x, base) || divide(logarithm(x), logarithm(base));
+}
+
+// The integer n with base^n = x, for rational x and base: the exponent is
+// guessed in floating point and then verified exactly.
+function exactLog(x: U, base: U): U | undefined {
+  if (!isrational(x) || !isrational(base)) {
+    return undefined;
+  }
+  const n = Math.round(
+    Math.log(nativeDouble(x)) / Math.log(nativeDouble(base))
+  );
+  if (Number.isFinite(n) && equal(power(base, integer(n)), x)) {
+    return integer(n);
+  }
+  return undefined;
 }
 
 export function logarithm(p1: U): U {

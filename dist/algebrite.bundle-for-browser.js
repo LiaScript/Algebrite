@@ -8353,16 +8353,29 @@ FACTOR=${p8}`);
       var eval_1 = require_eval();
       var is_1 = require_is();
       var list_1 = require_list();
+      var misc_1 = require_misc();
       var multiply_1 = require_multiply();
       var numerator_1 = require_numerator();
+      var power_1 = require_power();
       function Eval_log(p1) {
-        const result = logarithm(eval_1.Eval(defs_1.cadr(p1)));
-        if (defs_1.iscons(defs_1.cddr(p1))) {
-          return multiply_1.divide(result, logarithm(eval_1.Eval(defs_1.caddr(p1))));
+        const x = eval_1.Eval(defs_1.cadr(p1));
+        if (!defs_1.iscons(defs_1.cddr(p1))) {
+          return logarithm(x);
         }
-        return result;
+        const base = eval_1.Eval(defs_1.caddr(p1));
+        return exactLog(x, base) || multiply_1.divide(logarithm(x), logarithm(base));
       }
       exports.Eval_log = Eval_log;
+      function exactLog(x, base) {
+        if (!defs_1.isrational(x) || !defs_1.isrational(base)) {
+          return void 0;
+        }
+        const n = Math.round(Math.log(bignum_1.nativeDouble(x)) / Math.log(bignum_1.nativeDouble(base)));
+        if (Number.isFinite(n) && misc_1.equal(power_1.power(base, bignum_1.integer(n)), x)) {
+          return bignum_1.integer(n);
+        }
+        return void 0;
+      }
       function logarithm(p1) {
         if (p1 === symbol_1.symbol(defs_1.E)) {
           return defs_1.Constants.one;
@@ -14685,7 +14698,19 @@ FACTOR=${p8}`);
         "heaviside(x)=(1+sgn(x))/2",
         "identity(n)=unit(n)",
         "trace(M)=contract(M)",
-        "charpoly(M,x)=det(M-x*identity(dim(M)))"
+        "charpoly(M,x)=det(M-x*identity(dim(M)))",
+        "apart(f,x)=expand(f,x)",
+        "partfrac(f,x)=expand(f,x)",
+        "log10(x)=log(x,10)",
+        "log2(x)=log(x,2)",
+        "cbrt(x)=x^(1/3)",
+        "root(x,n)=x^(1/n)",
+        "sech(x)=1/cosh(x)",
+        "csch(x)=1/sinh(x)",
+        "coth(x)=1/tanh(x)",
+        "arcsech(x)=arccosh(1/x)",
+        "arccsch(x)=arcsinh(1/x)",
+        "arccoth(x)=arctanh(1/x)"
       ];
       function defn() {
         symbol_1.std_symbol(defs_1.ABS, abs_1.Eval_abs);

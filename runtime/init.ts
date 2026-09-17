@@ -407,6 +407,19 @@ const defn_str = [
   'identity(n)=unit(n)',
   'trace(M)=contract(M)',
   'charpoly(M,x)=det(M-x*identity(dim(M)))',
+  // the two-argument expand() already does partial fractions
+  'apart(f,x)=expand(f,x)',
+  'partfrac(f,x)=expand(f,x)',
+  'log10(x)=log(x,10)',
+  'log2(x)=log(x,2)',
+  'cbrt(x)=x^(1/3)',
+  'root(x,n)=x^(1/n)',
+  'sech(x)=1/cosh(x)',
+  'csch(x)=1/sinh(x)',
+  'coth(x)=1/tanh(x)',
+  'arcsech(x)=arccosh(1/x)',
+  'arccsch(x)=arcsinh(1/x)',
+  'arccoth(x)=arctanh(1/x)',
 ];
 
 export function defn() {

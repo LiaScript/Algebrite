@@ -1122,3 +1122,21 @@ nodejs_test(
     ],
     entry_point = ":tests/inf.ts",
 )
+
+nodejs_test(
+    name = "test_apart",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/apart.ts",
+)
+
+nodejs_test(
+    name = "test_aliases",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/aliases.ts",
+)
