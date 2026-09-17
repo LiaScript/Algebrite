@@ -66,3 +66,10 @@ test('draw calls the registered handler', (t) => {
   }
   t.is('draw(x^2,x)', Algebrite.run('draw(x^2,x)'));
 });
+
+// run(code, true) also returns LaTeX; underscores in names are escaped,
+// subscripts of sums and products are not.
+test('latex output keeps subscripts', (t) => {
+  t.is('$$\\sum_{k=1}^{n}{\\frac{1}{k}}$$', Algebrite.run('sum(1/k,k,1,n)', true)[1]);
+  t.is('$$a\\_b$$', Algebrite.run('a_b', true)[1]);
+});

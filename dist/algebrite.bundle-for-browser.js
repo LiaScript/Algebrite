@@ -17410,7 +17410,7 @@ FACTOR=${p8}`);
         const originalCodeGen = defs_1.defs.codeGen;
         defs_1.defs.codeGen = false;
         let returnedString = print_expr(p);
-        returnedString = returnedString.replace(/_/g, "\\_");
+        returnedString = returnedString.replace(/_(?!\{)/g, "\\_");
         defs_1.defs.printMode = origPrintMode;
         defs_1.defs.codeGen = originalCodeGen;
         if (defs_1.DEBUG) {

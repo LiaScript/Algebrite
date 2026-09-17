@@ -230,8 +230,9 @@ export function collectLatexStringFromReturnValue(p: BaseAtom): string {
   const originalCodeGen = defs.codeGen;
   defs.codeGen = false;
   let returnedString = print_expr(p);
-  // some variables might contain underscores, escape those
-  returnedString = returnedString.replace(/_/g, '\\_');
+  // some variables might contain underscores, escape those, but keep the
+  // subscripts emitted for \sum_{..}, \prod_{..} and \int_{..}
+  returnedString = returnedString.replace(/_(?!\{)/g, '\\_');
   defs.printMode = origPrintMode;
   defs.codeGen = originalCodeGen;
   if (DEBUG) {
