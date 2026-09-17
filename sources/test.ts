@@ -21,6 +21,7 @@ import {
   isZeroAtomOrTensor,
   isZeroLikeOrNonZeroLikeOrUndetermined
 } from './is';
+import { equal } from './misc';
 import { simplify } from './simplify';
 
 // If the number of args is odd then the last arg is the default result.
@@ -66,9 +67,16 @@ export function Eval_test(p1: U) {
 // If we get something else, then we don't know and we return the
 // unaveluated test, which is the same as saying "maybe".
 export function Eval_testeq(p1: U) {
-  // first try without simplifyng both sides
   const orig = p1;
-  let subtractionResult = subtract(Eval(cadr(p1)), Eval(caddr(p1)));
+  const lhs = Eval(cadr(p1));
+  const rhs = Eval(caddr(p1));
+  // identical sides: no need to subtract (and inf-inf is indeterminate)
+  if (equal(lhs, rhs)) {
+    return Constants.one;
+  }
+
+  // first try without simplifyng both sides
+  let subtractionResult = subtract(lhs, rhs);
 
   // OK so we are doing something tricky here
   // we are using isZeroLikeOrNonZeroLikeOrUndetermined to check if the result
@@ -299,6 +307,10 @@ function cmp_args(p1: U): Sign {
 
 // Sign of arg1 - arg2 (both already evaluated), or null when undecidable.
 export function cmp_values(arg1: U, arg2: U): Sign {
+  // identical arguments: no need to subtract (and inf-inf is indeterminate)
+  if (equal(arg1, arg2)) {
+    return 0;
+  }
   let t: Sign = 0;
   let p1 = subtract(simplify(arg1), simplify(arg2));
 

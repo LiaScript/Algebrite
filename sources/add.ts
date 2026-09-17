@@ -1,11 +1,14 @@
 import {
   ADD,
+  caddr,
+  cadr,
   car,
   cdr,
   Cons,
   Constants,
   DEBUG,
   Double,
+  INF,
   isadd,
   ismultiply,
   isNumericAtom,
@@ -16,11 +19,11 @@ import {
   Sign,
   U
 } from '../runtime/defs';
-import { check_esc_flag } from '../runtime/run';
+import { check_esc_flag, stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
 import { add_numbers } from './bignum';
 import { Eval } from './eval';
-import { isZeroAtom, isZeroAtomOrTensor } from './is';
+import { isminusone, isZeroAtom, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { cmp_expr, equal } from './misc';
 import { multiply, negate } from './multiply';
@@ -63,8 +66,39 @@ export function Eval_add(p1: Cons) {
   return add_terms(terms);
 }
 
+// With an inf term present, inf-inf stops, and finite numbers and repeated
+// infs are absorbed. Terms with symbols are kept: a symbol could be infinite.
+function absorbIntoInfinity(terms: U[]): U[] {
+  const inf = symbol(INF);
+  const signOf = (t: U): Sign =>
+    t === inf
+      ? 1
+      : ismultiply(t) &&
+        t.tail().length === 2 &&
+        isminusone(cadr(t)) &&
+        caddr(t) === inf
+      ? -1
+      : 0;
+
+  let sign: Sign = 0;
+  for (const t of terms) {
+    const s = signOf(t);
+    if (s !== 0 && sign !== 0 && s !== sign) {
+      stop('indeterminate form: inf-inf');
+    }
+    sign = s !== 0 ? s : sign;
+  }
+  if (sign === 0) {
+    return terms;
+  }
+  const rest = terms.filter((t) => signOf(t) === 0 && !isNumericAtom(t));
+  rest.push(sign === 1 ? inf : negate(inf));
+  return rest;
+}
+
 // Add terms, returns one expression.
 function add_terms(terms: U[]): U {
+  terms = absorbIntoInfinity(terms);
   const unitResult = addQuantities(terms);
   if (unitResult !== undefined) {
     return unitResult;

@@ -12,6 +12,7 @@ import {
   Double,
   FLOATF,
   isadd,
+  INF,
   iscons,
   isdouble,
   ismultiply,
@@ -386,7 +387,9 @@ function ispolyfactoredorexpandedform_power(p: U, x: U): boolean {
 // --------------------------------------
 
 export function ispolyexpandedform(p: U, x: U): boolean {
-  if (Find(p, x)) {
+  // inf is not a valid coefficient: polynomial routines subtract
+  // structurally, which on inf would be the indeterminate inf-inf
+  if (Find(p, x) && !Find(p, symbol(INF))) {
     return ispolyexpandedform_expr(p, x);
   }
   return false;

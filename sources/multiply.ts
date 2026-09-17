@@ -12,6 +12,7 @@ import {
   defs,
   dontCreateNewRadicalsInDenominatorWhenEvalingMultiplication,
   Double,
+  INF,
   isadd,
   iscons,
   isdouble,
@@ -26,7 +27,7 @@ import {
   Num,
   OPERATOR,
   POWER,
-  U
+  U,
 } from '../runtime/defs';
 import { append } from '../runtime/otherCFunctions';
 import { stop } from '../runtime/run';
@@ -75,9 +76,18 @@ export function multiply(arg1: U, arg2: U): U {
   return yymultiply(arg1, arg2);
 }
 
+// inf itself, or a product with inf as a direct factor (-inf, inf*x)
+function hasInfFactor(p: U): boolean {
+  const inf = symbol(INF);
+  return p === inf || (ismultiply(p) && p.tail().includes(inf));
+}
+
 function yymultiply(p1: U, p2: U): U {
   // is either operand zero?
   if (isZeroAtom(p1) || isZeroAtom(p2)) {
+    if (hasInfFactor(p1) || hasInfFactor(p2)) {
+      stop('indeterminate form: 0*inf or inf/inf');
+    }
     return Constants.Zero();
   }
 
@@ -184,6 +194,13 @@ function yymultiply(p1: U, p2: U): U {
   // must be done after merge because merge may produce radical
   // example: 2^(1/2-a)*2^a -> 2^(1/2)
   __normalize_radical_factors(factors);
+
+  // next to an inf factor, a numeric coefficient only keeps its sign
+  if (factors.includes(symbol(INF), 1)) {
+    factors[0] = isnegativenumber(factors[0])
+      ? Constants.negOne
+      : Constants.one;
+  }
 
   // this hack should not be necessary, unless power returns a multiply
   //for (i = h; i < tos; i++) {

@@ -4074,6 +4074,7 @@ FACTOR=${p8}`);
       exports.power = exports.Eval_power = void 0;
       var defs_1 = require_defs();
       var find_1 = require_find();
+      var run_1 = require_run();
       var symbol_1 = require_symbol();
       var misc_1 = require_misc();
       var abs_1 = require_abs();
@@ -4115,6 +4116,12 @@ FACTOR=${p8}`);
         const inputBase = base;
         if (DEBUG_POWER) {
           console.log(`POWER: ${base} ^ ${exponent}`);
+        }
+        if (base === symbol_1.symbol(defs_1.INF) && defs_1.isNumericAtom(exponent)) {
+          if (is_1.isZeroAtomOrTensor(exponent)) {
+            run_1.stop("indeterminate form: inf^0");
+          }
+          return is_1.isnegativenumber(exponent) ? defs_1.Constants.zero : base;
         }
         if (misc_1.equal(base, defs_1.Constants.one) || is_1.isZeroAtomOrTensor(exponent)) {
           const one = defs_1.Constants.One();
@@ -4465,8 +4472,15 @@ FACTOR=${p8}`);
         return yymultiply(arg1, arg2);
       }
       exports.multiply = multiply;
+      function hasInfFactor(p) {
+        const inf = symbol_1.symbol(defs_1.INF);
+        return p === inf || defs_1.ismultiply(p) && p.tail().includes(inf);
+      }
       function yymultiply(p1, p2) {
         if (is_1.isZeroAtom(p1) || is_1.isZeroAtom(p2)) {
+          if (hasInfFactor(p1) || hasInfFactor(p2)) {
+            run_1.stop("indeterminate form: 0*inf or inf/inf");
+          }
           return defs_1.Constants.Zero();
         }
         const unitResult = quantity_1.multiplyUnitAware(p1, p2);
@@ -4543,6 +4557,9 @@ FACTOR=${p8}`);
           factors.push(...p2);
         }
         __normalize_radical_factors(factors);
+        if (factors.includes(symbol_1.symbol(defs_1.INF), 1)) {
+          factors[0] = is_1.isnegativenumber(factors[0]) ? defs_1.Constants.negOne : defs_1.Constants.one;
+        }
         if (defs_1.defs.expanding) {
           for (let i = 0; i < factors.length; i++) {
             if (defs_1.isadd(factors[i])) {
@@ -7249,6 +7266,9 @@ FACTOR=${p8}`);
         if (defs_1.istensor(p1)) {
           return simplify_tensor(p1);
         }
+        if (find_1.Find(p1, symbol_1.symbol(defs_1.INF))) {
+          return p1;
+        }
         if (find_1.Find(p1, symbol_1.symbol(defs_1.FACTORIAL))) {
           const p2 = simfac_1.simfac(p1);
           const p3 = simfac_1.simfac(rationalize_1.rationalize(p1));
@@ -9268,7 +9288,26 @@ FACTOR=${p8}`);
         return add_terms(terms);
       }
       exports.Eval_add = Eval_add;
+      function absorbIntoInfinity(terms) {
+        const inf = symbol_1.symbol(defs_1.INF);
+        const signOf = (t) => t === inf ? 1 : defs_1.ismultiply(t) && t.tail().length === 2 && is_1.isminusone(defs_1.cadr(t)) && defs_1.caddr(t) === inf ? -1 : 0;
+        let sign = 0;
+        for (const t of terms) {
+          const s = signOf(t);
+          if (s !== 0 && sign !== 0 && s !== sign) {
+            run_1.stop("indeterminate form: inf-inf");
+          }
+          sign = s !== 0 ? s : sign;
+        }
+        if (sign === 0) {
+          return terms;
+        }
+        const rest = terms.filter((t) => signOf(t) === 0 && !defs_1.isNumericAtom(t));
+        rest.push(sign === 1 ? inf : multiply_1.negate(inf));
+        return rest;
+      }
       function add_terms(terms) {
+        terms = absorbIntoInfinity(terms);
         const unitResult = quantity_1.addQuantities(terms);
         if (unitResult !== void 0) {
           return unitResult;
@@ -9840,7 +9879,7 @@ FACTOR=${p8}`);
         }
       }
       function ispolyexpandedform(p, x) {
-        if (find_1.Find(p, x)) {
+        if (find_1.Find(p, x) && !find_1.Find(p, symbol_1.symbol(defs_1.INF))) {
           return ispolyexpandedform_expr(p, x);
         }
         return false;
@@ -13385,6 +13424,7 @@ FACTOR=${p8}`);
       var eval_1 = require_eval();
       var float_1 = require_float();
       var is_1 = require_is();
+      var misc_1 = require_misc();
       var simplify_1 = require_simplify();
       function Eval_test(p1) {
         const orig = p1;
@@ -13407,7 +13447,12 @@ FACTOR=${p8}`);
       exports.Eval_test = Eval_test;
       function Eval_testeq(p1) {
         const orig = p1;
-        let subtractionResult = add_1.subtract(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+        const lhs = eval_1.Eval(defs_1.cadr(p1));
+        const rhs = eval_1.Eval(defs_1.caddr(p1));
+        if (misc_1.equal(lhs, rhs)) {
+          return defs_1.Constants.one;
+        }
+        let subtractionResult = add_1.subtract(lhs, rhs);
         let checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(subtractionResult);
         if (checkResult) {
           return defs_1.Constants.zero;
@@ -13538,6 +13583,9 @@ FACTOR=${p8}`);
         return cmp_values(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
       }
       function cmp_values(arg1, arg2) {
+        if (misc_1.equal(arg1, arg2)) {
+          return 0;
+        }
         let t = 0;
         let p1 = add_1.subtract(simplify_1.simplify(arg1), simplify_1.simplify(arg2));
         if (p1.k !== defs_1.NUM && p1.k !== defs_1.DOUBLE) {

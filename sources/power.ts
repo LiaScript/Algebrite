@@ -16,6 +16,7 @@ import {
   isadd,
   iscons,
   isdouble,
+  INF,
   ismultiply,
   isNumericAtom,
   ispower,
@@ -30,6 +31,7 @@ import {
   U
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
+import { stop } from '../runtime/run';
 import { get_binding, symbol } from '../runtime/symbol';
 import { equal, exponential, length, sign } from '../sources/misc';
 import { abs } from './abs';
@@ -53,6 +55,7 @@ import {
   isinteger,
   isminusone,
   isminusoneovertwo,
+  isnegativenumber,
   isone,
   isoneovertwo,
   ispositivenumber,
@@ -100,6 +103,14 @@ function yypower(base: U, exponent: U): U {
 
   if (DEBUG_POWER) {
     console.log(`POWER: ${base} ^ ${exponent}`);
+  }
+
+  // inf^n: inf for n > 0, 0 for n < 0, indeterminate for n = 0
+  if (base === symbol(INF) && isNumericAtom(exponent)) {
+    if (isZeroAtomOrTensor(exponent)) {
+      stop('indeterminate form: inf^0');
+    }
+    return isnegativenumber(exponent) ? Constants.zero : base;
   }
 
   // first, some very basic simplifications right away

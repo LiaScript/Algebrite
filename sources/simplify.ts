@@ -12,6 +12,7 @@ import {
   defs,
   do_simplify_nested_radicals,
   FACTORIAL,
+  INF,
   FUNCTION,
   INTEGRAL,
   isadd,
@@ -203,6 +204,12 @@ export function simplify(p1: U): U {
 
   if (istensor(p1)) {
     return simplify_tensor(p1);
+  }
+
+  // nothing to gain on inf, and the rewrites below invert subexpressions,
+  // which turns 1/inf = 0 into a division by zero
+  if (Find(p1, symbol(INF))) {
+    return p1;
   }
 
   if (Find(p1, symbol(FACTORIAL))) {
