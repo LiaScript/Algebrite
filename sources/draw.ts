@@ -6,6 +6,7 @@ import {
   evalFloats,
   isNumericAtom,
   issymbol,
+  istensor,
   NIL,
   SYMBOL_X,
   U
@@ -21,6 +22,7 @@ import { yyfloat } from './float';
 // draw(f)            plot f over x
 // draw(f, x)         plot f over variable x
 // draw(f, x, a, b)   plot f over x in [a, b]
+// draw([f, g], ...)  plot several curves; expr and f(v) are then arrays
 //
 // Algebrite does no rendering itself: the host registers a handler via
 // setDrawHandler(handler, callback), which receives
@@ -29,10 +31,10 @@ import { yyfloat } from './float';
 // through untouched for the handler to hand its output to.
 
 export interface DrawArgs {
-  expr: string;
+  expr: string | string[];
   variable: string;
   range: [number, number] | undefined;
-  f: (v: number) => number;
+  f: (v: number) => number | number[];
   callback: unknown;
 }
 
@@ -70,11 +72,11 @@ export function Eval_draw(p1: U) {
 
   // ponytail: f binds the variable globally, so it is only valid while the
   // handler runs synchronously inside this Eval; sample eagerly if needed later.
-  const f = (v: number): number => {
+  const at = (p: U, v: number): number => {
     const saved = get_binding(variable);
     set_binding(variable, double(v));
     try {
-      return toFloat(body);
+      return toFloat(p);
     } catch (e) {
       return NaN;
     } finally {
@@ -82,8 +84,12 @@ export function Eval_draw(p1: U) {
     }
   };
 
+  const evaluated = Eval(body);
+  const parts = istensor(evaluated) ? evaluated.elem : undefined;
+  const f = (v: number) => (parts ? parts.map((p) => at(p, v)) : at(body, v));
+
   drawHandler({
-    expr: Eval(body).toString(),
+    expr: parts ? parts.map((p) => p.toString()) : evaluated.toString(),
     variable: variable.toString(),
     range,
     f,

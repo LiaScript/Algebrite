@@ -13084,19 +13084,22 @@ FACTOR=${p8}`);
           run_1.stop("draw: 2nd arg should be the variable to plot over");
         }
         const range = defs_1.cadddr(p1) === symbol_1.symbol(defs_1.NIL) ? void 0 : [toFloat(defs_1.cadddr(p1)), toFloat(defs_1.caddddr(p1))];
-        const f = (v) => {
+        const at = (p, v) => {
           const saved = symbol_1.get_binding(variable);
           symbol_1.set_binding(variable, bignum_1.double(v));
           try {
-            return toFloat(body);
+            return toFloat(p);
           } catch (e) {
             return NaN;
           } finally {
             symbol_1.set_binding(variable, saved);
           }
         };
+        const evaluated = eval_1.Eval(body);
+        const parts = defs_1.istensor(evaluated) ? evaluated.elem : void 0;
+        const f = (v) => parts ? parts.map((p) => at(p, v)) : at(body, v);
         drawHandler({
-          expr: eval_1.Eval(body).toString(),
+          expr: parts ? parts.map((p) => p.toString()) : evaluated.toString(),
           variable: variable.toString(),
           range,
           f,
