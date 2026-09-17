@@ -548,6 +548,9 @@ function emit_quantity(p: U) {
   const magnitude = cadr(p);
   const dimTensor = caddr(p) as Tensor;
   const dim = dimTensor.tensor.elem.map((e) => nativeDouble(e));
+  if (isnegativenumber(magnitude)) {
+    __emit_char('-');
+  }
   emit_factor(magnitude);
   __emit_char(' ');
   __emit_str(formatDimension(dim));

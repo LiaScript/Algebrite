@@ -9531,6 +9531,7 @@ FACTOR=${p8}`);
       var multiply_1 = require_multiply();
       var numerator_1 = require_numerator();
       var power_1 = require_power();
+      var quantity_1 = require_quantity();
       var real_1 = require_real();
       var rect_1 = require_rect();
       var simplify_1 = require_simplify();
@@ -9565,6 +9566,9 @@ FACTOR=${p8}`);
         const input = p1;
         if (DEBUG_ABS) {
           console.log(`ABS of ${p1}`);
+        }
+        if (quantity_1.isQuantity(input)) {
+          return list_1.makeList(defs_1.car(input), absval(defs_1.cadr(input)), defs_1.caddr(input));
         }
         if (is_1.isZeroAtomOrTensor(p1)) {
           if (DEBUG_ABS) {
@@ -15626,6 +15630,9 @@ FACTOR=${p8}`);
         const magnitude = defs_1.cadr(p);
         const dimTensor = defs_1.caddr(p);
         const dim = dimTensor.tensor.elem.map((e) => bignum_1.nativeDouble(e));
+        if (is_1.isnegativenumber(magnitude)) {
+          __emit_char("-");
+        }
         emit_factor(magnitude);
         __emit_char(" ");
         __emit_str(unit_1.formatDimension(dim));
@@ -18270,12 +18277,13 @@ FACTOR=${p8}`);
         const magnitude = defs_1.cadr(p);
         const dimTensor = defs_1.caddr(p);
         const dim = dimTensor.tensor.elem.map((e) => bignum_1.nativeDouble(e));
+        const mag = (is_1.isnegativenumber(magnitude) ? "-" : "") + print_factor(magnitude);
         if (defs_1.defs.printMode === defs_1.PRINTMODE_LATEX) {
-          return print_factor(magnitude) + "\\ " + unit_1.formatDimensionLatex(dim);
+          return mag + "\\ " + unit_1.formatDimensionLatex(dim);
         }
         const unitName = unit_1.formatDimension(dim);
         const sep = defs_1.defs.printMode === defs_1.PRINTMODE_HUMAN && !defs_1.defs.test_flag ? " " : "*";
-        return print_factor(magnitude) + sep + unitName;
+        return mag + sep + unitName;
       }
       function print_factor(p, omitParens = false, pastFirstFactor = false) {
         let accumulator = "";

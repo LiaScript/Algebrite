@@ -99,4 +99,15 @@ run_test([
 
   '5m < 3kg',
   'Stop: incompatible units: cannot add m and kg',
+
+  // negative magnitudes keep their sign when printed
+  '1.49km - 1500m',
+  '-10.0*m',
+
+  // abs() keeps the dimension, so tolerance checks work
+  'abs(1.49km - 1500m)',
+  '10.0*m',
+
+  'abs(1.49km - 1500m) <= 20m',
+  '1',
 ]);

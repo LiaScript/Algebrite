@@ -41,6 +41,7 @@ import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { numerator } from './numerator';
 import { power } from './power';
+import { isQuantity } from './quantity';
 import { real } from './real';
 import { rect } from './rect';
 import { simplify, simplify_trig } from './simplify';
@@ -134,6 +135,12 @@ export function absval(p1: U): U {
 
   if (DEBUG_ABS) {
     console.log(`ABS of ${p1}`);
+  }
+
+  // |q| of a quantity keeps its dimension: (quantity |magnitude| dim)
+  // (checked on input so the type guard doesn't narrow p1 below)
+  if (isQuantity(input)) {
+    return makeList(car(input), absval(cadr(input)), caddr(input));
   }
 
   // handle all the "number" cases first -----------------------------------------

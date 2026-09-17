@@ -1417,12 +1417,15 @@ function print_QUANTITY(p: BaseAtom): string {
   const magnitude = cadr(p);
   const dimTensor = caddr(p) as Tensor;
   const dim = dimTensor.tensor.elem.map((e) => nativeDouble(e));
+  // print_factor leaves a number's sign to the enclosing term, which a
+  // quantity doesn't have
+  const mag = (isnegativenumber(magnitude) ? '-' : '') + print_factor(magnitude);
   if (defs.printMode === PRINTMODE_LATEX) {
-    return print_factor(magnitude) + '\\ ' + formatDimensionLatex(dim);
+    return mag + '\\ ' + formatDimensionLatex(dim);
   }
   const unitName = formatDimension(dim);
   const sep = defs.printMode === PRINTMODE_HUMAN && !defs.test_flag ? ' ' : '*';
-  return print_factor(magnitude) + sep + unitName;
+  return mag + sep + unitName;
 }
 
 function print_factor(
