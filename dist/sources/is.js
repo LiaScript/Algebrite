@@ -291,7 +291,9 @@ function ispolyfactoredorexpandedform_power(p, x) {
 }
 // --------------------------------------
 function ispolyexpandedform(p, x) {
-    if (find_1.Find(p, x)) {
+    // inf is not a valid coefficient: polynomial routines subtract
+    // structurally, which on inf would be the indeterminate inf-inf
+    if (find_1.Find(p, x) && !find_1.Find(p, symbol_1.symbol(defs_1.INF))) {
         return ispolyexpandedform_expr(p, x);
     }
     return false;

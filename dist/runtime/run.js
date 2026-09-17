@@ -547,14 +547,6 @@ function run(stringToBeRun, generateLatex = false) {
         if (n === 0) {
             break;
         }
-        // if debug mode then print the source text
-        //if (equaln(get_binding(symbol(TRACE)), 1)) {
-        //  for (i = 0 i < n i++)
-        //    if (s[i] != '\r')
-        //      printchar(s[i])
-        //  if (s[n - 1] != '\n') # n is not zero, see above
-        //    printchar('\n')
-        //}
         indexOfPartRemainingToBeParsed += n;
         let errorWhileExecution = false;
         try {

@@ -76,5 +76,8 @@ function yyfloat_(p1) {
     if (p1 === symbol_1.symbol(defs_1.E)) {
         return bignum_1.double(Math.E);
     }
+    if (p1 === symbol_1.symbol(defs_1.INF)) {
+        return bignum_1.double(Infinity);
+    }
     return p1;
 }

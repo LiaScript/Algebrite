@@ -7,6 +7,7 @@ const add_1 = require("./add");
 const eval_1 = require("./eval");
 const float_1 = require("./float");
 const is_1 = require("./is");
+const misc_1 = require("./misc");
 const simplify_1 = require("./simplify");
 // If the number of args is odd then the last arg is the default result.
 // Works like a switch statement. Could also be used for piecewise
@@ -51,9 +52,15 @@ exports.Eval_test = Eval_test;
 // If we get something else, then we don't know and we return the
 // unaveluated test, which is the same as saying "maybe".
 function Eval_testeq(p1) {
-    // first try without simplifyng both sides
     const orig = p1;
-    let subtractionResult = add_1.subtract(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+    const lhs = eval_1.Eval(defs_1.cadr(p1));
+    const rhs = eval_1.Eval(defs_1.caddr(p1));
+    // identical sides: no need to subtract (and inf-inf is indeterminate)
+    if (misc_1.equal(lhs, rhs)) {
+        return defs_1.Constants.one;
+    }
+    // first try without simplifyng both sides
+    let subtractionResult = add_1.subtract(lhs, rhs);
     // OK so we are doing something tricky here
     // we are using isZeroLikeOrNonZeroLikeOrUndetermined to check if the result
     // is zero or not zero or unknown.
@@ -275,6 +282,10 @@ function cmp_args(p1) {
 }
 // Sign of arg1 - arg2 (both already evaluated), or null when undecidable.
 function cmp_values(arg1, arg2) {
+    // identical arguments: no need to subtract (and inf-inf is indeterminate)
+    if (misc_1.equal(arg1, arg2)) {
+        return 0;
+    }
     let t = 0;
     let p1 = add_1.subtract(simplify_1.simplify(arg1), simplify_1.simplify(arg2));
     // try floating point if necessary

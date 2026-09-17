@@ -46,9 +46,17 @@ function multiply(arg1, arg2) {
     return yymultiply(arg1, arg2);
 }
 exports.multiply = multiply;
+// inf itself, or a product with inf as a direct factor (-inf, inf*x)
+function hasInfFactor(p) {
+    const inf = symbol_1.symbol(defs_1.INF);
+    return p === inf || (defs_1.ismultiply(p) && p.tail().includes(inf));
+}
 function yymultiply(p1, p2) {
     // is either operand zero?
     if (is_1.isZeroAtom(p1) || is_1.isZeroAtom(p2)) {
+        if (hasInfFactor(p1) || hasInfFactor(p2)) {
+            run_1.stop('indeterminate form: 0*inf or inf/inf');
+        }
         return defs_1.Constants.Zero();
     }
     // is either operand a Quantity, or (with units() on) a bare unit symbol?
@@ -144,6 +152,12 @@ function yymultiply(p1, p2) {
     // must be done after merge because merge may produce radical
     // example: 2^(1/2-a)*2^a -> 2^(1/2)
     __normalize_radical_factors(factors);
+    // next to an inf factor, a numeric coefficient only keeps its sign
+    if (factors.includes(symbol_1.symbol(defs_1.INF), 1)) {
+        factors[0] = is_1.isnegativenumber(factors[0])
+            ? defs_1.Constants.negOne
+            : defs_1.Constants.one;
+    }
     // this hack should not be necessary, unless power returns a multiply
     //for (i = h; i < tos; i++) {
     //  if (car(stack[i]) == symbol(MULTIPLY)) {

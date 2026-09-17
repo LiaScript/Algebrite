@@ -1140,3 +1140,12 @@ nodejs_test(
     ],
     entry_point = ":tests/aliases.ts",
 )
+
+nodejs_test(
+    name = "test_rref",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/rref.ts",
+)

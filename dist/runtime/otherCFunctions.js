@@ -26,6 +26,11 @@ function doubleToReasonableString(d) {
     if (defs_1.defs.codeGen || defs_1.defs.fullDoubleOutput) {
         return '' + d;
     }
+    // float overflow: print like the inf symbol, not as JS "Infinity.0"
+    if (d === Infinity || d === -Infinity) {
+        const name = defs_1.defs.printMode === defs_1.PRINTMODE_LATEX ? '\\infty' : 'inf';
+        return d < 0 ? '-' + name : name;
+    }
     if (is_1.isZeroAtomOrTensor(symbol_1.get_binding(symbol_1.symbol(defs_1.FORCE_FIXED_PRINTOUT)))) {
         stringRepresentation = '' + d;
         // manipulate the string so that it can be parsed by

@@ -133,6 +133,11 @@ function simplify(p1) {
     if (defs_1.istensor(p1)) {
         return simplify_tensor(p1);
     }
+    // nothing to gain on inf, and the rewrites below invert subexpressions,
+    // which turns 1/inf = 0 into a division by zero
+    if (find_1.Find(p1, symbol_1.symbol(defs_1.INF))) {
+        return p1;
+    }
     if (find_1.Find(p1, symbol_1.symbol(defs_1.FACTORIAL))) {
         const p2 = simfac_1.simfac(p1);
         const p3 = simfac_1.simfac(rationalize_1.rationalize(p1));

@@ -103,6 +103,11 @@ import { Eval_real } from '../sources/real';
 import { Eval_rect } from '../sources/rect';
 import { Eval_roots } from '../sources/roots';
 import { Eval_round } from '../sources/round';
+import {
+  Eval_matrixrank,
+  Eval_nullspace,
+  Eval_rref
+} from '../sources/rref';
 import { scan } from '../sources/scan';
 import { Eval_sgn } from '../sources/sgn';
 import { Eval_shape } from '../sources/shape';
@@ -225,6 +230,7 @@ import {
   LIMIT,
   LOG,
   LOOKUP,
+  MATRIXRANK,
   MAX,
   MAX_FIXED_PRINTOUT_DIGITS,
   METAA,
@@ -236,6 +242,7 @@ import {
   NIL,
   NOT,
   NROOTS,
+  NULLSPACE,
   NUMBER,
   NUMERATOR,
   OPERATOR,
@@ -265,6 +272,7 @@ import {
   reset_after_error,
   ROOTS,
   ROUND,
+  RREF,
   SECRETX,
   SETQ,
   SGN,
@@ -508,12 +516,14 @@ export function defn() {
   std_symbol(LIMIT, Eval_limit);
   std_symbol(LOG, Eval_log);
   std_symbol(LOOKUP, Eval_lookup);
+  std_symbol(MATRIXRANK, Eval_matrixrank);
   std_symbol(MAX, Eval_max);
   std_symbol(MIN, Eval_min);
   std_symbol(MOD, Eval_mod);
   std_symbol(MULTIPLY, Eval_multiply);
   std_symbol(NOT, Eval_not);
   std_symbol(NROOTS, Eval_nroots);
+  std_symbol(NULLSPACE, Eval_nullspace);
   std_symbol(NUMBER, Eval_number);
   std_symbol(NUMERATOR, Eval_numerator);
   std_symbol(OPERATOR, Eval_operator);
@@ -542,6 +552,7 @@ export function defn() {
   std_symbol(YYRECT, Eval_rect);
   std_symbol(ROOTS, Eval_roots);
   std_symbol(ROUND, Eval_round);
+  std_symbol(RREF, Eval_rref);
   std_symbol(SETQ, Eval_setq);
   std_symbol(SGN, Eval_sgn);
   std_symbol(SILENTPATTERN, Eval_silentpattern);

@@ -9,8 +9,10 @@ const denominator_1 = require("./denominator");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
+const misc_1 = require("./misc");
 const multiply_1 = require("./multiply");
 const numerator_1 = require("./numerator");
+const power_1 = require("./power");
 // Natural logarithm.
 //
 // Note that we use the mathematics / Javascript / Mathematica
@@ -19,10 +21,28 @@ const numerator_1 = require("./numerator");
 // In engineering, biology, astronomy, "log" can stand instead
 // for the "common" logarithm i.e. base 10. Also note that Google
 // calculations use log for the common logarithm.
+// log(x) is the natural logarithm; log(x, base) = log(x)/log(base).
 function Eval_log(p1) {
-    return logarithm(eval_1.Eval(defs_1.cadr(p1)));
+    const x = eval_1.Eval(defs_1.cadr(p1));
+    if (!defs_1.iscons(defs_1.cddr(p1))) {
+        return logarithm(x);
+    }
+    const base = eval_1.Eval(defs_1.caddr(p1));
+    return exactLog(x, base) || multiply_1.divide(logarithm(x), logarithm(base));
 }
 exports.Eval_log = Eval_log;
+// The integer n with base^n = x, for rational x and base: the exponent is
+// guessed in floating point and then verified exactly.
+function exactLog(x, base) {
+    if (!defs_1.isrational(x) || !defs_1.isrational(base)) {
+        return undefined;
+    }
+    const n = Math.round(Math.log(bignum_1.nativeDouble(x)) / Math.log(bignum_1.nativeDouble(base)));
+    if (Number.isFinite(n) && misc_1.equal(power_1.power(base, bignum_1.integer(n)), x)) {
+        return bignum_1.integer(n);
+    }
+    return undefined;
+}
 function logarithm(p1) {
     if (p1 === symbol_1.symbol(defs_1.E)) {
         return defs_1.Constants.one;

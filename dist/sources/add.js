@@ -46,8 +46,36 @@ function Eval_add(p1) {
     return add_terms(terms);
 }
 exports.Eval_add = Eval_add;
+// With an inf term present, inf-inf stops, and finite numbers and repeated
+// infs are absorbed. Terms with symbols are kept: a symbol could be infinite.
+function absorbIntoInfinity(terms) {
+    const inf = symbol_1.symbol(defs_1.INF);
+    const signOf = (t) => t === inf
+        ? 1
+        : defs_1.ismultiply(t) &&
+            t.tail().length === 2 &&
+            is_1.isminusone(defs_1.cadr(t)) &&
+            defs_1.caddr(t) === inf
+            ? -1
+            : 0;
+    let sign = 0;
+    for (const t of terms) {
+        const s = signOf(t);
+        if (s !== 0 && sign !== 0 && s !== sign) {
+            run_1.stop('indeterminate form: inf-inf');
+        }
+        sign = s !== 0 ? s : sign;
+    }
+    if (sign === 0) {
+        return terms;
+    }
+    const rest = terms.filter((t) => signOf(t) === 0 && !defs_1.isNumericAtom(t));
+    rest.push(sign === 1 ? inf : multiply_1.negate(inf));
+    return rest;
+}
 // Add terms, returns one expression.
 function add_terms(terms) {
+    terms = absorbIntoInfinity(terms);
     const unitResult = quantity_1.addQuantities(terms);
     if (unitResult !== undefined) {
         return unitResult;

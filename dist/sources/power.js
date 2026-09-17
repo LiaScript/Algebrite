@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.power = exports.Eval_power = void 0;
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
+const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const misc_1 = require("../sources/misc");
 const abs_1 = require("./abs");
@@ -52,6 +53,13 @@ function yypower(base, exponent) {
     //breakpoint
     if (DEBUG_POWER) {
         console.log(`POWER: ${base} ^ ${exponent}`);
+    }
+    // inf^n: inf for n > 0, 0 for n < 0, indeterminate for n = 0
+    if (base === symbol_1.symbol(defs_1.INF) && defs_1.isNumericAtom(exponent)) {
+        if (is_1.isZeroAtomOrTensor(exponent)) {
+            run_1.stop('indeterminate form: inf^0');
+        }
+        return is_1.isnegativenumber(exponent) ? defs_1.Constants.zero : base;
     }
     // first, some very basic simplifications right away
     //  1 ^ a    ->  1

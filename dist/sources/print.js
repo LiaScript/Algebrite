@@ -1601,6 +1601,9 @@ function print_factor(p, omitParens = false, pastFirstFactor = false) {
             accumulator += print_str('pi');
         }
     }
+    else if (p === symbol_1.symbol(defs_1.INF) && defs_1.defs.printMode === defs_1.PRINTMODE_LATEX) {
+        accumulator += print_str('\\infty');
+    }
     else {
         accumulator += print_str(symbol_1.get_printname(p));
     }

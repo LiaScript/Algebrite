@@ -80,6 +80,7 @@ const real_1 = require("../sources/real");
 const rect_1 = require("../sources/rect");
 const roots_1 = require("../sources/roots");
 const round_1 = require("../sources/round");
+const rref_1 = require("../sources/rref");
 const scan_1 = require("../sources/scan");
 const sgn_1 = require("../sources/sgn");
 const shape_1 = require("../sources/shape");
@@ -150,7 +151,6 @@ const defn_str = [
     'xrange=[-10,10]',
     'yrange=[-10,10]',
     'last=0',
-    'trace=0',
     'forceFixedPrintout=1',
     'maxFixedPrintoutDigits=6',
     'printLeaveEAlone=1',
@@ -180,6 +180,21 @@ const defn_str = [
     // heaviside(0)=1/2; d(heaviside(x),x)=dirac(x) via the sgn derivative
     'heaviside(x)=(1+sgn(x))/2',
     'identity(n)=unit(n)',
+    'trace(M)=contract(M)',
+    'charpoly(M,x)=det(M-x*identity(dim(M)))',
+    // the two-argument expand() already does partial fractions
+    'apart(f,x)=expand(f,x)',
+    'partfrac(f,x)=expand(f,x)',
+    'log10(x)=log(x,10)',
+    'log2(x)=log(x,2)',
+    'cbrt(x)=x^(1/3)',
+    'root(x,n)=x^(1/n)',
+    'sech(x)=1/cosh(x)',
+    'csch(x)=1/sinh(x)',
+    'coth(x)=1/tanh(x)',
+    'arcsech(x)=arccosh(1/x)',
+    'arccsch(x)=arcsinh(1/x)',
+    'arccoth(x)=arctanh(1/x)',
 ];
 function defn() {
     symbol_1.std_symbol(defs_1.ABS, abs_1.Eval_abs);
@@ -267,12 +282,14 @@ function defn() {
     symbol_1.std_symbol(defs_1.LIMIT, limit_1.Eval_limit);
     symbol_1.std_symbol(defs_1.LOG, log_1.Eval_log);
     symbol_1.std_symbol(defs_1.LOOKUP, lookup_1.Eval_lookup);
+    symbol_1.std_symbol(defs_1.MATRIXRANK, rref_1.Eval_matrixrank);
     symbol_1.std_symbol(defs_1.MAX, minmax_1.Eval_max);
     symbol_1.std_symbol(defs_1.MIN, minmax_1.Eval_min);
     symbol_1.std_symbol(defs_1.MOD, mod_1.Eval_mod);
     symbol_1.std_symbol(defs_1.MULTIPLY, multiply_1.Eval_multiply);
     symbol_1.std_symbol(defs_1.NOT, test_1.Eval_not);
     symbol_1.std_symbol(defs_1.NROOTS, nroots_1.Eval_nroots);
+    symbol_1.std_symbol(defs_1.NULLSPACE, rref_1.Eval_nullspace);
     symbol_1.std_symbol(defs_1.NUMBER, eval_1.Eval_number);
     symbol_1.std_symbol(defs_1.NUMERATOR, numerator_1.Eval_numerator);
     symbol_1.std_symbol(defs_1.OPERATOR, eval_1.Eval_operator);
@@ -301,6 +318,7 @@ function defn() {
     symbol_1.std_symbol(defs_1.YYRECT, rect_1.Eval_rect);
     symbol_1.std_symbol(defs_1.ROOTS, roots_1.Eval_roots);
     symbol_1.std_symbol(defs_1.ROUND, round_1.Eval_round);
+    symbol_1.std_symbol(defs_1.RREF, rref_1.Eval_rref);
     symbol_1.std_symbol(defs_1.SETQ, eval_1.Eval_setq);
     symbol_1.std_symbol(defs_1.SGN, sgn_1.Eval_sgn);
     symbol_1.std_symbol(defs_1.SILENTPATTERN, pattern_1.Eval_silentpattern);
@@ -338,7 +356,6 @@ function defn() {
     symbol_1.std_symbol(defs_1.LAST_LATEX_PRINT);
     symbol_1.std_symbol(defs_1.LAST_LIST_PRINT);
     symbol_1.std_symbol(defs_1.LAST_PLAIN_PRINT);
-    symbol_1.std_symbol(defs_1.TRACE);
     symbol_1.std_symbol(defs_1.FORCE_FIXED_PRINTOUT);
     symbol_1.std_symbol(defs_1.MAX_FIXED_PRINTOUT_DIGITS);
     symbol_1.std_symbol(defs_1.YYE);
@@ -349,6 +366,7 @@ function defn() {
     symbol_1.std_symbol(defs_1.SECRETX);
     symbol_1.std_symbol(defs_1.VERSION);
     symbol_1.std_symbol(defs_1.PI);
+    symbol_1.std_symbol(defs_1.INF);
     symbol_1.std_symbol(defs_1.SYMBOL_A);
     symbol_1.std_symbol(defs_1.SYMBOL_B);
     symbol_1.std_symbol(defs_1.SYMBOL_C);
