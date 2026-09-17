@@ -951,7 +951,7 @@ function scan_error(errmsg: string): never {
 // (a,b) and (c,d) would be on the stack.
 
 // takes an integer
-function build_tensor(elements: U[]) {
+export function build_tensor(elements: U[]) {
   const p2 = alloc_tensor(elements.length);
   p2.tensor.ndim = 1;
   p2.tensor.dim[0] = elements.length;

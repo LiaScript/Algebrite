@@ -1,7 +1,7 @@
 import {check_stack, top_level_eval} from './run';
 import {double, integer} from '../sources/bignum';
 import {makeList} from '../sources/list';
-import {scan} from '../sources/scan';
+import { build_tensor, scan } from '../sources/scan';
 import {defs, NIL, reset_after_error, U} from './defs';
 import {init} from './init';
 import {get_binding, symbol, usr_symbol} from './symbol';
@@ -11,8 +11,13 @@ if (!defs.inited) {
   init();
 }
 
-function parse_internal(argu: string | number | U):U {
-  if (typeof argu === 'string') {
+type Arg = string | number | U | Arg[];
+
+function parse_internal(argu: Arg): U {
+  if (Array.isArray(argu)) {
+    // a vector or (nested) matrix, built the way the scanner builds [..]
+    return build_tensor(argu.map(parse_internal));
+  } else if (typeof argu === 'string') {
     const [,u] = scan(argu);
     return u;
   } else if (typeof argu === 'number') {
@@ -45,7 +50,7 @@ export function parse(argu: string | number | U | any) {
 // exec handles the running ia JS of all the algebrite
 // functions. The function name is passed in "name" and
 // the corresponding function is pushed at the top of the stack
-export function exec(name: string, ...argus: (string | number | U)[]) {
+export function exec(name: string, ...argus: Arg[]) {
   let result: U;
   const fn = get_binding(usr_symbol(name));
   check_stack();

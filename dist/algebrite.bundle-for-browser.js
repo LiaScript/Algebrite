@@ -5533,7 +5533,7 @@ FACTOR=${p8}`);
     "bazel-out/k8-fastbuild/bin/sources/scan.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.scan_meta = exports.scan = void 0;
+      exports.build_tensor = exports.scan_meta = exports.scan = void 0;
       var alloc_1 = require_alloc();
       var defs_1 = require_defs();
       var otherCFunctions_1 = require_otherCFunctions();
@@ -6104,6 +6104,7 @@ FACTOR=${p8}`);
         tensor_1.check_tensor_dimensions(p2);
         return p2;
       }
+      exports.build_tensor = build_tensor;
       function get_next_token() {
         newline_flag = 0;
         while (true) {
@@ -19254,7 +19255,9 @@ FACTOR=${p8}`);
         init_1.init();
       }
       function parse_internal(argu) {
-        if (typeof argu === "string") {
+        if (Array.isArray(argu)) {
+          return scan_1.build_tensor(argu.map(parse_internal));
+        } else if (typeof argu === "string") {
           const [, u] = scan_1.scan(argu);
           return u;
         } else if (typeof argu === "number") {
