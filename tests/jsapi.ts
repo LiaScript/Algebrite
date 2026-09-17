@@ -50,6 +50,17 @@ test('draw calls the registered handler', (t) => {
     t.is('x^2,1/x', got.expr.join());
     t.is('4,0.5', got.f(2).join());
     t.is(true, Number.isNaN(got.f(0)[1]));
+    t.is(undefined, got.options);
+
+    Algebrite.run('a=2\ndraw(x, x, 0, 1, "red fill=-pi..a")');
+    t.is('red fill=-pi..a', got.options);
+    t.is(-Math.PI, got.num('-pi'));
+    t.is(2, got.num('a'));
+    t.is(true, Number.isNaN(got.num('y')));
+    Algebrite.run('clear(a)');
+
+    Algebrite.run('draw([x, x^2], x, 0, 1, ["red", "blue dashed"])');
+    t.is('red|blue dashed', got.options.join('|'));
   } finally {
     Algebrite.setDrawHandler(undefined);
   }

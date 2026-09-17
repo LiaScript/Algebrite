@@ -3,8 +3,10 @@ import {
   cadddr,
   caddr,
   cadr,
+  cddddr,
   evalFloats,
   isNumericAtom,
+  isstr,
   issymbol,
   istensor,
   NIL,
@@ -16,6 +18,7 @@ import { get_binding, set_binding, symbol } from '../runtime/symbol';
 import { double, nativeDouble } from './bignum';
 import { Eval } from './eval';
 import { yyfloat } from './float';
+import { scan } from './scan';
 
 // 'draw' function
 //
@@ -23,18 +26,23 @@ import { yyfloat } from './float';
 // draw(f, x)         plot f over variable x
 // draw(f, x, a, b)   plot f over x in [a, b]
 // draw([f, g], ...)  plot several curves; expr and f(v) are then arrays
+// draw(f, x, a, b, "red dashed")  options, or ["...", "..."] per curve
 //
 // Algebrite does no rendering itself: the host registers a handler via
 // setDrawHandler(handler, callback), which receives
 // { expr, variable, range, f, callback }. f(v) samples the expression
 // numerically (NaN where it's not a real number); callback is passed
-// through untouched for the handler to hand its output to.
+// through untouched for the handler to hand its output to. options are
+// passed as raw strings, their meaning is up to the handler; num("-pi")
+// evaluates an expression string numerically so options can be symbolic.
 
 export interface DrawArgs {
   expr: string | string[];
   variable: string;
   range: [number, number] | undefined;
   f: (v: number) => number | number[];
+  options: string | string[] | undefined;
+  num: (s: string) => number;
   callback: unknown;
 }
 
@@ -84,6 +92,18 @@ export function Eval_draw(p1: U) {
     }
   };
 
+  const opts = cadr(cddddr(p1)) === symbol(NIL) ? undefined : Eval(cadr(cddddr(p1)));
+  const str = (p: U) => (isstr(p) ? p.str : p.toString());
+  const options = !opts ? undefined : istensor(opts) ? opts.elem.map(str) : str(opts);
+
+  const num = (s: string): number => {
+    try {
+      return toFloat(scan(s)[1]);
+    } catch (e) {
+      return NaN;
+    }
+  };
+
   const evaluated = Eval(body);
   const parts = istensor(evaluated) ? evaluated.elem : undefined;
   const f = (v: number) => (parts ? parts.map((p) => at(p, v)) : at(body, v));
@@ -93,6 +113,8 @@ export function Eval_draw(p1: U) {
     variable: variable.toString(),
     range,
     f,
+    options,
+    num,
     callback: drawCallback,
   });
 

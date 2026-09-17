@@ -13063,6 +13063,7 @@ FACTOR=${p8}`);
       var bignum_1 = require_bignum();
       var eval_1 = require_eval();
       var float_1 = require_float();
+      var scan_1 = require_scan();
       var drawHandler;
       var drawCallback;
       function setDrawHandler(handler, callback) {
@@ -13095,6 +13096,16 @@ FACTOR=${p8}`);
             symbol_1.set_binding(variable, saved);
           }
         };
+        const opts = defs_1.cadr(defs_1.cddddr(p1)) === symbol_1.symbol(defs_1.NIL) ? void 0 : eval_1.Eval(defs_1.cadr(defs_1.cddddr(p1)));
+        const str = (p) => defs_1.isstr(p) ? p.str : p.toString();
+        const options = !opts ? void 0 : defs_1.istensor(opts) ? opts.elem.map(str) : str(opts);
+        const num = (s) => {
+          try {
+            return toFloat(scan_1.scan(s)[1]);
+          } catch (e) {
+            return NaN;
+          }
+        };
         const evaluated = eval_1.Eval(body);
         const parts = defs_1.istensor(evaluated) ? evaluated.elem : void 0;
         const f = (v) => parts ? parts.map((p) => at(p, v)) : at(body, v);
@@ -13103,6 +13114,8 @@ FACTOR=${p8}`);
           variable: variable.toString(),
           range,
           f,
+          options,
+          num,
           callback: drawCallback
         });
         return symbol_1.symbol(defs_1.NIL);
