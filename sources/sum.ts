@@ -4,6 +4,7 @@ import {
   caddr,
   cadr,
   Constants,
+  isadd,
   issymbol,
   U
 } from '../runtime/defs';
@@ -14,9 +15,11 @@ import { add, subtract } from './add';
 import { integer, nativeInt } from './bignum';
 import { coeff } from './coeff';
 import { Eval, evaluate_integer } from './eval';
-import { ispolyexpandedform } from './is';
+import { equaln, ispolyexpandedform } from './is';
 import { divide, multiply } from './multiply';
 import { power } from './power';
+import { simplify } from './simplify';
+import { subst } from './subst';
 
 // 'sum' function
 
@@ -58,33 +61,69 @@ export function Eval_sum(p1: U) {
   return temp;
 }
 
-// Closed form for a symbolic bound when the summand is a polynomial in the
-// index: sum_{i=a}^{b} f(i) = F(b) - F(a-1) with F built from power sums.
-// Anything else is returned unevaluated. As in other CAS, the formula is
-// given without knowing whether b >= a.
+// Closed form for a symbolic bound. The summand is split into its additive
+// terms: the polynomial ones (in the index) are summed with power sums, every
+// other term must be geometric. Anything else is returned unevaluated. As in
+// other CAS, the formula is given without knowing whether b >= a.
 function symbolicSum(p1: U, body: U, x: U): U {
   // the index must be unbound while the summand is taken apart
   const saved = get_binding(x);
   set_binding(x, x);
   try {
     const f = Eval(body);
-    if (Find(f, x) && !ispolyexpandedform(f, x)) {
-      return p1;
+    const a = Eval(cadddr(p1));
+    const b = Eval(caddddr(p1));
+    const terms = isadd(f) ? f.tail() : [f];
+    const isPoly = (t: U) => !Find(t, x) || ispolyexpandedform(t, x);
+
+    let result = polynomialSum(
+      terms.filter(isPoly).reduce(add, Constants.zero),
+      x,
+      a,
+      b
+    );
+    for (const t of terms.filter((t) => !isPoly(t))) {
+      const g = geometricSum(t, x, a, b);
+      if (!g) {
+        return p1;
+      }
+      result = add(result, g);
     }
-    const c = coeff(f, x);
-    const upper = powerSums(Eval(caddddr(p1)), c.length - 1);
-    const lower = powerSums(
-      subtract(Eval(cadddr(p1)), Constants.one),
-      c.length - 1
-    );
-    return c.reduce(
-      (acc: U, cp, p) =>
-        add(acc, multiply(cp, subtract(upper[p], lower[p]))),
-      Constants.zero
-    );
+    return result;
   } finally {
     set_binding(x, saved);
   }
+}
+
+// sum_{i=a}^{b} f(i) = F(b) - F(a-1), with F built from power sums.
+function polynomialSum(f: U, x: U, a: U, b: U): U {
+  const c = coeff(f, x);
+  const upper = powerSums(b, c.length - 1);
+  const lower = powerSums(subtract(a, Constants.one), c.length - 1);
+  return c.reduce(
+    (acc: U, cp, p) => add(acc, multiply(cp, subtract(upper[p], lower[p]))),
+    Constants.zero
+  );
+}
+
+// A term is geometric when t(x+1)/t(x) is free of x; the sum is then
+// t(a) * (r^(b-a+1) - 1) / (r - 1). Returns null for any other term.
+function geometricSum(t: U, x: U, a: U, b: U): U | null {
+  const next = Eval(subst(t, x, add(x, Constants.one)));
+  const r = simplify(divide(next, t));
+  if (Find(r, x) || equaln(r, 1)) {
+    return null;
+  }
+  const count = add(subtract(b, a), Constants.one);
+  return simplify(
+    divide(
+      multiply(
+        Eval(subst(t, x, a)),
+        subtract(power(r, count), Constants.one)
+      ),
+      subtract(r, Constants.one)
+    )
+  );
 }
 
 // S[p] = sum_{i=1}^{n} i^p for p = 0..maxP, from the telescoping identity

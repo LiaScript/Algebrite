@@ -14159,6 +14159,8 @@ FACTOR=${p8}`);
       var is_1 = require_is();
       var multiply_1 = require_multiply();
       var power_1 = require_power();
+      var simplify_1 = require_simplify();
+      var subst_1 = require_subst();
       function Eval_sum(p1) {
         const body = defs_1.cadr(p1);
         const indexVariable = defs_1.caddr(p1);
@@ -14185,16 +14187,37 @@ FACTOR=${p8}`);
         symbol_1.set_binding(x, x);
         try {
           const f = eval_1.Eval(body);
-          if (find_1.Find(f, x) && !is_1.ispolyexpandedform(f, x)) {
-            return p1;
+          const a = eval_1.Eval(defs_1.cadddr(p1));
+          const b = eval_1.Eval(defs_1.caddddr(p1));
+          const terms = defs_1.isadd(f) ? f.tail() : [f];
+          const isPoly = (t) => !find_1.Find(t, x) || is_1.ispolyexpandedform(t, x);
+          let result = polynomialSum(terms.filter(isPoly).reduce(add_1.add, defs_1.Constants.zero), x, a, b);
+          for (const t of terms.filter((t2) => !isPoly(t2))) {
+            const g = geometricSum(t, x, a, b);
+            if (!g) {
+              return p1;
+            }
+            result = add_1.add(result, g);
           }
-          const c = coeff_1.coeff(f, x);
-          const upper = powerSums(eval_1.Eval(defs_1.caddddr(p1)), c.length - 1);
-          const lower = powerSums(add_1.subtract(eval_1.Eval(defs_1.cadddr(p1)), defs_1.Constants.one), c.length - 1);
-          return c.reduce((acc, cp, p) => add_1.add(acc, multiply_1.multiply(cp, add_1.subtract(upper[p], lower[p]))), defs_1.Constants.zero);
+          return result;
         } finally {
           symbol_1.set_binding(x, saved);
         }
+      }
+      function polynomialSum(f, x, a, b) {
+        const c = coeff_1.coeff(f, x);
+        const upper = powerSums(b, c.length - 1);
+        const lower = powerSums(add_1.subtract(a, defs_1.Constants.one), c.length - 1);
+        return c.reduce((acc, cp, p) => add_1.add(acc, multiply_1.multiply(cp, add_1.subtract(upper[p], lower[p]))), defs_1.Constants.zero);
+      }
+      function geometricSum(t, x, a, b) {
+        const next = eval_1.Eval(subst_1.subst(t, x, add_1.add(x, defs_1.Constants.one)));
+        const r = simplify_1.simplify(multiply_1.divide(next, t));
+        if (find_1.Find(r, x) || is_1.equaln(r, 1)) {
+          return null;
+        }
+        const count = add_1.add(add_1.subtract(b, a), defs_1.Constants.one);
+        return simplify_1.simplify(multiply_1.divide(multiply_1.multiply(eval_1.Eval(subst_1.subst(t, x, a)), add_1.subtract(power_1.power(r, count), defs_1.Constants.one)), add_1.subtract(r, defs_1.Constants.one)));
       }
       function powerSums(n, maxP) {
         const S = [];

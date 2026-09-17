@@ -5,8 +5,47 @@ run_test([
   'sum(1/k,k,b,c)',
   'sum(1/k,k,b,c)',
 
+  'sum(k*2^k,k,0,n)',
+  'sum(k*2^k,k,0,n)',
+
+  'sum(sin(k),k,0,n)',
+  'sum(sin(k),k,0,n)',
+
+  // geometric terms (ratio of consecutive terms free of the index) get
+  // first*(r^count-1)/(r-1), simplified to a single fraction
   'sum(2^k,k,0,n)',
-  'sum(2^k,k,0,n)',
+  '-1+2^(1+n)',
+
+  'sum(2^k,k,1,n)',
+  '2*(-1+2^n)',
+
+  'sum(x^k,k,0,n)',
+  '(-1+x^(1+n))/(x-1)',
+
+  'sum(x^k,k,m,n)',
+  '(-x^m+x^(1+n))/(x-1)',
+
+  'sum(a*r^k,k,0,n)',
+  'a*(-1+r^(1+n))/(-1+r)',
+
+  'sum((1/2)^k,k,0,n)',
+  '2*(1-(1/2)^(1+n))',
+
+  'sum(3*2^k,k,m,n)',
+  '3*(-2^m+2^(1+n))',
+
+  'sum((-1)^k,k,0,n)',
+  '1/2*(1-(-1)^(1+n))',
+
+  'eval(sum(2^k,k,0,n),n,10)',
+  '2047',
+
+  'simplify(eval(sum(x^k,k,0,n),n,2))',
+  'x^2+x+1',
+
+  // polynomial and geometric terms may be mixed: 62 + 15
+  'eval(sum(2^k+k,k,1,n),n,5)',
+  '77',
 
   // polynomial summands get a closed form (Faulhaber) for symbolic bounds;
   // the result is in expanded form, factor() gives the textbook shape
