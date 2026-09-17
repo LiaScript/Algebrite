@@ -1,20 +1,28 @@
 import {
+  caddddr,
   cadddr,
   caddr,
   cadr,
+  car,
   Constants,
   INF,
+  iscons,
   isdouble,
+  isNumericAtom,
+  LOG,
+  NIL,
+  TAN,
   U
 } from '../runtime/defs';
 import { stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
 import { double } from './bignum';
+import { cosine } from './cos';
 import { Eval } from './eval';
 import { derivative } from './derivative';
 import { denominator } from './denominator';
 import { zzfloat } from './float';
-import { isZeroAtomOrTensor } from './is';
+import { isnegativenumber, isZeroAtomOrTensor } from './is';
 import { equal } from './misc';
 import { divide, negate } from './multiply';
 import { numerator } from './numerator';
@@ -39,6 +47,21 @@ function tryEvalAt(expr: U, X: U, A: U): U | typeof INDETERMINATE {
   }
 }
 
+// tan and log do not stop at their poles, they come back unevaluated as
+// tan(1/2*pi) or log(0); substitution then looks like it succeeded.
+function hasPole(p: U): boolean {
+  if (!iscons(p)) {
+    return false;
+  }
+  if (car(p) === symbol(TAN) && isZeroAtomOrTensor(cosine(cadr(p)))) {
+    return true;
+  }
+  if (car(p) === symbol(LOG) && isZeroAtomOrTensor(cadr(p))) {
+    return true;
+  }
+  return p.tail().some(hasPole);
+}
+
 // limit(expr, x, point): direct substitution, simplify-then-substitute, and
 // a bounded L'Hopital fallback for 0/0 forms. The point may be inf or -inf,
 // and the result may be inf or -inf. There is no direction argument, so
@@ -47,20 +70,31 @@ export function Eval_limit(p1: U) {
   const F = Eval(cadr(p1));
   const X = Eval(caddr(p1));
   const A = Eval(cadddr(p1));
-  return limit(F, X, A);
+
+  // optional 4th arg: a positive number for the limit from the right,
+  // a negative one for the limit from the left
+  let sides = [-1, 1];
+  if (caddddr(p1) !== symbol(NIL)) {
+    const direction = Eval(caddddr(p1));
+    if (!isNumericAtom(direction) || isZeroAtomOrTensor(direction)) {
+      stop('limit: 4th argument must be a positive or negative number');
+    }
+    sides = [isnegativenumber(direction) ? -1 : 1];
+  }
+  return limit(F, X, A, sides);
 }
 
 const VANISHING_DENOMINATOR =
   'limit: denominator vanishes while numerator does not — limit is infinite or does not exist';
 
-export function limit(F: U, X: U, A: U): U {
+export function limit(F: U, X: U, A: U, sides: number[] = [-1, 1]): U {
   if (A === symbol(INF)) {
     return limitAtInfinity(F, X, Constants.one);
   }
   if (equal(A, negate(symbol(INF)))) {
     return limitAtInfinity(F, X, Constants.negOne);
   }
-  return limitAt(F, X, A, [-1, 1]);
+  return limitAt(F, X, A, sides);
 }
 
 // x -> +-inf becomes t -> 0 from the right with x = +-1/t (X is reused as t).
@@ -84,7 +118,9 @@ function infiniteLimit(F: U, X: U, A: U, sides: number[]): U {
   const positive = sides.map((side) => {
     const v = zzfloat(subst(F, X, double(a.d + side * eps)));
     if (!isdouble(v)) {
-      stop(VANISHING_DENOMINATOR);
+      stop(
+        'limit: could not determine a real sign beside the point — try a one-sided limit'
+      );
     }
     return v.d > 0;
   });
@@ -98,7 +134,7 @@ function infiniteLimit(F: U, X: U, A: U, sides: number[]): U {
 function limitAt(F: U, X: U, A: U, sides: number[]): U {
   let result = tryEvalAt(F, X, A);
   if (result !== INDETERMINATE) {
-    return result;
+    return hasPole(result) ? infiniteLimit(F, X, A, sides) : result;
   }
 
   const simplified = simplify(F);

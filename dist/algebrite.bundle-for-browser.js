@@ -13300,6 +13300,7 @@ FACTOR=${p8}`);
       var run_1 = require_run();
       var symbol_1 = require_symbol();
       var bignum_1 = require_bignum();
+      var cos_1 = require_cos();
       var eval_1 = require_eval();
       var derivative_1 = require_derivative();
       var denominator_1 = require_denominator();
@@ -13320,22 +13321,42 @@ FACTOR=${p8}`);
           return INDETERMINATE;
         }
       }
+      function hasPole(p) {
+        if (!defs_1.iscons(p)) {
+          return false;
+        }
+        if (defs_1.car(p) === symbol_1.symbol(defs_1.TAN) && is_1.isZeroAtomOrTensor(cos_1.cosine(defs_1.cadr(p)))) {
+          return true;
+        }
+        if (defs_1.car(p) === symbol_1.symbol(defs_1.LOG) && is_1.isZeroAtomOrTensor(defs_1.cadr(p))) {
+          return true;
+        }
+        return p.tail().some(hasPole);
+      }
       function Eval_limit(p1) {
         const F = eval_1.Eval(defs_1.cadr(p1));
         const X = eval_1.Eval(defs_1.caddr(p1));
         const A = eval_1.Eval(defs_1.cadddr(p1));
-        return limit(F, X, A);
+        let sides = [-1, 1];
+        if (defs_1.caddddr(p1) !== symbol_1.symbol(defs_1.NIL)) {
+          const direction = eval_1.Eval(defs_1.caddddr(p1));
+          if (!defs_1.isNumericAtom(direction) || is_1.isZeroAtomOrTensor(direction)) {
+            run_1.stop("limit: 4th argument must be a positive or negative number");
+          }
+          sides = [is_1.isnegativenumber(direction) ? -1 : 1];
+        }
+        return limit(F, X, A, sides);
       }
       exports.Eval_limit = Eval_limit;
       var VANISHING_DENOMINATOR = "limit: denominator vanishes while numerator does not \u2014 limit is infinite or does not exist";
-      function limit(F, X, A) {
+      function limit(F, X, A, sides = [-1, 1]) {
         if (A === symbol_1.symbol(defs_1.INF)) {
           return limitAtInfinity(F, X, defs_1.Constants.one);
         }
         if (misc_1.equal(A, multiply_1.negate(symbol_1.symbol(defs_1.INF)))) {
           return limitAtInfinity(F, X, defs_1.Constants.negOne);
         }
-        return limitAt(F, X, A, [-1, 1]);
+        return limitAt(F, X, A, sides);
       }
       exports.limit = limit;
       function limitAtInfinity(F, X, sign) {
@@ -13352,7 +13373,7 @@ FACTOR=${p8}`);
         const positive = sides.map((side) => {
           const v = float_1.zzfloat(subst_1.subst(F, X, bignum_1.double(a.d + side * eps)));
           if (!defs_1.isdouble(v)) {
-            run_1.stop(VANISHING_DENOMINATOR);
+            run_1.stop("limit: could not determine a real sign beside the point \u2014 try a one-sided limit");
           }
           return v.d > 0;
         });
@@ -13364,7 +13385,7 @@ FACTOR=${p8}`);
       function limitAt(F, X, A, sides) {
         let result = tryEvalAt(F, X, A);
         if (result !== INDETERMINATE) {
-          return result;
+          return hasPole(result) ? infiniteLimit(F, X, A, sides) : result;
         }
         const simplified = simplify_1.simplify(F);
         result = tryEvalAt(simplified, X, A);

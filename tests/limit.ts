@@ -64,6 +64,46 @@ run_test([
   'limit(x*sin(1/x),x,inf)',
   '1',
 
+  // one-sided limits: a 4th argument, positive = from the right
+  'limit(1/x,x,0,1)',
+  'inf',
+
+  'limit(1/x,x,0,-1)',
+  '-inf',
+
+  'limit(1/x^2,x,0,-1)',
+  'inf',
+
+  'limit(x^2,x,2,1)',
+  '4',
+
+  'limit(sec(x),x,pi/2,-1)',
+  'inf',
+
+  'limit(1/x,x,0,0)',
+  'Stop: limit: 4th argument must be a positive or negative number',
+
+  // poles of tan and log: substitution gives tan(1/2*pi) or log(0), which
+  // is detected and resolved by the sign beside the point
+  'limit(tan(x),x,pi/2,-1)',
+  'inf',
+
+  'limit(tan(x),x,pi/2,1)',
+  '-inf',
+
+  'limit(tan(x),x,pi/2)',
+  'Stop: limit: left and right limits differ — limit does not exist',
+
+  'limit(log(x),x,0,1)',
+  '-inf',
+
+  'limit(-log(x),x,0,1)',
+  'inf',
+
+  // log(x) is not real left of 0
+  'limit(log(x),x,0)',
+  'Stop: limit: could not determine a real sign beside the point — try a one-sided limit',
+
   // L'Hopital only applies to 0/0: an expression that cannot be evaluated
   // at the point must stop rather than produce a wrong answer (pi/2 here)
   'limit(arctan(x),x,inf)',
