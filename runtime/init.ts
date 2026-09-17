@@ -69,6 +69,7 @@ import { Eval_factor } from '../sources/factor';
 import { Eval_filter } from '../sources/filter';
 import { Eval_float } from '../sources/float';
 import { Eval_floor } from '../sources/floor';
+import { Eval_draw } from '../sources/draw';
 import { Eval_for } from '../sources/for';
 import { Eval_gamma } from '../sources/gamma';
 import { Eval_gcd } from '../sources/gcd';
@@ -476,7 +477,7 @@ export function defn() {
   std_symbol(DIVISORS, Eval_divisors);
   std_symbol(DO, Eval_do);
   std_symbol(DOT, Eval_inner);
-  std_symbol(DRAW);
+  std_symbol(DRAW, Eval_draw);
   std_symbol(DSOLVE);
   std_symbol(ERF, Eval_erf);
   std_symbol(ERFC, Eval_erfc);

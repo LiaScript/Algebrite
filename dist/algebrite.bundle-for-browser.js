@@ -13051,6 +13051,63 @@ FACTOR=${p8}`);
     }
   });
 
+  // bazel-out/k8-fastbuild/bin/sources/draw.js
+  var require_draw = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/draw.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.Eval_draw = exports.setDrawHandler = void 0;
+      var defs_1 = require_defs();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var bignum_1 = require_bignum();
+      var eval_1 = require_eval();
+      var float_1 = require_float();
+      var drawHandler;
+      var drawCallback;
+      function setDrawHandler(handler, callback) {
+        drawHandler = handler;
+        drawCallback = callback;
+      }
+      exports.setDrawHandler = setDrawHandler;
+      function toFloat(p) {
+        const r = defs_1.evalFloats(() => eval_1.Eval(float_1.yyfloat(eval_1.Eval(p))));
+        return defs_1.isNumericAtom(r) ? bignum_1.nativeDouble(r) : NaN;
+      }
+      function Eval_draw(p1) {
+        if (!drawHandler) {
+          return p1;
+        }
+        const body = defs_1.cadr(p1);
+        const variable = defs_1.caddr(p1) === symbol_1.symbol(defs_1.NIL) ? symbol_1.symbol(defs_1.SYMBOL_X) : defs_1.caddr(p1);
+        if (!defs_1.issymbol(variable)) {
+          run_1.stop("draw: 2nd arg should be the variable to plot over");
+        }
+        const range = defs_1.cadddr(p1) === symbol_1.symbol(defs_1.NIL) ? void 0 : [toFloat(defs_1.cadddr(p1)), toFloat(defs_1.caddddr(p1))];
+        const f = (v) => {
+          const saved = symbol_1.get_binding(variable);
+          symbol_1.set_binding(variable, bignum_1.double(v));
+          try {
+            return toFloat(body);
+          } catch (e) {
+            return NaN;
+          } finally {
+            symbol_1.set_binding(variable, saved);
+          }
+        };
+        drawHandler({
+          expr: eval_1.Eval(body).toString(),
+          variable: variable.toString(),
+          range,
+          f,
+          callback: drawCallback
+        });
+        return symbol_1.symbol(defs_1.NIL);
+      }
+      exports.Eval_draw = Eval_draw;
+    }
+  });
+
   // bazel-out/k8-fastbuild/bin/sources/for.js
   var require_for = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/for.js"(exports) {
@@ -14761,6 +14818,7 @@ FACTOR=${p8}`);
       var filter_1 = require_filter();
       var float_1 = require_float();
       var floor_1 = require_floor();
+      var draw_1 = require_draw();
       var for_1 = require_for();
       var gamma_1 = require_gamma();
       var gcd_1 = require_gcd();
@@ -14912,7 +14970,7 @@ FACTOR=${p8}`);
         symbol_1.std_symbol(defs_1.DIVISORS, eval_1.Eval_divisors);
         symbol_1.std_symbol(defs_1.DO, eval_1.Eval_do);
         symbol_1.std_symbol(defs_1.DOT, inner_1.Eval_inner);
-        symbol_1.std_symbol(defs_1.DRAW);
+        symbol_1.std_symbol(defs_1.DRAW, draw_1.Eval_draw);
         symbol_1.std_symbol(defs_1.DSOLVE);
         symbol_1.std_symbol(defs_1.ERF, erf_1.Eval_erf);
         symbol_1.std_symbol(defs_1.ERFC, erfc_1.Eval_erfc);
@@ -19329,6 +19387,7 @@ FACTOR=${p8}`);
       var approxratio_1 = require_approxratio();
       var integral_1 = require_integral();
       var run_1 = require_run();
+      var draw_1 = require_draw();
       var $ = {};
       $.version = defs_1.version;
       $.isadd = defs_1.isadd;
@@ -19561,6 +19620,7 @@ FACTOR=${p8}`);
         "zero"
       ];
       Array.from(builtin_fns).map((fn) => $[fn] = zombocom_1.exec.bind(exports, fn));
+      $.setDrawHandler = draw_1.setDrawHandler;
       exports.default = $;
     }
   });

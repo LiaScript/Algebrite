@@ -46,6 +46,7 @@ const factor_1 = require("../sources/factor");
 const filter_1 = require("../sources/filter");
 const float_1 = require("../sources/float");
 const floor_1 = require("../sources/floor");
+const draw_1 = require("../sources/draw");
 const for_1 = require("../sources/for");
 const gamma_1 = require("../sources/gamma");
 const gcd_1 = require("../sources/gcd");
@@ -240,7 +241,7 @@ function defn() {
     symbol_1.std_symbol(defs_1.DIVISORS, eval_1.Eval_divisors);
     symbol_1.std_symbol(defs_1.DO, eval_1.Eval_do);
     symbol_1.std_symbol(defs_1.DOT, inner_1.Eval_inner);
-    symbol_1.std_symbol(defs_1.DRAW);
+    symbol_1.std_symbol(defs_1.DRAW, draw_1.Eval_draw);
     symbol_1.std_symbol(defs_1.DSOLVE);
     symbol_1.std_symbol(defs_1.ERF, erf_1.Eval_erf);
     symbol_1.std_symbol(defs_1.ERFC, erfc_1.Eval_erfc);

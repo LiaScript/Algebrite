@@ -25,3 +25,28 @@ test('string and float elements', (t) => {
 test('string arguments still work', (t) => {
   t.is('-2', Algebrite.det('[[1,2],[3,4]]').toString());
 });
+
+// draw() hands expr/variable/range and a numeric sampler f to a
+// host-registered handler, along with the callback registered next to it.
+test('draw calls the registered handler', (t) => {
+  let got: any;
+  const callback = () => {};
+  Algebrite.setDrawHandler((args) => { got = args; }, callback);
+  try {
+    t.is('', Algebrite.run('draw(x^2, x, 0, 2)'));
+    t.is('x^2', got.expr);
+    t.is('x', got.variable);
+    t.is('0,2', got.range.join());
+    t.is(9, got.f(3));
+    t.is(callback, got.callback);
+    t.is('x', Algebrite.run('x'));
+
+    Algebrite.run('draw(1/x)');
+    t.is(undefined, got.range);
+    t.is(true, Number.isNaN(got.f(0)));
+    t.is(0.5, got.f(2));
+  } finally {
+    Algebrite.setDrawHandler(undefined);
+  }
+  t.is('draw(x^2,x)', Algebrite.run('draw(x^2,x)'));
+});

@@ -18,6 +18,7 @@ const scan_1 = require("./sources/scan");
 const approxratio_1 = require("./sources/approxratio");
 const integral_1 = require("./sources/integral");
 const run_1 = require("./runtime/run");
+const draw_1 = require("./sources/draw");
 const $ = {};
 $.version = defs_1.version;
 $.isadd = defs_1.isadd;
@@ -250,4 +251,5 @@ const builtin_fns = [
     'zero',
 ];
 Array.from(builtin_fns).map(fn => ($[fn] = zombocom_1.exec.bind(this, fn)));
+$.setDrawHandler = draw_1.setDrawHandler;
 exports.default = $;

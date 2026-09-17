@@ -94,6 +94,7 @@ import {
 } from './sources/approxratio';
 import { make_hashed_itab } from './sources/integral';
 import { run } from './runtime/run';
+import { setDrawHandler } from './sources/draw';
 
 const $: { [key: string]: unknown } = {};
 $.version = version;
@@ -329,5 +330,6 @@ const builtin_fns = [
 ];
 
 Array.from(builtin_fns).map(fn => ($[fn] = exec.bind(this, fn)));
+$.setDrawHandler = setDrawHandler;
 export default $;
 
