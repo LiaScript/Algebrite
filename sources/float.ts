@@ -5,6 +5,7 @@ import {
   Constants,
   DEBUG,
   E,
+  INF,
   evalFloats,
   iscons,
   isrational,
@@ -90,6 +91,9 @@ function yyfloat_(p1: U): U {
   }
   if (p1 === symbol(E)) {
     return double(Math.E);
+  }
+  if (p1 === symbol(INF)) {
+    return double(Infinity);
   }
   return p1;
 }

@@ -28,6 +28,7 @@ import {
   DOUBLE,
   Double,
   E,
+  INF,
   FACTORIAL,
   FLOOR,
   FOR,
@@ -1806,6 +1807,8 @@ function print_factor(
     } else {
       accumulator += print_str('pi');
     }
+  } else if (p === symbol(INF) && defs.printMode === PRINTMODE_LATEX) {
+    accumulator += print_str('\\infty');
   } else {
     accumulator += print_str(get_printname(p));
   }

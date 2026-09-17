@@ -6258,6 +6258,9 @@ FACTOR=${p8}`);
         if (p1 === symbol_1.symbol(defs_1.E)) {
           return bignum_1.double(Math.E);
         }
+        if (p1 === symbol_1.symbol(defs_1.INF)) {
+          return bignum_1.double(Infinity);
+        }
         return p1;
       }
     }
@@ -10118,6 +10121,10 @@ FACTOR=${p8}`);
         if (defs_1.defs.codeGen || defs_1.defs.fullDoubleOutput) {
           return "" + d;
         }
+        if (d === Infinity || d === -Infinity) {
+          const name = defs_1.defs.printMode === defs_1.PRINTMODE_LATEX ? "\\infty" : "inf";
+          return d < 0 ? "-" + name : name;
+        }
         if (is_1.isZeroAtomOrTensor(symbol_1.get_binding(symbol_1.symbol(defs_1.FORCE_FIXED_PRINTOUT)))) {
           stringRepresentation = "" + d;
           if (defs_1.defs.printMode === defs_1.PRINTMODE_LATEX) {
@@ -13252,12 +13259,17 @@ FACTOR=${p8}`);
       exports.limit = exports.Eval_limit = void 0;
       var defs_1 = require_defs();
       var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var bignum_1 = require_bignum();
       var eval_1 = require_eval();
       var derivative_1 = require_derivative();
       var denominator_1 = require_denominator();
+      var float_1 = require_float();
       var is_1 = require_is();
+      var misc_1 = require_misc();
       var multiply_1 = require_multiply();
       var numerator_1 = require_numerator();
+      var rationalize_1 = require_rationalize();
       var simplify_1 = require_simplify();
       var subst_1 = require_subst();
       var MAX_LHOPITAL_ITERATIONS = 5;
@@ -13276,7 +13288,41 @@ FACTOR=${p8}`);
         return limit(F, X, A);
       }
       exports.Eval_limit = Eval_limit;
+      var VANISHING_DENOMINATOR = "limit: denominator vanishes while numerator does not \u2014 limit is infinite or does not exist";
       function limit(F, X, A) {
+        if (A === symbol_1.symbol(defs_1.INF)) {
+          return limitAtInfinity(F, X, defs_1.Constants.one);
+        }
+        if (misc_1.equal(A, multiply_1.negate(symbol_1.symbol(defs_1.INF)))) {
+          return limitAtInfinity(F, X, defs_1.Constants.negOne);
+        }
+        return limitAt(F, X, A, [-1, 1]);
+      }
+      exports.limit = limit;
+      function limitAtInfinity(F, X, sign) {
+        const at = (p) => rationalize_1.rationalize(eval_1.Eval(subst_1.subst(p, X, multiply_1.divide(sign, X))));
+        const G = multiply_1.divide(at(numerator_1.numerator(F)), at(denominator_1.denominator(F)));
+        return limitAt(G, X, defs_1.Constants.zero, [1]);
+      }
+      function infiniteLimit(F, X, A, sides) {
+        const a = float_1.zzfloat(A);
+        if (!defs_1.isdouble(a)) {
+          run_1.stop(VANISHING_DENOMINATOR);
+        }
+        const eps = 1e-6 * Math.max(1, Math.abs(a.d));
+        const positive = sides.map((side) => {
+          const v = float_1.zzfloat(subst_1.subst(F, X, bignum_1.double(a.d + side * eps)));
+          if (!defs_1.isdouble(v)) {
+            run_1.stop(VANISHING_DENOMINATOR);
+          }
+          return v.d > 0;
+        });
+        if (positive.some((p) => p !== positive[0])) {
+          run_1.stop("limit: left and right limits differ \u2014 limit does not exist");
+        }
+        return positive[0] ? symbol_1.symbol(defs_1.INF) : multiply_1.negate(symbol_1.symbol(defs_1.INF));
+      }
+      function limitAt(F, X, A, sides) {
         let result = tryEvalAt(F, X, A);
         if (result !== INDETERMINATE) {
           return result;
@@ -13291,18 +13337,20 @@ FACTOR=${p8}`);
         for (let i = 0; i < MAX_LHOPITAL_ITERATIONS; i++) {
           const nAtA = tryEvalAt(N, X, A);
           const dAtA = tryEvalAt(D, X, A);
-          if (dAtA !== INDETERMINATE && !is_1.isZeroAtomOrTensor(dAtA) && nAtA !== INDETERMINATE) {
+          if (nAtA === INDETERMINATE || dAtA === INDETERMINATE) {
+            break;
+          }
+          if (!is_1.isZeroAtomOrTensor(dAtA)) {
             return multiply_1.divide(nAtA, dAtA);
           }
-          if (dAtA !== INDETERMINATE && is_1.isZeroAtomOrTensor(dAtA) && nAtA !== INDETERMINATE && !is_1.isZeroAtomOrTensor(nAtA)) {
-            run_1.stop("limit: denominator vanishes while numerator does not \u2014 limit is infinite or does not exist");
+          if (!is_1.isZeroAtomOrTensor(nAtA)) {
+            return infiniteLimit(F, X, A, sides);
           }
           N = derivative_1.derivative(N, X);
           D = derivative_1.derivative(D, X);
         }
         run_1.stop("limit: could not resolve after repeated L'Hopital iterations");
       }
-      exports.limit = limit;
     }
   });
 
@@ -14736,6 +14784,7 @@ FACTOR=${p8}`);
         symbol_1.std_symbol(defs_1.SECRETX);
         symbol_1.std_symbol(defs_1.VERSION);
         symbol_1.std_symbol(defs_1.PI);
+        symbol_1.std_symbol(defs_1.INF);
         symbol_1.std_symbol(defs_1.SYMBOL_A);
         symbol_1.std_symbol(defs_1.SYMBOL_B);
         symbol_1.std_symbol(defs_1.SYMBOL_C);
@@ -18187,6 +18236,8 @@ FACTOR=${p8}`);
           } else {
             accumulator += print_str("pi");
           }
+        } else if (p === symbol_1.symbol(defs_1.INF) && defs_1.defs.printMode === defs_1.PRINTMODE_LATEX) {
+          accumulator += print_str("\\infty");
         } else {
           accumulator += print_str(symbol_1.get_printname(p));
         }
@@ -18274,9 +18325,9 @@ FACTOR=${p8}`);
       exports.CLEARALL = exports.CLEAR = exports.CIRCEXP = exports.CHOOSE = exports.CHECK = exports.CEILING = exports.BINOMIAL = exports.BINDING = exports.BESSELY = exports.BESSELJ = exports.ATOMIZE = exports.ARG = exports.ARCTANH = exports.ARCTAN = exports.ARCSINH = exports.ARCSIN = exports.ARCCOSH = exports.ARCCOS = exports.APPROXRATIO = exports.AND = exports.ADJ = exports.ADD = exports.ABS = exports.SYM = exports.TENSOR = exports.STR = exports.DOUBLE = exports.NUM = exports.CONS = exports.Sym = exports.Tensor = exports.Str = exports.Double = exports.Num = exports.Cons = exports.BaseAtom = exports.avoidCalculatingPowersIntoArctans = exports.do_simplify_nested_radicals = exports.dontCreateNewRadicalsInDenominatorWhenEvalingMultiplication = exports.defs = exports.PRINTMODE_LIST = exports.PRINTMODE_HUMAN = exports.PRINTMODE_COMPUTER = exports.PRINTMODE_2DASCII = exports.PRINTMODE_LATEX = exports.PRINTOUTRESULT = exports.DEBUG = exports.NSYM = exports.version = exports.breakpoint = void 0;
       exports.INTEGRAL = exports.INNER = exports.INDEX = exports.IMAG = exports.HILBERT = exports.HERMITE = exports.GCD = exports.GAMMA = exports.FUNCTION = exports.FOR = exports.FLOOR = exports.FLOATF = exports.FILTER = exports.FACTORPOLY = exports.FACTORIAL = exports.FACTOR = exports.EXPSIN = exports.EXPCOS = exports.EXPAND = exports.EXP = exports.EVAL = exports.ERFC = exports.ERF = exports.EIGENVEC = exports.EIGENVAL = exports.EIGEN = exports.DSOLVE = exports.DRAW = exports.DOT = exports.DO = exports.DIVISORS = exports.DIRAC = exports.DIMENSIONOF = exports.DIM = exports.DET = exports.DERIVATIVE = exports.DENOMINATOR = exports.DEGREE = exports.DEFINT = exports.DECOMP = exports.COSH = exports.COS = exports.CONVERT = exports.CONTRACT = exports.CONJ = exports.CONDENSE = exports.COFACTOR = exports.COEFF = exports.CLOCK = exports.CLEARPATTERNS = void 0;
       exports.SIN = exports.SIMPLIFY = exports.SILENTPATTERN = exports.SGN = exports.SETQ = exports.ROOTS = exports.YYRECT = exports.ROUND = exports.REAL = exports.RATIONALIZE = exports.RANK = exports.QUOTIENT = exports.QUOTE = exports.QUANTITY = exports.PRODUCT = exports.PRINTPLAIN = exports.PRINTLIST = exports.PRINTLATEX = exports.PRINTFULL = exports.PRINT2DASCII = exports.PRINT = exports.PRINT_LEAVE_X_ALONE = exports.PRINT_LEAVE_E_ALONE = exports.PRIME = exports.POWER = exports.POLAR = exports.PATTERNSINFO = exports.PATTERN = exports.OUTER = exports.OR = exports.OPERATOR = exports.NUMERATOR = exports.NUMBER = exports.NROOTS = exports.NOT = exports.MULTIPLY = exports.MOD = exports.MIN = exports.MAX = exports.LOOKUP = exports.LOG = exports.LIMIT = exports.LEGENDRE = exports.LEADING = exports.LCM = exports.LAGUERRE = exports.ISPRIME = exports.ISINTEGER = exports.INVG = exports.INV = void 0;
-      exports.SYMBOL_R = exports.SYMBOL_N = exports.SYMBOL_J = exports.SYMBOL_I = exports.SYMBOL_D = exports.SYMBOL_C = exports.SYMBOL_B = exports.SYMBOL_A = exports.PI = exports.VERSION = exports.SECRETX = exports.METAX = exports.METAB = exports.METAA = exports.DRAWX = exports.YYE = exports.MAX_FIXED_PRINTOUT_DIGITS = exports.FORCE_FIXED_PRINTOUT = exports.ASSUME_REAL_VARIABLES = exports.BAKE = exports.AUTOEXPAND = exports.LAST_PLAIN_PRINT = exports.LAST_LIST_PRINT = exports.LAST_LATEX_PRINT = exports.LAST_FULL_PRINT = exports.LAST_2DASCII_PRINT = exports.LAST_PRINT = exports.LAST = exports.NIL = exports.ZERO = exports.UNITS = exports.UNIT = exports.TRANSPOSE = exports.TESTLT = exports.TESTLE = exports.TESTGT = exports.TESTGE = exports.TESTEQ = exports.TEST = exports.TAYLOR = exports.TANH = exports.TAN = exports.SYMBOLSINFO = exports.SUM = exports.SUBST = exports.STOP = exports.SQRT = exports.SOLVE = exports.SHAPE = exports.SINH = void 0;
-      exports.caddar = exports.cadadr = exports.caaddr = exports.cdddr = exports.cddar = exports.cdadr = exports.cadar = exports.caddr = exports.caadr = exports.cddr = exports.cdar = exports.cadr = exports.caar = exports.cdr = exports.car = exports.issymbol = exports.isNumericAtomOrTensor = exports.istensor = exports.isstr = exports.isNumericAtom = exports.isdouble = exports.isrational = exports.iscons = exports.dotprod_unicode = exports.transpose_unicode = exports.logbuf = exports.mtotal = exports.primetab = exports.parse_time_simplifications = exports.predefinedSymbolsInGlobalScope_doNotTrackInDependencies = exports.MAXDIM = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES = exports.MAXPRIMETAB = exports.E = exports.C6 = exports.C5 = exports.C4 = exports.C3 = exports.C2 = exports.C1 = exports.SYMBOL_X_UNDERSCORE = exports.SYMBOL_B_UNDERSCORE = exports.SYMBOL_A_UNDERSCORE = exports.SYMBOL_IDENTITY_MATRIX = exports.SYMBOL_Z = exports.SYMBOL_Y = exports.SYMBOL_X = exports.SYMBOL_T = exports.SYMBOL_S = void 0;
-      exports.evalFloats = exports.evalPolar = exports.doexpand = exports.noexpand = exports.Constants = exports.$ = exports.reset_after_error = exports.MEQUAL = exports.MZERO = exports.MSIGN = exports.isidentitymatrix = exports.isinv = exports.istranspose = exports.isinnerordot = exports.isfactorial = exports.ispower = exports.ismultiply = exports.isadd = exports.caddaddr = exports.cdddaddr = exports.caddadr = exports.cddaddr = exports.cadaddr = exports.caddddr = exports.cddddr = exports.cadddr = exports.cdaddr = void 0;
+      exports.SYMBOL_N = exports.SYMBOL_J = exports.SYMBOL_I = exports.SYMBOL_D = exports.SYMBOL_C = exports.SYMBOL_B = exports.SYMBOL_A = exports.INF = exports.PI = exports.VERSION = exports.SECRETX = exports.METAX = exports.METAB = exports.METAA = exports.DRAWX = exports.YYE = exports.MAX_FIXED_PRINTOUT_DIGITS = exports.FORCE_FIXED_PRINTOUT = exports.ASSUME_REAL_VARIABLES = exports.BAKE = exports.AUTOEXPAND = exports.LAST_PLAIN_PRINT = exports.LAST_LIST_PRINT = exports.LAST_LATEX_PRINT = exports.LAST_FULL_PRINT = exports.LAST_2DASCII_PRINT = exports.LAST_PRINT = exports.LAST = exports.NIL = exports.ZERO = exports.UNITS = exports.UNIT = exports.TRANSPOSE = exports.TESTLT = exports.TESTLE = exports.TESTGT = exports.TESTGE = exports.TESTEQ = exports.TEST = exports.TAYLOR = exports.TANH = exports.TAN = exports.SYMBOLSINFO = exports.SUM = exports.SUBST = exports.STOP = exports.SQRT = exports.SOLVE = exports.SHAPE = exports.SINH = void 0;
+      exports.cadadr = exports.caaddr = exports.cdddr = exports.cddar = exports.cdadr = exports.cadar = exports.caddr = exports.caadr = exports.cddr = exports.cdar = exports.cadr = exports.caar = exports.cdr = exports.car = exports.issymbol = exports.isNumericAtomOrTensor = exports.istensor = exports.isstr = exports.isNumericAtom = exports.isdouble = exports.isrational = exports.iscons = exports.dotprod_unicode = exports.transpose_unicode = exports.logbuf = exports.mtotal = exports.primetab = exports.parse_time_simplifications = exports.predefinedSymbolsInGlobalScope_doNotTrackInDependencies = exports.MAXDIM = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES = exports.MAXPRIMETAB = exports.E = exports.C6 = exports.C5 = exports.C4 = exports.C3 = exports.C2 = exports.C1 = exports.SYMBOL_X_UNDERSCORE = exports.SYMBOL_B_UNDERSCORE = exports.SYMBOL_A_UNDERSCORE = exports.SYMBOL_IDENTITY_MATRIX = exports.SYMBOL_Z = exports.SYMBOL_Y = exports.SYMBOL_X = exports.SYMBOL_T = exports.SYMBOL_S = exports.SYMBOL_R = void 0;
+      exports.evalFloats = exports.evalPolar = exports.doexpand = exports.noexpand = exports.Constants = exports.$ = exports.reset_after_error = exports.MEQUAL = exports.MZERO = exports.MSIGN = exports.isidentitymatrix = exports.isinv = exports.istranspose = exports.isinnerordot = exports.isfactorial = exports.ispower = exports.ismultiply = exports.isadd = exports.caddaddr = exports.cdddaddr = exports.caddadr = exports.cddaddr = exports.cadaddr = exports.caddddr = exports.cddddr = exports.cadddr = exports.cdaddr = exports.caddar = void 0;
       var big_integer_1 = __importDefault(require_BigInteger());
       var print_1 = require_print();
       var symbol_1 = require_symbol();
@@ -18580,6 +18631,7 @@ FACTOR=${p8}`);
       exports.SECRETX = "$SECRETX";
       exports.VERSION = "version";
       exports.PI = "pi";
+      exports.INF = "inf";
       exports.SYMBOL_A = "a";
       exports.SYMBOL_B = "b";
       exports.SYMBOL_C = "c";
@@ -18614,6 +18666,7 @@ FACTOR=${p8}`);
         "e",
         "i",
         "pi",
+        "inf",
         "sin",
         "ceiling",
         "cos",

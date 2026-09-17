@@ -23,6 +23,12 @@ export function doubleToReasonableString(d: number) {
     return '' + d;
   }
 
+  // float overflow: print like the inf symbol, not as JS "Infinity.0"
+  if (d === Infinity || d === -Infinity) {
+    const name = defs.printMode === PRINTMODE_LATEX ? '\\infty' : 'inf';
+    return d < 0 ? '-' + name : name;
+  }
+
   if (isZeroAtomOrTensor(get_binding(symbol(FORCE_FIXED_PRINTOUT)))) {
     stringRepresentation = '' + d;
     // manipulate the string so that it can be parsed by

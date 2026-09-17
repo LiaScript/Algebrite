@@ -1113,3 +1113,12 @@ nodejs_test(
     ],
     entry_point = ":tests/charpoly.ts",
 )
+
+nodejs_test(
+    name = "test_inf",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/inf.ts",
+)

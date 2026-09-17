@@ -204,6 +204,7 @@ import {
   HILBERT,
   IMAG,
   INDEX,
+  INF,
   INNER,
   INTEGRAL,
   INV,
@@ -585,6 +586,7 @@ export function defn() {
   std_symbol(VERSION);
 
   std_symbol(PI);
+  std_symbol(INF);
   std_symbol(SYMBOL_A);
   std_symbol(SYMBOL_B);
   std_symbol(SYMBOL_C);

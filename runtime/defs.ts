@@ -397,6 +397,8 @@ export const SECRETX = '$SECRETX';
 export const VERSION = 'version';
 
 export const PI = 'pi';
+// symbolic infinity: a reserved symbol like pi, with no arithmetic of its own
+export const INF = 'inf';
 export const SYMBOL_A = 'a';
 export const SYMBOL_B = 'b';
 export const SYMBOL_C = 'c';
@@ -439,6 +441,7 @@ export const predefinedSymbolsInGlobalScope_doNotTrackInDependencies = [
   'e',
   'i',
   'pi',
+  'inf',
   'sin',
   'ceiling',
   'cos',
