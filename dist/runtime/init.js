@@ -182,9 +182,6 @@ const defn_str = [
     'identity(n)=unit(n)',
     'trace(M)=contract(M)',
     'charpoly(M,x)=det(M-x*identity(dim(M)))',
-    // the two-argument expand() already does partial fractions
-    'apart(f,x)=expand(f,x)',
-    'partfrac(f,x)=expand(f,x)',
     'log10(x)=log(x,10)',
     'log2(x)=log(x,2)',
     'cbrt(x)=x^(1/3)',
@@ -201,6 +198,7 @@ function defn() {
     symbol_1.std_symbol(defs_1.ADD, add_1.Eval_add);
     symbol_1.std_symbol(defs_1.ADJ, adj_1.Eval_adj);
     symbol_1.std_symbol(defs_1.AND, test_1.Eval_and);
+    symbol_1.std_symbol(defs_1.APART, expand_1.Eval_apart);
     symbol_1.std_symbol(defs_1.APPROXRATIO, approxratio_1.Eval_approxratio);
     symbol_1.std_symbol(defs_1.ARCCOS, arccos_1.Eval_arccos);
     symbol_1.std_symbol(defs_1.ARCCOSH, arccosh_1.Eval_arccosh);
@@ -295,6 +293,7 @@ function defn() {
     symbol_1.std_symbol(defs_1.OPERATOR, eval_1.Eval_operator);
     symbol_1.std_symbol(defs_1.OR, test_1.Eval_or);
     symbol_1.std_symbol(defs_1.OUTER, outer_1.Eval_outer);
+    symbol_1.std_symbol(defs_1.PARTFRAC, expand_1.Eval_apart);
     symbol_1.std_symbol(defs_1.PATTERN, pattern_1.Eval_pattern);
     symbol_1.std_symbol(defs_1.PATTERNSINFO, pattern_1.Eval_patternsinfo);
     symbol_1.std_symbol(defs_1.POLAR, polar_1.Eval_polar);

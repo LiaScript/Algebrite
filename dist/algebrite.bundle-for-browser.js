@@ -12787,7 +12787,7 @@ FACTOR=${p8}`);
     "bazel-out/k8-fastbuild/bin/sources/expand.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.Eval_expand = void 0;
+      exports.Eval_apart = exports.Eval_expand = void 0;
       var alloc_1 = require_alloc();
       var defs_1 = require_defs();
       var find_1 = require_find();
@@ -12817,12 +12817,19 @@ FACTOR=${p8}`);
         return expand(F, X);
       }
       exports.Eval_expand = Eval_expand;
-      function expand(F, X) {
+      function Eval_apart(p1) {
+        const F = eval_1.Eval(defs_1.cadr(p1));
+        const p2 = eval_1.Eval(defs_1.caddr(p1));
+        const X = p2 === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(F) : p2;
+        return expand(F, X, true);
+      }
+      exports.Eval_apart = Eval_apart;
+      function expand(F, X, factored = false) {
         if (defs_1.istensor(F)) {
-          return expand_tensor(F, X);
+          return expand_tensor(F, X, factored);
         }
         if (defs_1.isadd(F)) {
-          return F.tail().reduce((a, b) => add_1.add(a, expand(b, X)), defs_1.Constants.zero);
+          return F.tail().reduce((a, b) => add_1.add(a, expand(b, X, factored)), defs_1.Constants.zero);
         }
         let B = numerator_1.numerator(F);
         let A = denominator_1.denominator(F);
@@ -12840,7 +12847,7 @@ FACTOR=${p8}`);
         A = factorpoly_1.factorpoly(A, X);
         let C = expand_get_C(A, X);
         B = expand_get_B(B, C, X);
-        A = expand_get_A(A, C, X);
+        A = expand_get_A(A, C, X, factored);
         let result;
         if (defs_1.istensor(C)) {
           const inverse = defs_1.doexpand(inv_1.inv, C);
@@ -12851,10 +12858,10 @@ FACTOR=${p8}`);
         }
         return add_1.add(result, Q);
       }
-      function expand_tensor(p5, p9) {
+      function expand_tensor(p5, p9, factored) {
         p5 = tensor_1.copy_tensor(p5);
         p5.tensor.elem = p5.tensor.elem.map((el) => {
-          return expand(el, p9);
+          return expand(el, p9, factored);
         });
         return p5;
       }
@@ -12963,17 +12970,17 @@ FACTOR=${p8}`);
         }
         return p8;
       }
-      function expand_get_A(p2, p4, p9) {
+      function expand_get_A(p2, p4, p9, factored) {
         if (!defs_1.istensor(p4)) {
           return multiply_1.reciprocate(p2);
         }
         let elements = [];
         if (defs_1.ismultiply(p2)) {
           p2.tail().forEach((p5) => {
-            elements.push(...expand_get_AF(p5, p9));
+            elements.push(...expand_get_AF(p5, p9, factored));
           });
         } else {
-          elements = expand_get_AF(p2, p9);
+          elements = expand_get_AF(p2, p9, factored);
         }
         const n = elements.length;
         const p8 = alloc_1.alloc_tensor(n);
@@ -12982,7 +12989,7 @@ FACTOR=${p8}`);
         p8.tensor.elem = elements;
         return p8;
       }
-      function expand_get_AF(p5, p9) {
+      function expand_get_AF(p5, p9, factored) {
         let n = 1;
         if (!find_1.Find(p5, p9)) {
           return [];
@@ -12995,7 +13002,8 @@ FACTOR=${p8}`);
         const d = bignum_1.nativeInt(degree_1.degree(p5, p9));
         for (let i = n; i > 0; i--) {
           for (let j = 0; j < d; j++) {
-            results.push(multiply_1.multiply(multiply_1.reciprocate(power_1.power(p5, bignum_1.integer(i))), power_1.power(p9, bignum_1.integer(j))));
+            const denominator = factored ? defs_1.noexpand(power_1.power, p5, bignum_1.integer(i)) : power_1.power(p5, bignum_1.integer(i));
+            results.push(multiply_1.multiply(multiply_1.reciprocate(denominator), power_1.power(p9, bignum_1.integer(j))));
           }
         }
         return results;
@@ -14846,8 +14854,6 @@ FACTOR=${p8}`);
         "identity(n)=unit(n)",
         "trace(M)=contract(M)",
         "charpoly(M,x)=det(M-x*identity(dim(M)))",
-        "apart(f,x)=expand(f,x)",
-        "partfrac(f,x)=expand(f,x)",
         "log10(x)=log(x,10)",
         "log2(x)=log(x,2)",
         "cbrt(x)=x^(1/3)",
@@ -14864,6 +14870,7 @@ FACTOR=${p8}`);
         symbol_1.std_symbol(defs_1.ADD, add_1.Eval_add);
         symbol_1.std_symbol(defs_1.ADJ, adj_1.Eval_adj);
         symbol_1.std_symbol(defs_1.AND, test_1.Eval_and);
+        symbol_1.std_symbol(defs_1.APART, expand_1.Eval_apart);
         symbol_1.std_symbol(defs_1.APPROXRATIO, approxratio_1.Eval_approxratio);
         symbol_1.std_symbol(defs_1.ARCCOS, arccos_1.Eval_arccos);
         symbol_1.std_symbol(defs_1.ARCCOSH, arccosh_1.Eval_arccosh);
@@ -14957,6 +14964,7 @@ FACTOR=${p8}`);
         symbol_1.std_symbol(defs_1.OPERATOR, eval_1.Eval_operator);
         symbol_1.std_symbol(defs_1.OR, test_1.Eval_or);
         symbol_1.std_symbol(defs_1.OUTER, outer_1.Eval_outer);
+        symbol_1.std_symbol(defs_1.PARTFRAC, expand_1.Eval_apart);
         symbol_1.std_symbol(defs_1.PATTERN, pattern_1.Eval_pattern);
         symbol_1.std_symbol(defs_1.PATTERNSINFO, pattern_1.Eval_patternsinfo);
         symbol_1.std_symbol(defs_1.POLAR, polar_1.Eval_polar);
@@ -18566,12 +18574,12 @@ FACTOR=${p8}`);
         return mod && mod.__esModule ? mod : { "default": mod };
       };
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.CLEARALL = exports.CLEAR = exports.CIRCEXP = exports.CHOOSE = exports.CHECK = exports.CEILING = exports.BINOMIAL = exports.BINDING = exports.BESSELY = exports.BESSELJ = exports.ATOMIZE = exports.ARG = exports.ARCTANH = exports.ARCTAN = exports.ARCSINH = exports.ARCSIN = exports.ARCCOSH = exports.ARCCOS = exports.APPROXRATIO = exports.AND = exports.ADJ = exports.ADD = exports.ABS = exports.SYM = exports.TENSOR = exports.STR = exports.DOUBLE = exports.NUM = exports.CONS = exports.Sym = exports.Tensor = exports.Str = exports.Double = exports.Num = exports.Cons = exports.BaseAtom = exports.avoidCalculatingPowersIntoArctans = exports.do_simplify_nested_radicals = exports.dontCreateNewRadicalsInDenominatorWhenEvalingMultiplication = exports.defs = exports.PRINTMODE_LIST = exports.PRINTMODE_HUMAN = exports.PRINTMODE_COMPUTER = exports.PRINTMODE_2DASCII = exports.PRINTMODE_LATEX = exports.PRINTOUTRESULT = exports.DEBUG = exports.NSYM = exports.version = exports.breakpoint = void 0;
-      exports.INTEGRAL = exports.INNER = exports.INDEX = exports.IMAG = exports.HILBERT = exports.HERMITE = exports.GCD = exports.GAMMA = exports.FUNCTION = exports.FOR = exports.FLOOR = exports.FLOATF = exports.FILTER = exports.FACTORPOLY = exports.FACTORIAL = exports.FACTOR = exports.EXPSIN = exports.EXPCOS = exports.EXPAND = exports.EXP = exports.EVAL = exports.ERFC = exports.ERF = exports.EIGENVEC = exports.EIGENVAL = exports.EIGEN = exports.DSOLVE = exports.DRAW = exports.DOT = exports.DO = exports.DIVISORS = exports.DIRAC = exports.DIMENSIONOF = exports.DIM = exports.DET = exports.DERIVATIVE = exports.DENOMINATOR = exports.DEGREE = exports.DEFINT = exports.DECOMP = exports.COSH = exports.COS = exports.CONVERT = exports.CONTRACT = exports.CONJ = exports.CONDENSE = exports.COFACTOR = exports.COEFF = exports.CLOCK = exports.CLEARPATTERNS = void 0;
-      exports.SGN = exports.SETQ = exports.ROOTS = exports.YYRECT = exports.RREF = exports.ROUND = exports.REAL = exports.RATIONALIZE = exports.RANK = exports.QUOTIENT = exports.QUOTE = exports.QUANTITY = exports.PRODUCT = exports.PRINTPLAIN = exports.PRINTLIST = exports.PRINTLATEX = exports.PRINTFULL = exports.PRINT2DASCII = exports.PRINT = exports.PRINT_LEAVE_X_ALONE = exports.PRINT_LEAVE_E_ALONE = exports.PRIME = exports.POWER = exports.POLAR = exports.PATTERNSINFO = exports.PATTERN = exports.OUTER = exports.OR = exports.OPERATOR = exports.NUMERATOR = exports.NUMBER = exports.NULLSPACE = exports.NROOTS = exports.NOT = exports.MULTIPLY = exports.MOD = exports.MIN = exports.MAX = exports.MATRIXRANK = exports.LOOKUP = exports.LOG = exports.LIMIT = exports.LEGENDRE = exports.LEADING = exports.LCM = exports.LAGUERRE = exports.ISPRIME = exports.ISINTEGER = exports.INVG = exports.INV = void 0;
-      exports.SYMBOL_D = exports.SYMBOL_C = exports.SYMBOL_B = exports.SYMBOL_A = exports.INF = exports.PI = exports.VERSION = exports.SECRETX = exports.METAX = exports.METAB = exports.METAA = exports.DRAWX = exports.YYE = exports.MAX_FIXED_PRINTOUT_DIGITS = exports.FORCE_FIXED_PRINTOUT = exports.ASSUME_REAL_VARIABLES = exports.BAKE = exports.AUTOEXPAND = exports.LAST_PLAIN_PRINT = exports.LAST_LIST_PRINT = exports.LAST_LATEX_PRINT = exports.LAST_FULL_PRINT = exports.LAST_2DASCII_PRINT = exports.LAST_PRINT = exports.LAST = exports.NIL = exports.ZERO = exports.UNITS = exports.UNIT = exports.TRANSPOSE = exports.TESTLT = exports.TESTLE = exports.TESTGT = exports.TESTGE = exports.TESTEQ = exports.TEST = exports.TAYLOR = exports.TANH = exports.TAN = exports.SYMBOLSINFO = exports.SUM = exports.SUBST = exports.STOP = exports.SQRT = exports.SOLVE = exports.SHAPE = exports.SINH = exports.SIN = exports.SIMPLIFY = exports.SILENTPATTERN = void 0;
-      exports.cddar = exports.cdadr = exports.cadar = exports.caddr = exports.caadr = exports.cddr = exports.cdar = exports.cadr = exports.caar = exports.cdr = exports.car = exports.issymbol = exports.isNumericAtomOrTensor = exports.istensor = exports.isstr = exports.isNumericAtom = exports.isdouble = exports.isrational = exports.iscons = exports.dotprod_unicode = exports.transpose_unicode = exports.logbuf = exports.mtotal = exports.primetab = exports.parse_time_simplifications = exports.predefinedSymbolsInGlobalScope_doNotTrackInDependencies = exports.MAXDIM = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES = exports.MAXPRIMETAB = exports.E = exports.C6 = exports.C5 = exports.C4 = exports.C3 = exports.C2 = exports.C1 = exports.SYMBOL_X_UNDERSCORE = exports.SYMBOL_B_UNDERSCORE = exports.SYMBOL_A_UNDERSCORE = exports.SYMBOL_IDENTITY_MATRIX = exports.SYMBOL_Z = exports.SYMBOL_Y = exports.SYMBOL_X = exports.SYMBOL_T = exports.SYMBOL_S = exports.SYMBOL_R = exports.SYMBOL_N = exports.SYMBOL_J = exports.SYMBOL_I = void 0;
-      exports.evalFloats = exports.evalPolar = exports.doexpand = exports.noexpand = exports.Constants = exports.$ = exports.reset_after_error = exports.MEQUAL = exports.MZERO = exports.MSIGN = exports.isidentitymatrix = exports.isinv = exports.istranspose = exports.isinnerordot = exports.isfactorial = exports.ispower = exports.ismultiply = exports.isadd = exports.caddaddr = exports.cdddaddr = exports.caddadr = exports.cddaddr = exports.cadaddr = exports.caddddr = exports.cddddr = exports.cadddr = exports.cdaddr = exports.caddar = exports.cadadr = exports.caaddr = exports.cdddr = void 0;
+      exports.CLEAR = exports.CIRCEXP = exports.CHOOSE = exports.CHECK = exports.CEILING = exports.BINOMIAL = exports.BINDING = exports.BESSELY = exports.BESSELJ = exports.ATOMIZE = exports.ARG = exports.ARCTANH = exports.ARCTAN = exports.ARCSINH = exports.ARCSIN = exports.ARCCOSH = exports.ARCCOS = exports.APPROXRATIO = exports.APART = exports.AND = exports.ADJ = exports.ADD = exports.ABS = exports.SYM = exports.TENSOR = exports.STR = exports.DOUBLE = exports.NUM = exports.CONS = exports.Sym = exports.Tensor = exports.Str = exports.Double = exports.Num = exports.Cons = exports.BaseAtom = exports.avoidCalculatingPowersIntoArctans = exports.do_simplify_nested_radicals = exports.dontCreateNewRadicalsInDenominatorWhenEvalingMultiplication = exports.defs = exports.PRINTMODE_LIST = exports.PRINTMODE_HUMAN = exports.PRINTMODE_COMPUTER = exports.PRINTMODE_2DASCII = exports.PRINTMODE_LATEX = exports.PRINTOUTRESULT = exports.DEBUG = exports.NSYM = exports.version = exports.breakpoint = void 0;
+      exports.INNER = exports.INDEX = exports.IMAG = exports.HILBERT = exports.HERMITE = exports.GCD = exports.GAMMA = exports.FUNCTION = exports.FOR = exports.FLOOR = exports.FLOATF = exports.FILTER = exports.FACTORPOLY = exports.FACTORIAL = exports.FACTOR = exports.EXPSIN = exports.EXPCOS = exports.EXPAND = exports.EXP = exports.EVAL = exports.ERFC = exports.ERF = exports.EIGENVEC = exports.EIGENVAL = exports.EIGEN = exports.DSOLVE = exports.DRAW = exports.DOT = exports.DO = exports.DIVISORS = exports.DIRAC = exports.DIMENSIONOF = exports.DIM = exports.DET = exports.DERIVATIVE = exports.DENOMINATOR = exports.DEGREE = exports.DEFINT = exports.DECOMP = exports.COSH = exports.COS = exports.CONVERT = exports.CONTRACT = exports.CONJ = exports.CONDENSE = exports.COFACTOR = exports.COEFF = exports.CLOCK = exports.CLEARPATTERNS = exports.CLEARALL = void 0;
+      exports.ROOTS = exports.YYRECT = exports.RREF = exports.ROUND = exports.REAL = exports.RATIONALIZE = exports.RANK = exports.QUOTIENT = exports.QUOTE = exports.QUANTITY = exports.PRODUCT = exports.PRINTPLAIN = exports.PRINTLIST = exports.PRINTLATEX = exports.PRINTFULL = exports.PRINT2DASCII = exports.PRINT = exports.PRINT_LEAVE_X_ALONE = exports.PRINT_LEAVE_E_ALONE = exports.PRIME = exports.POWER = exports.POLAR = exports.PATTERNSINFO = exports.PATTERN = exports.PARTFRAC = exports.OUTER = exports.OR = exports.OPERATOR = exports.NUMERATOR = exports.NUMBER = exports.NULLSPACE = exports.NROOTS = exports.NOT = exports.MULTIPLY = exports.MOD = exports.MIN = exports.MAX = exports.MATRIXRANK = exports.LOOKUP = exports.LOG = exports.LIMIT = exports.LEGENDRE = exports.LEADING = exports.LCM = exports.LAGUERRE = exports.ISPRIME = exports.ISINTEGER = exports.INVG = exports.INV = exports.INTEGRAL = void 0;
+      exports.SYMBOL_B = exports.SYMBOL_A = exports.INF = exports.PI = exports.VERSION = exports.SECRETX = exports.METAX = exports.METAB = exports.METAA = exports.DRAWX = exports.YYE = exports.MAX_FIXED_PRINTOUT_DIGITS = exports.FORCE_FIXED_PRINTOUT = exports.ASSUME_REAL_VARIABLES = exports.BAKE = exports.AUTOEXPAND = exports.LAST_PLAIN_PRINT = exports.LAST_LIST_PRINT = exports.LAST_LATEX_PRINT = exports.LAST_FULL_PRINT = exports.LAST_2DASCII_PRINT = exports.LAST_PRINT = exports.LAST = exports.NIL = exports.ZERO = exports.UNITS = exports.UNIT = exports.TRANSPOSE = exports.TESTLT = exports.TESTLE = exports.TESTGT = exports.TESTGE = exports.TESTEQ = exports.TEST = exports.TAYLOR = exports.TANH = exports.TAN = exports.SYMBOLSINFO = exports.SUM = exports.SUBST = exports.STOP = exports.SQRT = exports.SOLVE = exports.SHAPE = exports.SINH = exports.SIN = exports.SIMPLIFY = exports.SILENTPATTERN = exports.SGN = exports.SETQ = void 0;
+      exports.cadar = exports.caddr = exports.caadr = exports.cddr = exports.cdar = exports.cadr = exports.caar = exports.cdr = exports.car = exports.issymbol = exports.isNumericAtomOrTensor = exports.istensor = exports.isstr = exports.isNumericAtom = exports.isdouble = exports.isrational = exports.iscons = exports.dotprod_unicode = exports.transpose_unicode = exports.logbuf = exports.mtotal = exports.primetab = exports.parse_time_simplifications = exports.predefinedSymbolsInGlobalScope_doNotTrackInDependencies = exports.MAXDIM = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES = exports.MAXPRIMETAB = exports.E = exports.C6 = exports.C5 = exports.C4 = exports.C3 = exports.C2 = exports.C1 = exports.SYMBOL_X_UNDERSCORE = exports.SYMBOL_B_UNDERSCORE = exports.SYMBOL_A_UNDERSCORE = exports.SYMBOL_IDENTITY_MATRIX = exports.SYMBOL_Z = exports.SYMBOL_Y = exports.SYMBOL_X = exports.SYMBOL_T = exports.SYMBOL_S = exports.SYMBOL_R = exports.SYMBOL_N = exports.SYMBOL_J = exports.SYMBOL_I = exports.SYMBOL_D = exports.SYMBOL_C = void 0;
+      exports.evalFloats = exports.evalPolar = exports.doexpand = exports.noexpand = exports.Constants = exports.$ = exports.reset_after_error = exports.MEQUAL = exports.MZERO = exports.MSIGN = exports.isidentitymatrix = exports.isinv = exports.istranspose = exports.isinnerordot = exports.isfactorial = exports.ispower = exports.ismultiply = exports.isadd = exports.caddaddr = exports.cdddaddr = exports.caddadr = exports.cddaddr = exports.cadaddr = exports.caddddr = exports.cddddr = exports.cadddr = exports.cdaddr = exports.caddar = exports.cadadr = exports.caaddr = exports.cdddr = exports.cddar = exports.cdadr = void 0;
       var big_integer_1 = __importDefault(require_BigInteger());
       var print_1 = require_print();
       var symbol_1 = require_symbol();
@@ -18714,6 +18722,7 @@ FACTOR=${p8}`);
       exports.ADD = "add";
       exports.ADJ = "adj";
       exports.AND = "and";
+      exports.APART = "apart";
       exports.APPROXRATIO = "approxratio";
       exports.ARCCOS = "arccos";
       exports.ARCCOSH = "arccosh";
@@ -18807,6 +18816,7 @@ FACTOR=${p8}`);
       exports.OPERATOR = "operator";
       exports.OR = "or";
       exports.OUTER = "outer";
+      exports.PARTFRAC = "partfrac";
       exports.PATTERN = "pattern";
       exports.PATTERNSINFO = "patternsinfo";
       exports.POLAR = "polar";
@@ -19408,6 +19418,7 @@ FACTOR=${p8}`);
         "add",
         "adj",
         "and",
+        "apart",
         "approxratio",
         "arccos",
         "arccosh",
@@ -19499,6 +19510,7 @@ FACTOR=${p8}`);
         "operator",
         "or",
         "outer",
+        "partfrac",
         "pattern",
         "patternsinfo",
         "polar",

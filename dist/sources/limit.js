@@ -11,6 +11,7 @@ const derivative_1 = require("./derivative");
 const denominator_1 = require("./denominator");
 const float_1 = require("./float");
 const is_1 = require("./is");
+const list_1 = require("./list");
 const misc_1 = require("./misc");
 const multiply_1 = require("./multiply");
 const numerator_1 = require("./numerator");
@@ -107,8 +108,73 @@ function infiniteLimit(F, X, A, sides) {
     }
     return positive[0] ? symbol_1.symbol(defs_1.INF) : multiply_1.negate(symbol_1.symbol(defs_1.INF));
 }
-// sides: -1 for the left of A, 1 for the right; only used for infinite limits
+// not a module-level list: this file is loaded inside a circular import,
+// before the names in defs are initialised
+function isJumpFunction(head) {
+    return [defs_1.SGN, defs_1.ABS, defs_1.FLOOR, defs_1.CEILING].some((f) => head === symbol_1.symbol(f));
+}
+function hasJump(p) {
+    return defs_1.iscons(p) && (isJumpFunction(defs_1.car(p)) || p.tail().some(hasJump));
+}
+// On one side of the point a jump function is smooth: sgn(g) is a constant,
+// abs(g) is g or -g, floor(g) and ceiling(g) are constants. The value of g
+// just beside the point says which. Nodes whose g cannot be evaluated
+// numerically there (symbolic coefficients) are left as they are.
+function resolveJumps(p, X, beside) {
+    if (!defs_1.iscons(p)) {
+        return p;
+    }
+    const head = defs_1.car(p);
+    if (isJumpFunction(head)) {
+        const g = defs_1.cadr(p);
+        const v = float_1.zzfloat(subst_1.subst(g, X, bignum_1.double(beside)));
+        if (defs_1.isdouble(v)) {
+            const inner = resolveJumps(g, X, beside);
+            switch (head) {
+                case symbol_1.symbol(defs_1.SGN):
+                    return bignum_1.integer(Math.sign(v.d));
+                case symbol_1.symbol(defs_1.ABS):
+                    return v.d < 0 ? multiply_1.negate(inner) : inner;
+                case symbol_1.symbol(defs_1.FLOOR):
+                    return bignum_1.integer(Math.floor(v.d));
+                default:
+                    return bignum_1.integer(Math.ceil(v.d));
+            }
+        }
+    }
+    return list_1.makeList(head, ...p.tail().map((q) => resolveJumps(q, X, beside)));
+}
+// With jump functions present the value at the point says nothing about the
+// limit, and L'Hopital does not apply. Each side is solved on its own, with
+// the jumps resolved for that side, and the sides must agree. Returns
+// undefined when the jumps could not all be resolved.
+function limitWithJumps(F, X, A, sides) {
+    const a = float_1.zzfloat(A);
+    if (!defs_1.isdouble(a)) {
+        return undefined;
+    }
+    const eps = 1e-6 * Math.max(1, Math.abs(a.d));
+    const results = [];
+    for (const side of sides) {
+        const smooth = eval_1.Eval(resolveJumps(F, X, a.d + side * eps));
+        if (hasJump(smooth)) {
+            return undefined;
+        }
+        results.push(limitAt(smooth, X, A, [side]));
+    }
+    if (results.some((r) => !misc_1.equal(r, results[0]))) {
+        run_1.stop('limit: left and right limits differ — limit does not exist');
+    }
+    return results[0];
+}
+// sides: -1 for the left of A, 1 for the right
 function limitAt(F, X, A, sides) {
+    if (hasJump(F)) {
+        const resolved = limitWithJumps(F, X, A, sides);
+        if (resolved !== undefined) {
+            return resolved;
+        }
+    }
     let result = tryEvalAt(F, X, A);
     if (result !== INDETERMINATE) {
         return hasPole(result) ? infiniteLimit(F, X, A, sides) : result;

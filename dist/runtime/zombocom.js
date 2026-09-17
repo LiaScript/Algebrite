@@ -13,7 +13,11 @@ if (!defs_1.defs.inited) {
     init_1.init();
 }
 function parse_internal(argu) {
-    if (typeof argu === 'string') {
+    if (Array.isArray(argu)) {
+        // a vector or (nested) matrix, built the way the scanner builds [..]
+        return scan_1.build_tensor(argu.map(parse_internal));
+    }
+    else if (typeof argu === 'string') {
         const [, u] = scan_1.scan(argu);
         return u;
     }

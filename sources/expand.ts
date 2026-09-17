@@ -4,6 +4,7 @@ import {
   cadr,
   Constants,
   doexpand,
+  noexpand,
   isadd,
   ismultiply,
   ispower,
@@ -50,6 +51,16 @@ export function Eval_expand(p1: U) {
   return expand(F, X);
 }
 
+// apart(f, x) / partfrac(f, x): the same decomposition, but repeated factors
+// keep their factored form, 1/(x-1)^2 rather than 1/(x^2-2*x+1), which is
+// the textbook convention. expand() keeps its expanded denominators.
+export function Eval_apart(p1: U) {
+  const F = Eval(cadr(p1));
+  const p2 = Eval(caddr(p1));
+  const X = p2 === symbol(NIL) ? guess(F) : p2;
+  return expand(F, X, true);
+}
+
 //define A p2
 //define B p3
 //define C p4
@@ -59,15 +70,15 @@ export function Eval_expand(p1: U) {
 //define T p8
 //define X p9
 
-function expand(F: U, X: U): U {
+function expand(F: U, X: U, factored = false): U {
   if (istensor(F)) {
-    return expand_tensor(F, X);
+    return expand_tensor(F, X, factored);
   }
 
   // if sum of terms then sum over the expansion of each term
   if (isadd(F)) {
     return F.tail().reduce(
-      (a: U, b: U) => add(a, expand(b, X)),
+      (a: U, b: U) => add(a, expand(b, X, factored)),
       Constants.zero
     );
   }
@@ -102,7 +113,7 @@ function expand(F: U, X: U): U {
 
   let C = expand_get_C(A, X);
   B = expand_get_B(B, C, X);
-  A = expand_get_A(A, C, X);
+  A = expand_get_A(A, C, X, factored);
 
   let result: U;
   if (istensor(C)) {
@@ -115,10 +126,10 @@ function expand(F: U, X: U): U {
   return add(result, Q);
 }
 
-function expand_tensor(p5: Tensor, p9: U): U {
+function expand_tensor(p5: Tensor, p9: U, factored: boolean): U {
   p5 = copy_tensor(p5);
   p5.tensor.elem = p5.tensor.elem.map((el) => {
-    return expand(el, p9);
+    return expand(el, p9, factored);
   });
   return p5;
 }
@@ -375,17 +386,17 @@ function expand_get_B(p3: U, p4: U, p9: U): U {
 }
 
 // Returns the expansion fractions in A.
-function expand_get_A(p2: U, p4: U, p9: U): U {
+function expand_get_A(p2: U, p4: U, p9: U, factored: boolean): U {
   if (!istensor(p4)) {
     return reciprocate(p2);
   }
   let elements: U[] = [];
   if (ismultiply(p2)) {
     p2.tail().forEach((p5) => {
-      elements.push(...expand_get_AF(p5, p9));
+      elements.push(...expand_get_AF(p5, p9, factored));
     });
   } else {
-    elements = expand_get_AF(p2, p9);
+    elements = expand_get_AF(p2, p9, factored);
   }
   const n = elements.length;
   const p8 = alloc_tensor(n);
@@ -395,7 +406,7 @@ function expand_get_A(p2: U, p4: U, p9: U): U {
   return p8;
 }
 
-function expand_get_AF(p5: U, p9: U): U[] {
+function expand_get_AF(p5: U, p9: U, factored: boolean): U[] {
   let n = 1;
   if (!Find(p5, p9)) {
     return [];
@@ -408,9 +419,10 @@ function expand_get_AF(p5: U, p9: U): U[] {
   const d = nativeInt(degree(p5, p9));
   for (let i = n; i > 0; i--) {
     for (let j = 0; j < d; j++) {
-      results.push(
-        multiply(reciprocate(power(p5, integer(i))), power(p9, integer(j)))
-      );
+      const denominator = factored
+        ? noexpand(power, p5, integer(i))
+        : power(p5, integer(i));
+      results.push(multiply(reciprocate(denominator), power(p9, integer(j))));
     }
   }
   return results;

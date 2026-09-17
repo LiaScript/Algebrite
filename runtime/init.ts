@@ -62,7 +62,7 @@ import {
   Eval_subst,
   Eval_unit
 } from '../sources/eval';
-import { Eval_expand } from '../sources/expand';
+import { Eval_apart, Eval_expand } from '../sources/expand';
 import { Eval_expcos } from '../sources/expcos';
 import { Eval_expsin } from '../sources/expsin';
 import { Eval_factor } from '../sources/factor';
@@ -128,6 +128,7 @@ import {
   ADD,
   ADJ,
   AND,
+  APART,
   APPROXRATIO,
   ARCCOS,
   ARCCOSH,
@@ -248,6 +249,7 @@ import {
   OPERATOR,
   OR,
   OUTER,
+  PARTFRAC,
   PATTERN,
   PATTERNSINFO,
   PI,
@@ -415,9 +417,6 @@ const defn_str = [
   'identity(n)=unit(n)',
   'trace(M)=contract(M)',
   'charpoly(M,x)=det(M-x*identity(dim(M)))',
-  // the two-argument expand() already does partial fractions
-  'apart(f,x)=expand(f,x)',
-  'partfrac(f,x)=expand(f,x)',
   'log10(x)=log(x,10)',
   'log2(x)=log(x,2)',
   'cbrt(x)=x^(1/3)',
@@ -435,6 +434,7 @@ export function defn() {
   std_symbol(ADD, Eval_add);
   std_symbol(ADJ, Eval_adj);
   std_symbol(AND, Eval_and);
+  std_symbol(APART, Eval_apart);
   std_symbol(APPROXRATIO, Eval_approxratio);
   std_symbol(ARCCOS, Eval_arccos);
   std_symbol(ARCCOSH, Eval_arccosh);
@@ -529,6 +529,7 @@ export function defn() {
   std_symbol(OPERATOR, Eval_operator);
   std_symbol(OR, Eval_or);
   std_symbol(OUTER, Eval_outer);
+  std_symbol(PARTFRAC, Eval_apart);
   std_symbol(PATTERN, Eval_pattern);
   std_symbol(PATTERNSINFO, Eval_patternsinfo);
   std_symbol(POLAR, Eval_polar);

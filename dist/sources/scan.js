@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.scan_meta = exports.scan = void 0;
+exports.build_tensor = exports.scan_meta = exports.scan = void 0;
 const alloc_1 = require("../runtime/alloc");
 const defs_1 = require("../runtime/defs");
 const otherCFunctions_1 = require("../runtime/otherCFunctions");
@@ -745,6 +745,7 @@ function build_tensor(elements) {
     tensor_1.check_tensor_dimensions(p2);
     return p2;
 }
+exports.build_tensor = build_tensor;
 function get_next_token() {
     newline_flag = 0;
     while (true) {

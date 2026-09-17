@@ -9,6 +9,7 @@ const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const multiply_1 = require("./multiply");
+const simplify_1 = require("./simplify");
 const tensor_1 = require("./tensor");
 // rref(M): reduced row echelon form, exact arithmetic.
 function Eval_rref(p1) {
@@ -61,8 +62,11 @@ function matrix(rows) {
 }
 // Gauss-Jordan elimination. Returns the reduced rows and the pivot columns.
 // The pivot is the first entry of the column that is not identically zero,
-// so a symbolic entry counts as nonzero, as in other CAS.
+// so a symbolic entry counts as nonzero, as in other CAS. Symbolic entries
+// are simplified after each step, otherwise zeros such as d/(d-b*c/a)-...
+// are not recognised.
 function rowReduce(M) {
+    const tidy = (e) => (defs_1.isNumericAtom(e) ? e : simplify_1.simplify(e));
     const [m, n] = M.dim;
     const R = [];
     for (let i = 0; i < m; i++) {
@@ -76,11 +80,11 @@ function rowReduce(M) {
         }
         [R[r], R[p]] = [R[p], R[r]];
         const pivot = R[r][c];
-        R[r] = R[r].map((e) => multiply_1.divide(e, pivot));
+        R[r] = R[r].map((e) => tidy(multiply_1.divide(e, pivot)));
         for (let i = 0; i < m; i++) {
             const f = R[i][c];
             if (i !== r && !is_1.isZeroAtomOrTensor(f)) {
-                R[i] = R[i].map((e, j) => add_1.subtract(e, multiply_1.multiply(f, R[r][j])));
+                R[i] = R[i].map((e, j) => tidy(add_1.subtract(e, multiply_1.multiply(f, R[r][j]))));
             }
         }
         pivots.push(c);

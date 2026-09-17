@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_expand = void 0;
+exports.Eval_apart = exports.Eval_expand = void 0;
 const alloc_1 = require("../runtime/alloc");
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
@@ -40,6 +40,16 @@ function Eval_expand(p1) {
     return expand(F, X);
 }
 exports.Eval_expand = Eval_expand;
+// apart(f, x) / partfrac(f, x): the same decomposition, but repeated factors
+// keep their factored form, 1/(x-1)^2 rather than 1/(x^2-2*x+1), which is
+// the textbook convention. expand() keeps its expanded denominators.
+function Eval_apart(p1) {
+    const F = eval_1.Eval(defs_1.cadr(p1));
+    const p2 = eval_1.Eval(defs_1.caddr(p1));
+    const X = p2 === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(F) : p2;
+    return expand(F, X, true);
+}
+exports.Eval_apart = Eval_apart;
 //define A p2
 //define B p3
 //define C p4
@@ -48,13 +58,13 @@ exports.Eval_expand = Eval_expand;
 //define Q p7
 //define T p8
 //define X p9
-function expand(F, X) {
+function expand(F, X, factored = false) {
     if (defs_1.istensor(F)) {
-        return expand_tensor(F, X);
+        return expand_tensor(F, X, factored);
     }
     // if sum of terms then sum over the expansion of each term
     if (defs_1.isadd(F)) {
-        return F.tail().reduce((a, b) => add_1.add(a, expand(b, X)), defs_1.Constants.zero);
+        return F.tail().reduce((a, b) => add_1.add(a, expand(b, X, factored)), defs_1.Constants.zero);
     }
     let B = numerator_1.numerator(F);
     let A = denominator_1.denominator(F);
@@ -79,7 +89,7 @@ function expand(F, X) {
     A = factorpoly_1.factorpoly(A, X);
     let C = expand_get_C(A, X);
     B = expand_get_B(B, C, X);
-    A = expand_get_A(A, C, X);
+    A = expand_get_A(A, C, X, factored);
     let result;
     if (defs_1.istensor(C)) {
         const inverse = defs_1.doexpand(inv_1.inv, C);
@@ -91,10 +101,10 @@ function expand(F, X) {
     }
     return add_1.add(result, Q);
 }
-function expand_tensor(p5, p9) {
+function expand_tensor(p5, p9, factored) {
     p5 = tensor_1.copy_tensor(p5);
     p5.tensor.elem = p5.tensor.elem.map((el) => {
-        return expand(el, p9);
+        return expand(el, p9, factored);
     });
     return p5;
 }
@@ -341,18 +351,18 @@ function expand_get_B(p3, p4, p9) {
     return p8;
 }
 // Returns the expansion fractions in A.
-function expand_get_A(p2, p4, p9) {
+function expand_get_A(p2, p4, p9, factored) {
     if (!defs_1.istensor(p4)) {
         return multiply_1.reciprocate(p2);
     }
     let elements = [];
     if (defs_1.ismultiply(p2)) {
         p2.tail().forEach((p5) => {
-            elements.push(...expand_get_AF(p5, p9));
+            elements.push(...expand_get_AF(p5, p9, factored));
         });
     }
     else {
-        elements = expand_get_AF(p2, p9);
+        elements = expand_get_AF(p2, p9, factored);
     }
     const n = elements.length;
     const p8 = alloc_1.alloc_tensor(n);
@@ -361,7 +371,7 @@ function expand_get_A(p2, p4, p9) {
     p8.tensor.elem = elements;
     return p8;
 }
-function expand_get_AF(p5, p9) {
+function expand_get_AF(p5, p9, factored) {
     let n = 1;
     if (!find_1.Find(p5, p9)) {
         return [];
@@ -374,7 +384,10 @@ function expand_get_AF(p5, p9) {
     const d = bignum_1.nativeInt(degree_1.degree(p5, p9));
     for (let i = n; i > 0; i--) {
         for (let j = 0; j < d; j++) {
-            results.push(multiply_1.multiply(multiply_1.reciprocate(power_1.power(p5, bignum_1.integer(i))), power_1.power(p9, bignum_1.integer(j))));
+            const denominator = factored
+                ? defs_1.noexpand(power_1.power, p5, bignum_1.integer(i))
+                : power_1.power(p5, bignum_1.integer(i));
+            results.push(multiply_1.multiply(multiply_1.reciprocate(denominator), power_1.power(p9, bignum_1.integer(j))));
         }
     }
     return results;
