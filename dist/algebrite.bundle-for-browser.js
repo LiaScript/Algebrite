@@ -13628,6 +13628,7 @@ FACTOR=${p8}`);
       var float_1 = require_float();
       var is_1 = require_is();
       var misc_1 = require_misc();
+      var quantity_1 = require_quantity();
       var simplify_1 = require_simplify();
       function Eval_test(p1) {
         const orig = p1;
@@ -13791,6 +13792,9 @@ FACTOR=${p8}`);
         }
         let t = 0;
         let p1 = add_1.subtract(simplify_1.simplify(arg1), simplify_1.simplify(arg2));
+        if (quantity_1.isQuantity(p1)) {
+          p1 = defs_1.cadr(p1);
+        }
         if (p1.k !== defs_1.NUM && p1.k !== defs_1.DOUBLE) {
           p1 = eval_1.Eval(float_1.yyfloat(p1));
         }

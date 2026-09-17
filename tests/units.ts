@@ -86,4 +86,17 @@ run_test([
 
   '2*km',
   '2000*m',
+
+  // comparisons use the magnitude of the (same-dimension) difference
+  '5m < 200cm',
+  '0',
+
+  '2m < 500cm',
+  '1',
+
+  'and(1100m <= 1.2km, 1.2km <= 1300m)',
+  '1',
+
+  '5m < 3kg',
+  'Stop: incompatible units: cannot add m and kg',
 ]);

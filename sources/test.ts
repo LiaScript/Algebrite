@@ -22,6 +22,7 @@ import {
   isZeroLikeOrNonZeroLikeOrUndetermined
 } from './is';
 import { equal } from './misc';
+import { isQuantity } from './quantity';
 import { simplify } from './simplify';
 
 // If the number of args is odd then the last arg is the default result.
@@ -313,6 +314,12 @@ export function cmp_values(arg1: U, arg2: U): Sign {
   }
   let t: Sign = 0;
   let p1 = subtract(simplify(arg1), simplify(arg2));
+
+  // same-dimension quantities subtract to a quantity (incompatible ones
+  // already stopped inside subtract) — its sign is the magnitude's sign
+  if (isQuantity(p1)) {
+    p1 = cadr(p1);
+  }
 
   // try floating point if necessary
   if (p1.k !== NUM && p1.k !== DOUBLE) {
