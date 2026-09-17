@@ -14149,11 +14149,16 @@ FACTOR=${p8}`);
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.Eval_sum = void 0;
       var defs_1 = require_defs();
+      var find_1 = require_find();
       var run_1 = require_run();
       var symbol_1 = require_symbol();
       var add_1 = require_add();
       var bignum_1 = require_bignum();
+      var coeff_1 = require_coeff();
       var eval_1 = require_eval();
+      var is_1 = require_is();
+      var multiply_1 = require_multiply();
+      var power_1 = require_power();
       function Eval_sum(p1) {
         const body = defs_1.cadr(p1);
         const indexVariable = defs_1.caddr(p1);
@@ -14161,12 +14166,9 @@ FACTOR=${p8}`);
           run_1.stop("sum: 2nd arg?");
         }
         const j = eval_1.evaluate_integer(defs_1.cadddr(p1));
-        if (isNaN(j)) {
-          return p1;
-        }
         const k = eval_1.evaluate_integer(defs_1.caddddr(p1));
-        if (isNaN(k)) {
-          return p1;
+        if (isNaN(j) || isNaN(k)) {
+          return symbolicSum(p1, body, indexVariable);
         }
         const p4 = symbol_1.get_binding(indexVariable);
         let temp = defs_1.Constants.zero;
@@ -14178,6 +14180,35 @@ FACTOR=${p8}`);
         return temp;
       }
       exports.Eval_sum = Eval_sum;
+      function symbolicSum(p1, body, x) {
+        const saved = symbol_1.get_binding(x);
+        symbol_1.set_binding(x, x);
+        try {
+          const f = eval_1.Eval(body);
+          if (find_1.Find(f, x) && !is_1.ispolyexpandedform(f, x)) {
+            return p1;
+          }
+          const c = coeff_1.coeff(f, x);
+          const upper = powerSums(eval_1.Eval(defs_1.caddddr(p1)), c.length - 1);
+          const lower = powerSums(add_1.subtract(eval_1.Eval(defs_1.cadddr(p1)), defs_1.Constants.one), c.length - 1);
+          return c.reduce((acc, cp, p) => add_1.add(acc, multiply_1.multiply(cp, add_1.subtract(upper[p], lower[p]))), defs_1.Constants.zero);
+        } finally {
+          symbol_1.set_binding(x, saved);
+        }
+      }
+      function powerSums(n, maxP) {
+        const S = [];
+        for (let p = 0; p <= maxP; p++) {
+          let t = add_1.subtract(power_1.power(add_1.add(n, defs_1.Constants.one), bignum_1.integer(p + 1)), defs_1.Constants.one);
+          let binom = 1;
+          for (let j = 0; j < p; j++) {
+            t = add_1.subtract(t, multiply_1.multiply(bignum_1.integer(binom), S[j]));
+            binom = binom * (p + 1 - j) / (j + 1);
+          }
+          S.push(multiply_1.divide(t, bignum_1.integer(p + 1)));
+        }
+        return S;
+      }
     }
   });
 
