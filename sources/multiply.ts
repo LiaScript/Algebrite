@@ -40,15 +40,14 @@ import { equaln, isfraction, isinteger, isminusone, isnegativenumber, isplusone,
 import { makeList } from './list';
 import { power } from './power';
 import { multiplyUnitAware } from './quantity';
+import { inner } from './inner';
 import { scalar_times_tensor, tensor_times_scalar } from './tensor';
 
 // Symbolic multiplication
 
-// multiplication is commutative, so it can't be used
-// e.g. on two matrices.
-// But it can be used, say, on a scalar and a matrix.,
-// so the output of a multiplication is not
-// always a scalar.
+// multiplication is commutative for scalars. A scalar times a matrix
+// scales it, and two tensors give their matrix product (inner), so the
+// output of a multiplication is not always a scalar.
 
 //extern void append(void)
 //static void parse_p1(void)
@@ -119,6 +118,12 @@ function yymultiply(p1: U, p2: U): U {
   // tensor times scalar?
   if (istensor(p1) && !istensor(p2)) {
     return tensor_times_scalar(p1, p2);
+  }
+
+  // tensor times tensor is the matrix product, which does not commute:
+  // left as a product, the factors below would be sorted into B*A
+  if (istensor(p1) && istensor(p2)) {
+    return inner(p1, p2);
   }
 
   // adjust operands
@@ -545,8 +550,8 @@ function __is_radical_number(p: U): boolean {
 //
 //  Note that "a" is presumed to be a scalar. Is this correct?
 //
-//  Yes, because "*" has no meaning if "a" is a tensor.
-//  To multiply tensors, "dot" or "outer" should be used.
+//  Yes: symbols are scalars. "*" of two actual tensors is their matrix
+//  product (the same as "dot"); "outer" gives the outer product.
 //
 //  > dot(a,hilbert(2))
 //  dot(a,((1,1/2),(1/2,1/3)))
