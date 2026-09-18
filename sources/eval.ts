@@ -292,7 +292,7 @@ Evaluates each argument from left to right. Returns the result of the last argum
 
 */
 export function Eval_do(p1: U) {
-  let result = car(p1);
+  let result: U = symbol(NIL);
   p1 = cdr(p1);
 
   while (iscons(p1)) {
@@ -505,7 +505,6 @@ export function Eval_setq(p1: U): U {
 //-----------------------------------------------------------------------------
 function setq_indexed(p1: U): U {
   const p4 = cadadr(p1);
-  console.log(`p4: ${p4}`);
   if (!issymbol(p4)) {
     // this is likely to happen when one tries to
     // do assignments like these
