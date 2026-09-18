@@ -374,3 +374,30 @@ run_test([
   'factor(y)',
   'x^2+exp(x)',
 ]);
+
+// quadratic factors without integer complex roots, explicit variable
+run_test([
+  'factor((x^2+2)*(x^2+3),x)',
+  '(x^2+2)*(x^2+3)',
+
+  'factor((x^2-2)*(x+a),x)',
+  '(x^2-2)*(x+a)',
+
+  'factor((x^2+1)*(x^2+a),x)',
+  '(x^2+1)*(x^2+a)',
+
+  'factor((t^2+2)*(t^2+t+1),t)',
+  '(t^2+t+1)*(t^2+2)',
+
+  // (x^6-1)/(x-1)
+  'factor(x^5+x^4+x^3+x^2+x+1,x)',
+  '(x+1)*(x^2+x+1)*(x^2-x+1)',
+
+  'factor((2*x^2+3)^2*(3*x-1),x)',
+  '(3*x-1)*(2*x^2+3)^2',
+
+  // limitation: quadratic factors with symbolic coefficients are not
+  // found, x^4+x^2*y^2+y^4 = (x^2+x*y+y^2)*(x^2-x*y+y^2)
+  'factor(x^4+x^2*y^2+y^4,x)',
+  'x^4+y^4+x^2*y^2',
+]);
