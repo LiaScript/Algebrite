@@ -176,4 +176,58 @@ run_test([
   // multiplication.
   'transpose(A)*transpose(x)',
   'transpose(A)*transpose(x)',
+
+  'transpose([[5]])',
+  '[[5]]',
+
+  'transpose(zero(2,3))',
+  '[[0,0],[0,0],[0,0]]',
+
+  // plain transpose, no complex conjugation
+  'transpose([[1,i],[2,3]])',
+  '[[1,2],[i,3]]',
+
+  // rank-3 tensor T[i,j,k] with explicit indices
+  'T=[[[1,2],[3,4]],[[5,6],[7,8]]]',
+  '',
+
+  'transpose(T)',
+  '[[[1,2],[5,6]],[[3,4],[7,8]]]',
+
+  'transpose(T,1,2)',
+  '[[[1,2],[5,6]],[[3,4],[7,8]]]',
+
+  'transpose(T,2,3)',
+  '[[[1,3],[2,4]],[[5,7],[6,8]]]',
+
+  'transpose(T,1,3)',
+  '[[[1,5],[3,7]],[[2,6],[4,8]]]',
+
+  'transpose(T,3,1)',
+  '[[[1,5],[3,7]],[[2,6],[4,8]]]',
+
+  'transpose(T,1,1)',
+  '[[[1,2],[3,4]],[[5,6],[7,8]]]',
+
+  'transpose(transpose(T,1,3),1,3)',
+  '[[[1,2],[3,4]],[[5,6],[7,8]]]',
+
+  'shape(transpose(zero(2,3,4),1,3))',
+  '[4,3,2]',
+
+  'transpose([[1,2],[3,4]],2,2)',
+  '[[1,2],[3,4]]',
+
+  'transpose(T,1,4)',
+  'Stop: transpose: index out of range',
+
+  'transpose([[1,2],[3,4]],1,3)',
+  'Stop: transpose: index out of range',
+
+  // symbolic or missing index must stop, not return garbage
+  'transpose([[1,2],[3,4]],n,1)',
+  'Stop: transpose: index out of range',
+
+  'transpose([[1,2],[3,4]],1)',
+  'Stop: transpose: index out of range',
 ]);
