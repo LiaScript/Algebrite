@@ -281,3 +281,53 @@ run_test([
   'dot([1,2],[1,2,3])',
   'Stop: inner: tensor dimension check',
 ]);
+
+// "." between two operands is the dot product, like "·": it used to start
+// a number, so A.B gave NaN entries and x.y gave NaN*x*y
+run_test([
+  'a.b',
+  'inner(a,b)',
+
+  'a.b.c',
+  'inner(a,inner(b,c))',
+
+  '2*a.b',
+  '2*inner(a,b)',
+
+  'a . b',
+  'inner(a,b)',
+
+  '[1,2].[3,4]',
+  '11',
+
+  'A=[[1,2],[3,4]]',
+  '',
+
+  'B=[[0,1],[1,0]]',
+  '',
+
+  'A.B',
+  '[[2,1],[4,3]]',
+
+  'B.A',
+  '[[3,4],[1,2]]',
+
+  'A.[1,1]',
+  '[3,7]',
+
+  'A.B==A*B',
+  '1',
+
+  // a dot followed by a digit is still a number
+  'A.5',
+  '[[0.5,1.0],[1.5,2.0]]',
+
+  '.5',
+  '0.5',
+
+  '2.',
+  '2.0',
+
+  '1.5e3',
+  '1500.0',
+]);

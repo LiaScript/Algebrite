@@ -323,8 +323,13 @@ function tokenCharCode() {
   return undefined;
 }
 
+// "·" or ".": dot (inner) product
+function isDotProduct(): boolean {
+  return tokenCharCode() === dotprod_unicode || token === '.';
+}
+
 function is_factor(): boolean {
-  if (tokenCharCode() === dotprod_unicode) {
+  if (isDotProduct()) {
     return true;
   }
 
@@ -393,7 +398,7 @@ function scan_term(): U {
       simplify_1_in_products(results);
       get_next_token();
       results.push(inverse(scan_factor()));
-    } else if (tokenCharCode() === dotprod_unicode) {
+    } else if (isDotProduct()) {
       get_next_token();
       results.push(makeList(symbol(INNER), results.pop(), scan_factor()));
     } else {
@@ -999,8 +1004,12 @@ function get_token() {
     return;
   }
 
-  // number?
-  if (isdigit(scanned[scan_str]) || scanned[scan_str] === '.') {
+  // number? A dot starts one only before a digit (.5); otherwise it is
+  // the dot product operator (A.B)
+  if (
+    isdigit(scanned[scan_str]) ||
+    (scanned[scan_str] === '.' && isdigit(scanned[scan_str + 1]))
+  ) {
     while (isdigit(scanned[scan_str])) {
       scan_str++;
     }
