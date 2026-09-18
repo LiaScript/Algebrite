@@ -350,6 +350,20 @@ function yypower(base: U, exponent: U): U {
     return result;
   }
 
+  // (-k * u) ^ c  ->  (-1) ^ c * (k * u) ^ c  for k > 0 and u known >= 0,
+  // right on the principal branch: with a > 0, (-a)^(1/2) = i*a^(1/2)
+  if (
+    ismultiply(base) &&
+    isrational(exponent) &&
+    isnegativenumber(cadr(base)) &&
+    base.tail().slice(1).every((f) => isReal(f) && isNegative(f) === false)
+  ) {
+    return multiply(
+      power(Constants.negOne, exponent),
+      power(negate(base), exponent)
+    );
+  }
+
   // (a ^ b) ^ c  ->  a ^ (b * c)
   // note that we can't in general do this, for example
   // sqrt(x^y) !=  x^(1/2 y) (counterexample x = -1)

@@ -210,7 +210,18 @@ function productFacts(factors: Facts[]): Facts {
     const negatives = factors.filter((t) => t.negative).length;
     f[negatives % 2 ? 'negative' : 'positive'] = true;
   }
+  Object.assign(f, weakProductSign(factors));
   return close(f) ?? {};
+}
+
+// factors each known >= 0 or <= 0 give a product known >= 0 or <= 0,
+// e.g. -a^(1/2) <= 0 for a >= 0
+function weakProductSign(factors: Facts[]): Facts {
+  if (!factors.every((t) => t.real && (t.negative === false || t.positive === false))) {
+    return {};
+  }
+  const nonpositive = factors.filter((t) => t.positive === false).length;
+  return { real: true, [nonpositive % 2 ? 'positive' : 'negative']: false };
 }
 
 function powerFacts(base: U, exponent: U): Facts {
@@ -404,4 +415,28 @@ export function Eval_assumptions() {
     .sort()
     .map((name) => new Str(`${name}: ${describe(assumptions.get(name))}`));
   return build_tensor(lines);
+}
+
+// ------------------------------------------------- solutions of equations
+
+// Whether a candidate value for x is known to violate the assumptions
+// made explicitly about x. The default realness of symbols doesn't count:
+// solve(x^2+1,x) keeps its complex roots unless x is assumed real.
+export function violatesAssumptions(value: U, x: U): boolean {
+  return violatedBy(facts(value), x);
+}
+
+// the same for an approximate number re + i*im (nroots, nsolve): parts
+// within 1e-6 of an integer are taken as that integer
+// ponytail: fixed tolerance, pass one in if a caller needs another
+export function approxViolatesAssumptions(re: number, im: number, x: U): boolean {
+  const snap = (d: number) =>
+    Math.abs(d - Math.round(d)) <= 1e-6 * Math.max(1, Math.abs(d)) ? Math.round(d) : d;
+  const f = snap(im) === 0 ? realFacts(snap(re)) : { real: false, zero: false };
+  return violatedBy(f, x);
+}
+
+function violatedBy(f: Facts, x: U): boolean {
+  const assumed = issymbol(x) ? assumptions.get(x.printname) : undefined;
+  return assumed !== undefined && merge(assumed, f) === null;
 }
