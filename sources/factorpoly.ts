@@ -4,7 +4,7 @@ import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
 import { equal } from '../sources/misc';
 import { add, subtract } from './add';
-import { integer, rational } from './bignum';
+import { integer, nativeInt, rational } from './bignum';
 import { coeff } from './coeff';
 import { yycondense } from './condense';
 import { conjugate } from './conj';
@@ -12,6 +12,7 @@ import { denominator } from './denominator';
 import { ydivisors } from './divisors';
 import {
   isfloating,
+  isinteger,
   isnegativeterm,
   ispolyexpandedform,
   isZeroAtomOrTensor,
@@ -81,6 +82,7 @@ function yyfactorpoly(p1: U, p2: U): U {
   // for univariate polynomials we could do factpoly_expo > 1
   let whichRootsAreWeFinding = 'real';
   let remainingPoly: U = null;
+  let quadratic: U;
   while (factpoly_expo > 0) {
     var foundComplexRoot: boolean, foundRealRoot: boolean;
     if (isZeroAtomOrTensor(polycoeff[0])) {
@@ -102,6 +104,10 @@ function yyfactorpoly(p1: U, p2: U): U {
           polycoeff,
           factpoly_expo
         );
+        quadratic = foundComplexRoot
+          ? multiply(subtract(p4, p2), subtract(conjugate(p4), p2))
+          : get_quadratic_factor(polycoeff, factpoly_expo, p2);
+        foundComplexRoot = quadratic !== undefined;
       }
     }
 
@@ -158,13 +164,7 @@ function yyfactorpoly(p1: U, p2: U): U {
       if (foundComplexRoot === false) {
         break;
       } else {
-        const firstFactor = subtract(p4, p2); // A, x
-        //console.log("first factor: " + firstFactor)
-
-        const secondFactor = subtract(conjugate(p4), p2); // p4: A, p2: x
-        //console.log("second factor: " + secondFactor)
-
-        p8 = multiply(firstFactor, secondFactor);
+        p8 = quadratic;
 
         //if (factpoly_expo > 0 && isnegativeterm(polycoeff[factpoly_expo]))
         //  negate()
@@ -497,6 +497,75 @@ function get_factor_from_complex_root(
     console.log('get_factor_from_complex_root returning false');
   }
   return [false, p4];
+}
+
+// The complex roots tried above only cover some quadratic factors: x^2+2,
+// 3*x^2+1 or real ones like x^2-2 were missed. Searches all integer
+// quadratic factors a*x^2+b*x+c instead: a divides the leading coefficient,
+// c the constant term, and the factor's values at 1 and -1, a+b+c and
+// a-b+c, divide P(1) and P(-1). These are not zero because the rational
+// roots have been divided out already. Degree >= 4 only: a quadratic
+// factor of a cubic would come with a rational root.
+function get_quadratic_factor(
+  polycoeff: U[],
+  n: number,
+  X: U
+): U | undefined {
+  if (n < 4) {
+    return;
+  }
+  const cs = polycoeff.slice(0, n + 1);
+  const P1 = nativeInt(Evalpoly(Constants.one, cs, n));
+  const Pm1 = nativeInt(Evalpoly(Constants.negOne, cs, n));
+  // big values: factor_small_number could not produce the divisors
+  if (
+    !cs.every(isinteger) ||
+    !isFinite(P1) ||
+    !isFinite(Pm1) ||
+    P1 === 0 ||
+    Pm1 === 0 ||
+    [cs[0], cs[n]].some((c) => !isFinite(nativeInt(c)))
+  ) {
+    return;
+  }
+  const divs = (c: U) => ydivisors(c).map(nativeInt);
+  for (const a of divs(cs[n])) {
+    for (const c0 of divs(cs[0])) {
+      for (const c of [c0, -c0]) {
+        for (const d0 of divs(integer(P1))) {
+          for (const d of [d0, -d0]) {
+            const b = d - a - c;
+            if (Pm1 % (a - b + c) !== 0) {
+              continue;
+            }
+            const q = add(
+              multiply(integer(a), power(X, integer(2))),
+              add(multiply(integer(b), X), integer(c))
+            );
+            if (dividesExactly(cs, n, [c, b, a])) {
+              return q;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// does the quadratic d[0]+d[1]*x+d[2]*x^2 divide the polynomial with
+// integer coefficients cs, leaving an integer quotient?
+function dividesExactly(cs: U[], n: number, d: number[]): boolean {
+  const r = cs.slice(0, n + 1);
+  for (let i = n; i >= 2; i--) {
+    const q = divide(r[i], integer(d[2]));
+    if (!isinteger(q)) {
+      return false;
+    }
+    r[i] = Constants.zero;
+    r[i - 1] = subtract(r[i - 1], multiply(q, integer(d[1])));
+    r[i - 2] = subtract(r[i - 2], multiply(q, integer(d[0])));
+  }
+  return isZeroAtomOrTensor(r[0]) && isZeroAtomOrTensor(r[1]);
 }
 
 //-----------------------------------------------------------------------------

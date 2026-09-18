@@ -133,4 +133,177 @@ run_test([
 
   'f = quote(f)',
   '',
+
+  // Every factorization below was checked with sympy: the product equals
+  // the input and the factors are irreducible over Q.
+
+  // integers and rationals
+  'factor(-1)',
+  '-1',
+
+  'factor(-12)',
+  '-2^2*3',
+
+  'factor(-1001)',
+  '-7*11*13',
+
+  // Fermat number F5
+  'factor(2^32+1)',
+  '641*6700417',
+
+  'factor(2^64+1)',
+  '274177*67280421310721',
+
+  // Mersenne prime
+  'factor(2^61-1)',
+  '2305843009213693951',
+
+  // rationals are left alone
+  'factor(1/12)',
+  '1/12',
+
+  'factor(-18/35)',
+  '-18/35',
+
+  // degree 1 and 2, repeated roots
+  'factor(x^2+2*x+1)',
+  '(x+1)^2',
+
+  'factor(x^3-3*x^2+3*x-1)',
+  '(x-1)^3',
+
+  'factor(4*x^2-9)',
+  '(2*x-3)*(2*x+3)',
+
+  'factor(6*x^2+x-2)',
+  '(2*x-1)*(3*x+2)',
+
+  // irreducible over Q: irrational and complex roots
+  'factor(x^2-2)',
+  'x^2-2',
+
+  'factor(x^2+1)',
+  'x^2+1',
+
+  'factor(x^6-2)',
+  'x^6-2',
+
+  // minimal polynomial of 2^(1/2)+3^(1/2)
+  'factor(x^4-10*x^2+1)',
+  'x^4-10*x^2+1',
+
+  // rational and negative leading coefficients
+  'factor(1/2*x^2-1/2)',
+  '1/2*(x-1)*(x+1)',
+
+  'factor(3/4*x^4+3/4)',
+  '3/4*(x^4+1)',
+
+  'factor(x^2/3+x/3)',
+  '1/3*x*(x+1)',
+
+  'factor(-x^2+1)',
+  '-(x-1)*(x+1)',
+
+  'factor(-2*x^2-4*x-2)',
+  '-2*(x+1)^2',
+
+  // irreducible quadratics, repeated and mixed with linear factors
+  'factor((x^2+1)^2)',
+  '(x^2+1)^2',
+
+  'factor((x^2+x+1)^3)',
+  '(x^2+x+1)^3',
+
+  'factor((x-2)*(x+3)*(x^2+x+1)^2)',
+  '(x-2)*(x^2+x+1)^2*(x+3)',
+
+  'factor((x^2+2*x+10)^2*(x+1)^2)',
+  '(x+1)^2*(x^2+2*x+10)^2',
+
+  'factor((x^2+2*x+5)*(x^2-4*x+13))',
+  '(x^2+2*x+5)*(x^2-4*x+13)',
+
+  'factor((x^2+1)*(x^2+100))',
+  '(x^2+1)*(x^2+100)',
+
+  'factor(x^4+4)',
+  '(x^2-2*x+2)*(x^2+2*x+2)',
+
+  'factor(x^4+x^2+1)',
+  '(x^2+x+1)*(x^2-x+1)',
+
+  'factor(x^8+x^4+1)',
+  '(x^2+x+1)*(x^2-x+1)*(x^4-x^2+1)',
+
+  'factor(x^12-1)',
+  '(x-1)*(x+1)*(x^2+x+1)*(x^2-x+1)*(x^4-x^2+1)*(x^2+1)',
+
+  'factor(x^6+1)',
+  '(x^4-x^2+1)*(x^2+1)',
+
+  'factor(x^10+x^5+1)',
+  '(x^2+x+1)*(x^8-x^7+x^5-x^4+x^3-x+1)',
+
+  // quadratic factors without integer complex roots
+  'factor(x^4+5*x^2+6)',
+  '(x^2+2)*(x^2+3)',
+
+  'factor(x^4-4)',
+  '(x^2-2)*(x^2+2)',
+
+  'factor(x^4-x^2-2)',
+  '(x^2-2)*(x^2+1)',
+
+  'factor(4*x^4+1)',
+  '(2*x^2-2*x+1)*(2*x^2+2*x+1)',
+
+  'factor((3*x^2+1)*(2*x^2+x+5))',
+  '(3*x^2+1)*(2*x^2+x+5)',
+
+  'factor(-(3*x^2+1)*(2*x^2+x+5)*(x-4))',
+  '-(x-4)*(3*x^2+1)*(2*x^2+x+5)',
+
+  'factor((5*x^2+2*x+1)^2)',
+  '(5*x^2+2*x+1)^2',
+
+  'factor((x^2-3)^2*(x^2+x+1))',
+  '(x^2-3)^2*(x^2+x+1)',
+
+  'factor((x^2+2)^2*(x-1)*(x^2+3))',
+  '(x-1)*(x^2+2)^2*(x^2+3)',
+
+  'factor((x^2+2)*(x^2+2*x+3)*(x^2-x+4))',
+  '(x^2+2)*(x^2+2*x+3)*(x^2-x+4)',
+
+  'factor((x^2+11)*(x^2+7*x+13))',
+  '(x^2+11)*(x^2+7*x+13)',
+
+  // limitation: irreducible factors of degree > 2 are not split off, here
+  // x^8+x^6+x^4+x^2+1 = (x^4+x^3+x^2+x+1)*(x^4-x^3+x^2-x+1)
+  'factor(x^10-1)',
+  '(x-1)*(x+1)*(x^8+x^6+x^4+x^2+1)',
+
+  // symbolic coefficients, multivariate
+  'factor(a*x^2-a)',
+  'a*(x-1)*(x+1)',
+
+  'factor(x^2-y^2)',
+  '(x+y)*(x-y)',
+
+  'factor(x^3-y^3)',
+  '(x-y)*(x^2+y^2+x*y)',
+
+  'factor(x^2*y+x*y^2)',
+  'x*y*(x+y)',
+
+  // not a polynomial, or not in the given variable: unchanged
+  'factor(sin(x))',
+  'sin(x)',
+
+  'factor(1/x)',
+  '1/x',
+
+  'factor(x^2+2*x+1,y)',
+  'x^2+2*x+1',
 ]);
