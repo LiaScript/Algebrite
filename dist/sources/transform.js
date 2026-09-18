@@ -195,11 +195,16 @@ function f_equals_a(stack, generalTransform, F, A, C) {
             if (defs_1.DEBUG) {
                 console.log(`  binding METAB to ${symbol_1.get_binding(symbol_1.symbol(defs_1.METAB))}`);
             }
-            // now test all the conditions (it's an and between them)
+            // now test all the conditions (it's an and between them).
+            // The integral tables take an undecidable condition (e.g. a>0 for
+            // a symbol) as met, user patterns must not: the rewrite would be
+            // unsound for some values.
             let temp = C;
             while (defs_1.iscons(temp)) {
                 const p2 = eval_1.Eval(defs_1.car(temp));
-                if (is_1.isZeroAtomOrTensor(p2)) {
+                if (generalTransform
+                    ? is_1.isZeroLikeOrNonZeroLikeOrUndetermined(p2) !== true
+                    : is_1.isZeroAtomOrTensor(p2)) {
                     break;
                 }
                 temp = defs_1.cdr(temp);

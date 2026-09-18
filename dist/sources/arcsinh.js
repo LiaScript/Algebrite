@@ -7,6 +7,7 @@ const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
+const quantity_1 = require("./quantity");
 /* arcsinh =====================================================================
 
 Tags
@@ -23,7 +24,7 @@ Returns the inverse hyperbolic sine of x.
 
 */
 function Eval_arcsinh(x) {
-    return arcsinh(eval_1.Eval(defs_1.cadr(x)));
+    return arcsinh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), 'arcsinh'));
 }
 exports.Eval_arcsinh = Eval_arcsinh;
 function arcsinh(x) {

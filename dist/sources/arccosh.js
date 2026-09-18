@@ -7,7 +7,9 @@ const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
+const multiply_1 = require("./multiply");
 const list_1 = require("./list");
+const quantity_1 = require("./quantity");
 /* arccosh =====================================================================
 
 Tags
@@ -24,12 +26,18 @@ Returns the inverse hyperbolic cosine of x.
 
 */
 function Eval_arccosh(x) {
-    return arccosh(eval_1.Eval(defs_1.cadr(x)));
+    return arccosh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), 'arccosh'));
 }
 exports.Eval_arccosh = Eval_arccosh;
 function arccosh(x) {
+    // arccosh(cosh(u)) = |u| for real u; only decidable when u is a real
+    // constant, arccosh(cosh(x)) is not x for x < 0
     if (defs_1.car(x) === symbol_1.symbol(defs_1.COSH)) {
-        return defs_1.cadr(x);
+        const d = is_1.realconstant(defs_1.cadr(x));
+        if (isNaN(d)) {
+            return list_1.makeList(symbol_1.symbol(defs_1.ARCCOSH), x);
+        }
+        return d < 0 ? multiply_1.negate(defs_1.cadr(x)) : defs_1.cadr(x);
     }
     if (defs_1.isdouble(x)) {
         let { d } = x;

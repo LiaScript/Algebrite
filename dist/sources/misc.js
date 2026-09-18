@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sort = exports.square = exports.exponential = exports.yyexpand = exports.length = exports.cmp_expr = exports.sign = exports.lessp = exports.equal = exports.zero_matrix = void 0;
+exports.sort = exports.square = exports.exponential = exports.yyexpand = exports.checkArgCount = exports.length = exports.cmp_expr = exports.sign = exports.lessp = exports.equal = exports.zero_matrix = void 0;
 const alloc_1 = require("../runtime/alloc");
 const defs_1 = require("../runtime/defs");
 const otherCFunctions_1 = require("../runtime/otherCFunctions");
+const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
@@ -126,6 +127,16 @@ function length(p) {
     return n;
 }
 exports.length = length;
+// stops unless the call p1 = f(arg1, ..., argn) has min <= n <= max args
+function checkArgCount(p1, min, max = min) {
+    const n = length(p1) - 1;
+    if (n < min || n > max) {
+        const range = min === max ? `${min}` : max === Infinity ? `at least ${min}` : `${min} to ${max}`;
+        const word = max === 1 || (min === 1 && max === Infinity) ? 'argument' : 'arguments';
+        run_1.stop(`${symbol_1.get_printname(defs_1.car(p1))}: expected ${range} ${word}, got ${n}`);
+    }
+}
+exports.checkArgCount = checkArgCount;
 function unique(p) {
     let p1 = symbol_1.symbol(defs_1.NIL);
     const p2 = symbol_1.symbol(defs_1.NIL);

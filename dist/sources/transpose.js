@@ -108,7 +108,7 @@ function transpose(p1, p2, p3) {
     }
     let l = bignum_1.nativeInt(p2);
     let m = bignum_1.nativeInt(p3);
-    if (l < 1 || l > ndim || m < 1 || m > ndim) {
+    if (!(l >= 1 && l <= ndim && m >= 1 && m <= ndim)) {
         run_1.stop('transpose: index out of range');
     }
     l--;

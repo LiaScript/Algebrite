@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Eval_clear = exports.do_clearall = exports.Eval_clearall = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const init_1 = require("../runtime/init");
 const otherCFunctions_1 = require("../runtime/otherCFunctions");
@@ -29,8 +30,10 @@ function do_clearall() {
         otherCFunctions_1.clear_term();
     }
     pattern_1.do_clearPatterns();
+    assume_1.clearAssumptions();
     symbol_1.clear_symbols();
     init_1.defn();
+    defs_1.defs.unitsAutoDetect = false;
     return (defs_1.defs.codeGen = false);
 }
 exports.do_clearall = do_clearall;

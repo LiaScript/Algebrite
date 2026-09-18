@@ -11,9 +11,10 @@ const is_1 = require("./is");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
+const quantity_1 = require("./quantity");
 // Sine function of numerical and symbolic arguments
 function Eval_sin(p1) {
-    return sine(eval_1.Eval(defs_1.cadr(p1)));
+    return sine(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), 'sin'));
 }
 exports.Eval_sin = Eval_sin;
 function sine(p1) {

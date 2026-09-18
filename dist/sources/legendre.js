@@ -44,6 +44,7 @@ For m > 0
   P(x,n,m) = (-1)^m * (1-x^2)^(m/2) * d^m/dx^m P(x,n)
 */
 function Eval_legendre(p1) {
+    misc_1.checkArgCount(p1, 2, 3);
     const X = eval_1.Eval(defs_1.cadr(p1));
     const N = eval_1.Eval(defs_1.caddr(p1));
     const p2 = eval_1.Eval(defs_1.cadddr(p1));
@@ -57,7 +58,8 @@ function legendre(X, N, M) {
 function __legendre(X, N, M) {
     let n = bignum_1.nativeInt(N);
     let m = bignum_1.nativeInt(M);
-    if (n < 0 || isNaN(n) || m < 0 || isNaN(m)) {
+    // tensors: x^2 would be a dot product, so they are not mapped over
+    if (n < 0 || isNaN(n) || m < 0 || isNaN(m) || defs_1.istensor(X)) {
         return list_1.makeList(symbol_1.symbol(defs_1.LEGENDRE), X, N, M);
     }
     let result;

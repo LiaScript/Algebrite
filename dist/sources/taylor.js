@@ -13,6 +13,7 @@ const is_1 = require("./is");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const subst_1 = require("./subst");
+const misc_1 = require("./misc");
 /*
 Taylor expansion of a function
 
@@ -23,6 +24,7 @@ Taylor expansion of a function
   taylor()
 */
 function Eval_taylor(p1) {
+    misc_1.checkArgCount(p1, 1, 4);
     // 1st arg
     p1 = defs_1.cdr(p1);
     const F = eval_1.Eval(defs_1.car(p1));

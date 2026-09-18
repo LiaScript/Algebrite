@@ -8,6 +8,7 @@ const is_1 = require("./is");
 const list_1 = require("./list");
 const mmul_1 = require("./mmul");
 const multiply_1 = require("./multiply");
+const misc_1 = require("./misc");
 //-----------------------------------------------------------------------------
 //
 //  Author : philippe.billet@noos.fr
@@ -17,6 +18,7 @@ const multiply_1 = require("./multiply");
 //  dirac(b-a)=dirac(a-b)
 //-----------------------------------------------------------------------------
 function Eval_dirac(p1) {
+    misc_1.checkArgCount(p1, 1);
     return dirac(eval_1.Eval(defs_1.cadr(p1)));
 }
 exports.Eval_dirac = Eval_dirac;
@@ -24,21 +26,20 @@ function dirac(p1) {
     return ydirac(p1);
 }
 exports.dirac = dirac;
+// dirac(0) has no value, it stays unevaluated. dirac(x^n) is not
+// dirac(x) (the scaling rule would divide by the vanishing n*x^(n-1)).
 function ydirac(p1) {
     if (defs_1.isdouble(p1)) {
         if (p1.d === 0) {
-            return defs_1.Constants.one;
+            return list_1.makeList(symbol_1.symbol(defs_1.DIRAC), p1);
         }
         return defs_1.Constants.zero;
     }
     if (defs_1.isrational(p1)) {
         if (defs_1.MZERO(mmul_1.mmul(p1.q.a, p1.q.b))) {
-            return defs_1.Constants.one;
+            return list_1.makeList(symbol_1.symbol(defs_1.DIRAC), p1);
         }
         return defs_1.Constants.zero;
-    }
-    if (defs_1.ispower(p1)) {
-        return list_1.makeList(symbol_1.symbol(defs_1.DIRAC), defs_1.cadr(p1));
     }
     if (is_1.isnegativeterm(p1)) {
         return list_1.makeList(symbol_1.symbol(defs_1.DIRAC), multiply_1.negate(p1));

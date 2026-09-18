@@ -46,6 +46,11 @@ function det(p1) {
 exports.det = det;
 // determinant of n * n matrix elements on the stack
 function determinant(elements, n) {
+    // the empty (0x0) determinant is 1, e.g. the cofactor of a 1x1 matrix;
+    // the permutation loop below would never terminate for n = 0
+    if (n === 0) {
+        return defs_1.Constants.one;
+    }
     let q = 0;
     const a = [];
     //int *a, *c, *d

@@ -20,7 +20,7 @@ function approxratioRecursive(expr) {
         const p4 = alloc_1.alloc_tensor(expr.tensor.nelem);
         p4.tensor.ndim = expr.tensor.ndim;
         p4.tensor.dim = Array.from(expr.tensor.dim);
-        p4.tensor.elem = p4.tensor.elem.map((el) => {
+        p4.tensor.elem = expr.tensor.elem.map((el) => {
             const result = approxratioRecursive(el);
             tensor_1.check_tensor_dimensions(p4);
             return result;

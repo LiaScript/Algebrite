@@ -52,10 +52,7 @@ function contract(p1, p2, p3) {
     let l = bignum_1.nativeInt(p2);
     let m = bignum_1.nativeInt(p3);
     const { ndim } = p1.tensor;
-    if (l < 1 ||
-        l > ndim ||
-        m < 1 ||
-        m > ndim ||
+    if (!(l >= 1 && l <= ndim && m >= 1 && m <= ndim) ||
         l === m ||
         p1.tensor.dim[l - 1] !== p1.tensor.dim[m - 1]) {
         run_1.stop('contract: index out of range');
@@ -109,7 +106,7 @@ function contract(p1, p2, p3) {
             ai[j] = 0;
         }
     }
-    if (nelem === 1) {
+    if (ndim === 2) {
         return b[0];
     }
     return p2;

@@ -15,14 +15,17 @@ const cos_1 = require("./cos");
 const dpow_1 = require("./dpow");
 const eval_1 = require("./eval");
 const factorial_1 = require("./factorial");
+const imag_1 = require("./imag");
 const is_1 = require("./is");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const qpow_1 = require("./qpow");
+const real_1 = require("./real");
 const quantity_1 = require("./quantity");
 const rect_1 = require("./rect");
 const sin_1 = require("./sin");
 const tensor_1 = require("./tensor");
+const quantity_2 = require("./quantity");
 /* Power function
 
   Input:    push  Base
@@ -71,6 +74,24 @@ function yypower(base, exponent) {
         }
         return one;
     }
+    // e^some_float
+    if (base === symbol_1.symbol(defs_1.E) && defs_1.isdouble(exponent)) {
+        const result = bignum_1.double(Math.exp(exponent.d));
+        if (DEBUG_POWER) {
+            console.log('   power: base == symbol(E) && isdouble(exponent) ');
+            console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);
+        }
+        return result;
+    }
+    // positive float (or e) to a complex power with floats:
+    // b^(x+iy) = b^x (cos(y log b) + i sin(y log b))
+    if (is_1.iscomplexnumber(exponent) &&
+        !defs_1.defs.evaluatingPolar &&
+        ((defs_1.isdouble(base) && base.d > 0) ||
+            (base === symbol_1.symbol(defs_1.E) && is_1.iscomplexnumberdouble(exponent)))) {
+        const y = multiply_1.multiply(imag_1.imag(exponent), defs_1.isdouble(base) ? bignum_1.double(Math.log(base.d)) : defs_1.Constants.one);
+        return multiply_1.multiply(power(base, real_1.real(exponent)), add_1.add(cos_1.cosine(y), multiply_1.multiply(defs_1.Constants.imaginaryunit, sin_1.sine(y))));
+    }
     //  a ^ 1    ->  a
     if (misc_1.equal(exponent, defs_1.Constants.one)) {
         if (DEBUG_POWER) {
@@ -79,6 +100,7 @@ function yypower(base, exponent) {
         return base;
     }
     // is the base a Quantity, or (with units() on) a bare unit symbol?
+    quantity_2.requireDimensionless(exponent, 'power: exponent');
     const unitResult = quantity_1.powerUnitAware(base, exponent);
     if (unitResult !== undefined) {
         return unitResult;
@@ -123,7 +145,11 @@ function yypower(base, exponent) {
             tmp = list_1.makeList(symbol_1.symbol(defs_1.POWER), base, exponent);
         }
         else {
-            tmp = list_1.makeList(symbol_1.symbol(defs_1.MULTIPLY), base, list_1.makeList(symbol_1.symbol(defs_1.POWER), base, bignum_1.rational(exponent.q.a.mod(exponent.q.b), exponent.q.b)));
+            // (-1)^(a/b) = (-1)^floor(a/b) * (-1)^((a mod b)/b)
+            tmp = list_1.makeList(symbol_1.symbol(defs_1.POWER), base, bignum_1.rational(exponent.q.a.mod(exponent.q.b), exponent.q.b));
+            if (exponent.q.a.divide(exponent.q.b).isOdd()) {
+                tmp = list_1.makeList(symbol_1.symbol(defs_1.MULTIPLY), base, tmp);
+            }
             if (DEBUG_POWER) {
                 console.log(` trick applied : ${tmp}`);
             }
@@ -186,15 +212,6 @@ function yypower(base, exponent) {
         }
         return result;
     }
-    // e^some_float
-    if (base === symbol_1.symbol(defs_1.E) && defs_1.isdouble(exponent)) {
-        const result = bignum_1.double(Math.exp(exponent.d));
-        if (DEBUG_POWER) {
-            console.log('   power: base == symbol(E) && isdouble(exponent) ');
-            console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);
-        }
-        return result;
-    }
     // complex number in exponential form, get it to rectangular
     // but only if we are not in the process of calculating a polar form,
     // otherwise we'd just undo the work we want to do
@@ -253,15 +270,17 @@ function yypower(base, exponent) {
         }
         return result;
     }
+    // (a^b)^c with b even and b*c = +-1 is abs(a)^(b*c)
     let b_isEven_and_c_isItsInverse = false;
+    let isThisOne;
     if (is_1.iseveninteger(defs_1.caddr(base))) {
-        const isThisOne = multiply_1.multiply(defs_1.caddr(base), exponent);
+        isThisOne = multiply_1.multiply(defs_1.caddr(base), exponent);
         if (is_1.isone(isThisOne)) {
             b_isEven_and_c_isItsInverse = true;
         }
     }
     if (defs_1.ispower(base) && b_isEven_and_c_isItsInverse) {
-        const result = abs_1.abs(defs_1.cadr(base));
+        const result = power(abs_1.abs(defs_1.cadr(base)), isThisOne);
         if (DEBUG_POWER) {
             console.log('   power: car(base) == symbol(POWER) && b_isEven_and_c_isItsInverse ');
             console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);

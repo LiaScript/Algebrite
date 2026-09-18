@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_apart = exports.Eval_expand = void 0;
+exports.apart = exports.Eval_apart = exports.Eval_expand = void 0;
 const alloc_1 = require("../runtime/alloc");
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
@@ -47,9 +47,13 @@ function Eval_apart(p1) {
     const F = eval_1.Eval(defs_1.cadr(p1));
     const p2 = eval_1.Eval(defs_1.caddr(p1));
     const X = p2 === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(F) : p2;
-    return expand(F, X, true);
+    return apart(F, X);
 }
 exports.Eval_apart = Eval_apart;
+function apart(F, X) {
+    return expand(F, X, true);
+}
+exports.apart = apart;
 //define A p2
 //define B p3
 //define C p4
@@ -70,12 +74,11 @@ function expand(F, X, factored = false) {
     let A = denominator_1.denominator(F);
     [A, B] = remove_negative_exponents(A, B, X);
     // if the denominator is one then always bail out
-    // also bail out if the denominator is not one but
-    // it's not anything recognizable as a polynomial.
-    if (is_1.isone(B) || is_1.isone(A)) {
-        if (!is_1.ispolyexpandedform(A, X) || is_1.isone(A)) {
-            return F;
-        }
+    // also bail out if numerator or denominator is not
+    // anything recognizable as a polynomial (divpoly and
+    // coeff would divide by zero on e.g. (x+1)^(3/2) or sin(x))
+    if (is_1.isone(A) || !ispoly(A, X) || !ispoly(B, X)) {
+        return F;
     }
     // Q = quotient
     const Q = quotient_1.divpoly(B, A, X);
@@ -100,6 +103,16 @@ function expand(F, X, factored = false) {
         result = multiply_1.multiply(arg1, A);
     }
     return add_1.add(result, Q);
+}
+// X only in sums, products and positive integer powers
+function ispoly(p, X) {
+    if (!find_1.Find(p, X) || misc_1.equal(p, X)) {
+        return true;
+    }
+    if (defs_1.isadd(p) || defs_1.ismultiply(p)) {
+        return p.tail().every((q) => ispoly(q, X));
+    }
+    return defs_1.ispower(p) && is_1.isposint(defs_1.caddr(p)) && ispoly(defs_1.cadr(p), X);
 }
 function expand_tensor(p5, p9, factored) {
     p5 = tensor_1.copy_tensor(p5);
@@ -353,7 +366,11 @@ function expand_get_B(p3, p4, p9) {
 // Returns the expansion fractions in A.
 function expand_get_A(p2, p4, p9, factored) {
     if (!defs_1.istensor(p4)) {
-        return multiply_1.reciprocate(p2);
+        // only the factor F with X in it: C = A/F already holds the constant
+        // factors, so 1/A would count them twice (1/(x*y) became 1/(x*y^2))
+        return multiply_1.reciprocate(defs_1.ismultiply(p2)
+            ? multiply_1.multiply_all(p2.tail().filter((p5) => find_1.Find(p5, p9)))
+            : p2);
     }
     let elements = [];
     if (defs_1.ismultiply(p2)) {

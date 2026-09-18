@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.print_list = exports.print_expr = exports.printline = exports.collectLatexStringFromReturnValue = exports.print_str = exports.Eval_printlist = exports.Eval_printhuman = exports.Eval_printlatex = exports.Eval_printcomputer = exports.Eval_print2dascii = exports.Eval_print = void 0;
+const at_1 = require("./at");
 const defs_1 = require("../runtime/defs");
+const otherCFunctions_1 = require("../runtime/otherCFunctions");
 const symbol_1 = require("../runtime/symbol");
 const misc_1 = require("../sources/misc");
 const abs_1 = require("./abs");
@@ -65,6 +67,8 @@ function Eval_printlist(p1) {
 }
 exports.Eval_printlist = Eval_printlist;
 function _print(p, passedPrintMode) {
+    // print(a, b, ...) prints every argument, one per line
+    const printed = [];
     let accumulator = '';
     while (defs_1.iscons(p)) {
         const p2 = eval_1.Eval(defs_1.car(p));
@@ -101,12 +105,13 @@ function _print(p, passedPrintMode) {
             rememberPrint(accumulator, defs_1.LAST_LIST_PRINT);
         }
         defs_1.defs.printMode = origPrintMode;
+        printed.push(accumulator);
         p = defs_1.cdr(p);
     }
     if (defs_1.DEBUG) {
         console.log(`emttedString from display: ${defs_1.defs.stringsEmittedByUserPrintouts}`);
     }
-    return accumulator;
+    return printed.join('\n');
 }
 function rememberPrint(theString, theTypeOfPrint) {
     const [, parsedString] = scan_1.scan('"' + theString + '"');
@@ -128,8 +133,9 @@ function collectLatexStringFromReturnValue(p) {
     const originalCodeGen = defs_1.defs.codeGen;
     defs_1.defs.codeGen = false;
     let returnedString = print_expr(p);
-    // some variables might contain underscores, escape those
-    returnedString = returnedString.replace(/_/g, '\\_');
+    // some variables might contain underscores, escape those, but keep the
+    // subscripts emitted for \sum_{..}, \prod_{..} and \int_{..}
+    returnedString = returnedString.replace(/_(?!\{)/g, '\\_');
     defs_1.defs.printMode = origPrintMode;
     defs_1.defs.codeGen = originalCodeGen;
     if (defs_1.DEBUG) {
@@ -144,12 +150,17 @@ function printline(p) {
     return accumulator;
 }
 exports.printline = printline;
+// a double printed as 1.5*10^(-7): needs parentheses as a base or exponent
+function isscientific(p) {
+    return defs_1.isdouble(p) && /[*^]|\\cdot/.test(otherCFunctions_1.doubleToReasonableString(p.d));
+}
 function print_base_of_denom(BASE) {
     let accumulator = '';
     if (is_1.isfraction(BASE) ||
         defs_1.isadd(BASE) ||
         defs_1.ismultiply(BASE) ||
         defs_1.ispower(BASE) ||
+        isscientific(BASE) ||
         misc_1.lessp(BASE, defs_1.Constants.zero)) {
         accumulator += print_char('(');
         accumulator += print_expr(BASE);
@@ -255,7 +266,7 @@ function print_a_over_b(p) {
                 if (flag) {
                     accumulator += print_multiply_sign();
                 }
-                accumulator += print_factor(p2);
+                accumulator = append_factor(accumulator, print_factor(p2));
                 flag = 1;
             }
             p1 = defs_1.cdr(p1);
@@ -288,7 +299,7 @@ function print_a_over_b(p) {
             if (flag) {
                 accumulator += print_multiply_sign();
             }
-            accumulator += print_denom(p2, d);
+            accumulator = append_factor(accumulator, print_denom(p2, d));
             flag = 1;
         }
         p1 = defs_1.cdr(p1);
@@ -428,7 +439,7 @@ function print_term(p) {
                 }
             }
             accumulator += print_multiply_sign();
-            accumulator += print_factor(defs_1.car(p), false, true);
+            accumulator = append_factor(accumulator, print_factor(defs_1.car(p), false, true));
             previousFactorWasANumber = false;
             if (defs_1.isNumericAtom(defs_1.car(p))) {
                 previousFactorWasANumber = true;
@@ -456,6 +467,7 @@ function print_factorial_function(p) {
     let accumulator = '';
     p = defs_1.cadr(p);
     if (is_1.isfraction(p) ||
+        is_1.isnegativenumber(p) ||
         defs_1.isadd(p) ||
         defs_1.ismultiply(p) ||
         defs_1.ispower(p) ||
@@ -767,30 +779,25 @@ function print_SUM_codegen(p) {
     return accumulator;
 }
 function print_TEST_latex(p) {
-    let accumulator = '\\left\\{ \\begin{array}{ll}';
+    // one row per case: value & condition
+    const rows = [];
     p = defs_1.cdr(p);
     while (defs_1.iscons(p)) {
         // odd number of parameters means that the
         // last argument becomes the default case
         // i.e. the one without a test.
         if (defs_1.cdr(p) === symbol_1.symbol(defs_1.NIL)) {
-            accumulator += '{';
-            accumulator += print_expr(defs_1.car(p));
-            accumulator += '} & otherwise ';
-            accumulator += ' \\\\\\\\';
+            rows.push('{' + print_expr(defs_1.car(p)) + '} & \\text{otherwise}');
             break;
         }
-        accumulator += '{';
-        accumulator += print_expr(defs_1.cadr(p));
-        accumulator += '} & if & ';
-        accumulator += print_expr(defs_1.car(p));
-        accumulator += ' \\\\\\\\';
+        rows.push('{' + print_expr(defs_1.cadr(p)) + '} & \\text{if } ' + print_expr(defs_1.car(p)));
         // test unsuccessful, continue to the
         // next pair of test,value
         p = defs_1.cddr(p);
     }
-    accumulator = accumulator.substring(0, accumulator.length - 4);
-    return (accumulator += '\\end{array} \\right.');
+    return ('\\left\\{ \\begin{array}{ll}' +
+        rows.join(' \\\\ ') +
+        ' \\end{array} \\right.');
 }
 function print_TEST_codegen(p) {
     let accumulator = '(function(){';
@@ -1112,7 +1119,7 @@ function print_power(base, exponent) {
             }
         }
         else if (defs_1.isNumericAtom(base) &&
-            (misc_1.lessp(base, defs_1.Constants.zero) || is_1.isfraction(base))) {
+            (misc_1.lessp(base, defs_1.Constants.zero) || is_1.isfraction(base) || isscientific(base))) {
             accumulator += print_str('(');
             accumulator += print_factor(base);
             accumulator += print_str(')');
@@ -1145,6 +1152,7 @@ function print_power(base, exponent) {
         }
         else if (defs_1.iscons(exponent) ||
             is_1.isfraction(exponent) ||
+            isscientific(exponent) ||
             (defs_1.isNumericAtom(exponent) && misc_1.lessp(exponent, defs_1.Constants.zero))) {
             accumulator += print_str('(');
             accumulator += print_expr(exponent);
@@ -1186,12 +1194,15 @@ function print_QUANTITY(p) {
     const magnitude = defs_1.cadr(p);
     const dimTensor = defs_1.caddr(p);
     const dim = dimTensor.tensor.elem.map((e) => bignum_1.nativeDouble(e));
+    // print_factor leaves a number's sign to the enclosing term, which a
+    // quantity doesn't have
+    const mag = (is_1.isnegativenumber(magnitude) ? '-' : '') + print_factor(magnitude);
     if (defs_1.defs.printMode === defs_1.PRINTMODE_LATEX) {
-        return print_factor(magnitude) + '\\ ' + unit_1.formatDimensionLatex(dim);
+        return mag + '\\ ' + unit_1.formatDimensionLatex(dim);
     }
     const unitName = unit_1.formatDimension(dim);
     const sep = defs_1.defs.printMode === defs_1.PRINTMODE_HUMAN && !defs_1.defs.test_flag ? ' ' : '*';
-    return print_factor(magnitude) + sep + unitName;
+    return mag + sep + unitName;
 }
 function print_factor(p, omitParens = false, pastFirstFactor = false) {
     // breakpoint
@@ -1215,6 +1226,11 @@ function print_factor(p, omitParens = false, pastFirstFactor = false) {
             accumulator += ')';
         }
         return accumulator;
+    }
+    // at(d(y(x),x),x,v) as y'(v)
+    const prime = at_1.primeName(p);
+    if (prime !== null) {
+        return print_str(prime) + '(' + print_expr(defs_1.cadddr(p)) + ')';
     }
     if (defs_1.isstr(p)) {
         accumulator += print_str('"');
@@ -1648,11 +1664,38 @@ function print_list(p) {
             accumulator += symbol_1.get_printname(p);
             break;
         default:
-            accumulator += '<tensor>';
+            if (defs_1.istensor(p)) {
+                accumulator += print_list_tensor(p);
+            }
+            else {
+                accumulator += '<tensor>';
+            }
     }
     return accumulator;
 }
 exports.print_list = print_list;
+// [e1,e2,...], nested per dimension, each entry in list form
+function print_list_tensor(t) {
+    let k = 0;
+    const dimension = (j) => {
+        const entries = [];
+        for (let i = 0; i < t.dim[j]; i++) {
+            entries.push(j === t.ndim - 1 ? print_list(t.elem[k++]) : dimension(j + 1));
+        }
+        return '[' + entries.join(',') + ']';
+    };
+    return dimension(0);
+}
+// LaTeX juxtaposes factors, so a factor starting with a letter needs a
+// space after a control word, or \pi x would become the unknown \pix
+function append_factor(accumulator, factor) {
+    if (defs_1.defs.printMode === defs_1.PRINTMODE_LATEX &&
+        /\\[a-zA-Z]+$/.test(accumulator) &&
+        /^[a-zA-Z]/.test(factor)) {
+        accumulator += ' ';
+    }
+    return accumulator + factor;
+}
 function print_multiply_sign() {
     let accumulator = '';
     if (defs_1.defs.printMode === defs_1.PRINTMODE_LATEX) {

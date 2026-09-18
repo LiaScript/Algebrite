@@ -24,7 +24,7 @@ const symbol_1 = require("../runtime/symbol");
 //define AELEM(i, j) A->u.tensor->elem[i * n + j]
 function hilbert(N) {
     const n = bignum_1.nativeInt(N);
-    if (n < 2) {
+    if (!(n >= 1)) {
         return list_1.makeList(symbol_1.symbol(defs_1.HILBERT), N);
     }
     const A = misc_1.zero_matrix(n, n);

@@ -13,13 +13,12 @@ const is_1 = require("./is");
 const list_1 = require("./list");
 const power_1 = require("./power");
 const quantity_1 = require("./quantity");
+const inner_1 = require("./inner");
 const tensor_1 = require("./tensor");
 // Symbolic multiplication
-// multiplication is commutative, so it can't be used
-// e.g. on two matrices.
-// But it can be used, say, on a scalar and a matrix.,
-// so the output of a multiplication is not
-// always a scalar.
+// multiplication is commutative for scalars. A scalar times a matrix
+// scales it, and two tensors give their matrix product (inner), so the
+// output of a multiplication is not always a scalar.
 //extern void append(void)
 //static void parse_p1(void)
 //static void parse_p2(void)
@@ -83,6 +82,11 @@ function yymultiply(p1, p2) {
     // tensor times scalar?
     if (defs_1.istensor(p1) && !defs_1.istensor(p2)) {
         return tensor_1.tensor_times_scalar(p1, p2);
+    }
+    // tensor times tensor is the matrix product, which does not commute:
+    // left as a product, the factors below would be sorted into B*A
+    if (defs_1.istensor(p1) && defs_1.istensor(p2)) {
+        return inner_1.inner(p1, p2);
     }
     // adjust operands
     p1 = defs_1.ismultiply(p1) ? defs_1.cdr(p1) : list_1.makeList(p1);
@@ -467,8 +471,8 @@ function __is_radical_number(p) {
 //
 //  Note that "a" is presumed to be a scalar. Is this correct?
 //
-//  Yes, because "*" has no meaning if "a" is a tensor.
-//  To multiply tensors, "dot" or "outer" should be used.
+//  Yes: symbols are scalars. "*" of two actual tensors is their matrix
+//  product (the same as "dot"); "outer" gives the outer product.
 //
 //  > dot(a,hilbert(2))
 //  dot(a,((1,1/2),(1/2,1/3)))

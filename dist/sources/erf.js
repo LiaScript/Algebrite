@@ -9,6 +9,7 @@ const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
+const misc_1 = require("./misc");
 /* erf =====================================================================
 
 Tags
@@ -30,6 +31,7 @@ erf(-x)=erf(x)
 
 */
 function Eval_erf(p1) {
+    misc_1.checkArgCount(p1, 1);
     return yerf(eval_1.Eval(defs_1.cadr(p1)));
 }
 exports.Eval_erf = Eval_erf;

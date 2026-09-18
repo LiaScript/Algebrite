@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Eval_max = exports.Eval_min = void 0;
 const defs_1 = require("../runtime/defs");
+const run_1 = require("../runtime/run");
 const eval_1 = require("./eval");
 const list_1 = require("./list");
 const test_1 = require("./test");
@@ -9,6 +10,9 @@ const test_1 = require("./test");
 // unevaluated if any comparison is undecidable (symbolic args).
 function extremum(p1, pick) {
     const args = p1.tail().map(eval_1.Eval);
+    if (args.length === 0) {
+        run_1.stop(`${defs_1.car(p1)}: no data`);
+    }
     let best = args[0];
     for (const a of args.slice(1)) {
         const c = test_1.cmp_values(a, best);

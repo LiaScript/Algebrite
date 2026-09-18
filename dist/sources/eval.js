@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evalList = exports.Eval_predicate = exports.Eval_unit = exports.Eval_subst = exports.Eval_stop = exports.Eval_sqrt = exports.Eval_setq = exports.Eval_rank = exports.Eval_quote = exports.Eval_operator = exports.Eval_number = exports.Eval_isinteger = exports.Eval_invg = exports.Eval_inv = exports.Eval_index = exports.Eval_hilbert = exports.Eval_hermite = exports.Eval_factorpoly = exports.Eval_factorial = exports.Eval_exp = exports.Eval_Eval = exports.Eval_dsolve = exports.Eval_do = exports.Eval_divisors = exports.Eval_dim = exports.Eval_det = exports.Eval_check = exports.Eval_binding = exports.Eval_cons = exports.Eval_sym = exports.Eval = exports.evaluate_integer = void 0;
+exports.evalList = exports.Eval_predicate = exports.Eval_unit = exports.Eval_subst = exports.Eval_stop = exports.Eval_sqrt = exports.Eval_setq = exports.Eval_rank = exports.Eval_quote = exports.Eval_operator = exports.Eval_number = exports.Eval_invg = exports.Eval_inv = exports.Eval_index = exports.Eval_hilbert = exports.Eval_hermite = exports.Eval_factorpoly = exports.Eval_factorial = exports.Eval_exp = exports.Eval_Eval = exports.Eval_dsolve = exports.Eval_do = exports.Eval_divisors = exports.Eval_dim = exports.Eval_det = exports.Eval_check = exports.Eval_binding = exports.Eval_cons = exports.Eval_sym = exports.Eval = exports.evaluate_integer = void 0;
 const _1 = require(".");
 const alloc_1 = require("../runtime/alloc");
 const defs_1 = require("../runtime/defs");
@@ -19,6 +19,7 @@ const is_1 = require("./is");
 const list_1 = require("./list");
 const misc_1 = require("./misc");
 const power_1 = require("./power");
+const quantity_1 = require("./quantity");
 const subst_1 = require("./subst");
 const tensor_1 = require("./tensor");
 const userfunc_1 = require("./userfunc");
@@ -81,6 +82,12 @@ function Eval_sym(p1) {
     }
     else if (p1 === symbol_1.symbol(defs_1.PI) && defs_1.defs.evaluatingAsFloats) {
         return defs_1.Constants.piAsDouble;
+    }
+    // With units() on, an unbound unit symbol IS a quantity of one unit, so
+    // that "m" and "1m" (which the scanner folds to a bare "m") behave like
+    // any other quantity instead of staying a free variable.
+    if (defs_1.defs.unitsAutoDetect && p1.unitDef && symbol_1.get_binding(p1) === p1) {
+        return quantity_1.makeQuantity(p1.unitDef.scale, p1.unitDef.dim);
     }
     // Evaluate symbol's binding
     let p2 = symbol_1.get_binding(p1);
@@ -211,7 +218,7 @@ function Eval_dim(p1) {
     if (!defs_1.istensor(p2)) {
         return defs_1.Constants.one; // dim of scalar is 1
     }
-    else if (n < 1 || n > p2.tensor.ndim) {
+    else if (!(n >= 1 && n <= p2.tensor.ndim)) {
         return p1;
     }
     else {
@@ -239,7 +246,7 @@ Evaluates each argument from left to right. Returns the result of the last argum
 
 */
 function Eval_do(p1) {
-    let result = defs_1.car(p1);
+    let result = symbol_1.symbol(defs_1.NIL);
     p1 = defs_1.cdr(p1);
     while (defs_1.iscons(p1)) {
         result = Eval(defs_1.car(p1));
@@ -270,7 +277,7 @@ exports.Eval_Eval = Eval_Eval;
 // exp evaluation: it replaces itself with
 // a POWER(E,something) node and evals that one
 function Eval_exp(p1) {
-    return misc_1.exponential(Eval(defs_1.cadr(p1)));
+    return misc_1.exponential(quantity_1.requireDimensionless(Eval(defs_1.cadr(p1)), 'exp'));
 }
 exports.Eval_exp = Eval_exp;
 function Eval_factorial(p1) {
@@ -290,6 +297,7 @@ function Eval_factorpoly(p1) {
 }
 exports.Eval_factorpoly = Eval_factorpoly;
 function Eval_hermite(p1) {
+    misc_1.checkArgCount(p1, 2);
     const arg2 = Eval(defs_1.caddr(p1));
     const arg1 = Eval(defs_1.cadr(p1));
     return hermite_1.hermite(arg1, arg2);
@@ -338,18 +346,6 @@ function Eval_invg(p1) {
     return inv_1.invg(arg);
 }
 exports.Eval_invg = Eval_invg;
-function Eval_isinteger(p1) {
-    p1 = Eval(defs_1.cadr(p1));
-    if (defs_1.isrational(p1)) {
-        return is_1.isinteger(p1) ? defs_1.Constants.one : defs_1.Constants.zero;
-    }
-    if (defs_1.isdouble(p1)) {
-        const n = Math.floor(p1.d);
-        return n === p1.d ? defs_1.Constants.one : defs_1.Constants.zero;
-    }
-    return list_1.makeList(symbol_1.symbol(defs_1.ISINTEGER), p1);
-}
-exports.Eval_isinteger = Eval_isinteger;
 function Eval_number(p1) {
     p1 = Eval(defs_1.cadr(p1));
     if (p1.k === defs_1.NUM || p1.k === defs_1.DOUBLE) {
@@ -442,7 +438,6 @@ exports.Eval_setq = Eval_setq;
 //-----------------------------------------------------------------------------
 function setq_indexed(p1) {
     const p4 = defs_1.cadadr(p1);
-    console.log(`p4: ${p4}`);
     if (!defs_1.issymbol(p4)) {
         // this is likely to happen when one tries to
         // do assignments like these

@@ -26,6 +26,7 @@ function Eval_leading(p1) {
     const P = eval_1.Eval(defs_1.cadr(p1));
     p1 = eval_1.Eval(defs_1.caddr(p1));
     const X = p1 === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(P) : p1;
+    degree_1.checkpoly('leading', P, X);
     return leading(P, X);
 }
 exports.Eval_leading = Eval_leading;

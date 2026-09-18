@@ -7,11 +7,12 @@ const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
+const quantity_1 = require("./quantity");
 //             exp(2 x) - 1
 //  tanh(x) = --------------
 //             exp(2 x) + 1
 function Eval_tanh(p1) {
-    return tanh(eval_1.Eval(defs_1.cadr(p1)));
+    return tanh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), 'tanh'));
 }
 exports.Eval_tanh = Eval_tanh;
 function tanh(p1) {

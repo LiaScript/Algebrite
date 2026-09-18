@@ -8,6 +8,7 @@ const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
 const is_1 = require("./is");
+const at_1 = require("./at");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const tensor_1 = require("./tensor");
@@ -64,6 +65,7 @@ const T_LTEQ = 1009;
 const T_EQ = 1010;
 const T_NEQ = 1011;
 const T_QUOTASSIGN = 1012;
+const T_PRIME = 1013; // y'(...), a derivative at a point
 let token = '';
 let newline_flag = 0;
 let meta_mode = 0;
@@ -258,8 +260,12 @@ function tokenCharCode() {
     }
     return undefined;
 }
+// "·" or ".": dot (inner) product
+function isDotProduct() {
+    return tokenCharCode() === defs_1.dotprod_unicode || token === '.';
+}
 function is_factor() {
-    if (tokenCharCode() === defs_1.dotprod_unicode) {
+    if (isDotProduct()) {
         return true;
     }
     switch (token) {
@@ -269,6 +275,7 @@ function is_factor() {
         case '(':
         case T_SYMBOL:
         case T_FUNCTION:
+        case T_PRIME:
         case T_INTEGER:
         case T_DOUBLE:
         case T_STRING:
@@ -321,7 +328,7 @@ function scan_term() {
             get_next_token();
             results.push(multiply_1.inverse(scan_factor()));
         }
-        else if (tokenCharCode() === defs_1.dotprod_unicode) {
+        else if (isDotProduct()) {
             get_next_token();
             results.push(list_1.makeList(symbol_1.symbol(defs_1.INNER), results.pop(), scan_factor()));
         }
@@ -374,6 +381,13 @@ function scan_factor() {
     }
     else if (token === T_FUNCTION) {
         result = scan_function_call_with_function_name();
+    }
+    else if (token === T_PRIME) {
+        // y''(value): name and order from the token, then the parenthesized value
+        const name = token_buf.replace(/'+$/, '');
+        const order = token_buf.length - name.length;
+        get_next_token();
+        result = at_1.primeCall(name, order, scan_subexpr());
     }
     else if (token === '[') {
         //console.log "[ as tensor"
@@ -778,8 +792,10 @@ function get_token() {
         token = '';
         return;
     }
-    // number?
-    if (otherCFunctions_1.isdigit(scanned[scan_str]) || scanned[scan_str] === '.') {
+    // number? A dot starts one only before a digit (.5); otherwise it is
+    // the dot product operator (A.B)
+    if (otherCFunctions_1.isdigit(scanned[scan_str]) ||
+        (scanned[scan_str] === '.' && otherCFunctions_1.isdigit(scanned[scan_str + 1]))) {
         while (otherCFunctions_1.isdigit(scanned[scan_str])) {
             scan_str++;
         }
@@ -810,7 +826,15 @@ function get_token() {
         while (otherCFunctions_1.isalnumorunderscore(scanned[scan_str])) {
             scan_str++;
         }
-        if (scanned[scan_str] === '(') {
+        let primes = scan_str;
+        while (scanned[primes] === "'") {
+            primes++;
+        }
+        if (primes > scan_str && scanned[primes] === '(') {
+            scan_str = primes;
+            token = T_PRIME;
+        }
+        else if (scanned[scan_str] === '(') {
             token = T_FUNCTION;
         }
         else {

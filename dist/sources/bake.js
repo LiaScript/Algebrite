@@ -35,9 +35,12 @@ function _bake(p1) {
         // don't bake the contents of some constructs such as "for"
         // because we don't want to evaluate the body of
         // such constructs "statically", i.e. without fully running
-        // the loops.
+        // the loops. Same for the body of a user function: it is only
+        // evaluated when the function is called.
     }
-    else if (defs_1.iscons(p1) && defs_1.car(p1) !== symbol_1.symbol(defs_1.FOR)) {
+    else if (defs_1.iscons(p1) &&
+        defs_1.car(p1) !== symbol_1.symbol(defs_1.FOR) &&
+        defs_1.car(p1) !== symbol_1.symbol(defs_1.FUNCTION)) {
         result = list_1.makeList(defs_1.car(p1), ...p1.tail().map(bake));
     }
     else {

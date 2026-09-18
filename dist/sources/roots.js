@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.roots = exports.Eval_roots = exports.normalizeEquation = void 0;
+exports.roots = exports.Eval_roots = exports.normalizeEquation = exports.equationToExpr = void 0;
 const alloc_1 = require("../runtime/alloc");
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
@@ -35,24 +35,23 @@ const flatten = (arr) => [].concat(...arr);
 // into a [POLY1, X1] pair where POLY1 is `lhs - rhs` (or the bare expr) and
 // X1 is the given variable, or a guessed one if omitted. Shared by roots()
 // and solve(), which both solve POLY1 == 0 for X1, just via different means.
+// A = B / A == B -> A - B (evaluated), anything else is just evaluated.
+// The unevaluated SETQ must be caught here: Eval would treat x+y=3 as an
+// assignment/function definition.
+function equationToExpr(e) {
+    if (defs_1.car(e) !== symbol_1.symbol(defs_1.SETQ) && defs_1.car(e) !== symbol_1.symbol(defs_1.TESTEQ)) {
+        e = eval_1.Eval(e);
+    }
+    if (defs_1.car(e) === symbol_1.symbol(defs_1.SETQ) || defs_1.car(e) === symbol_1.symbol(defs_1.TESTEQ)) {
+        return add_1.subtract(eval_1.Eval(defs_1.cadr(e)), eval_1.Eval(defs_1.caddr(e)));
+    }
+    return e;
+}
+exports.equationToExpr = equationToExpr;
 function normalizeEquation(callExpr) {
-    // A == B -> A - B
-    let X = defs_1.cadr(callExpr);
-    let POLY1;
-    if (defs_1.car(X) === symbol_1.symbol(defs_1.SETQ) || defs_1.car(X) === symbol_1.symbol(defs_1.TESTEQ)) {
-        POLY1 = add_1.subtract(eval_1.Eval(defs_1.cadr(X)), eval_1.Eval(defs_1.caddr(X)));
-    }
-    else {
-        X = eval_1.Eval(X);
-        if (defs_1.car(X) === symbol_1.symbol(defs_1.SETQ) || defs_1.car(X) === symbol_1.symbol(defs_1.TESTEQ)) {
-            POLY1 = add_1.subtract(eval_1.Eval(defs_1.cadr(X)), eval_1.Eval(defs_1.caddr(X)));
-        }
-        else {
-            POLY1 = X;
-        }
-    }
+    const POLY1 = equationToExpr(defs_1.cadr(callExpr));
     // 2nd arg, x
-    X = eval_1.Eval(defs_1.caddr(callExpr));
+    const X = eval_1.Eval(defs_1.caddr(callExpr));
     const X1 = X === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(POLY1) : X;
     return [POLY1, X1];
 }
@@ -79,10 +78,12 @@ function isSimpleRoot(k) {
     }
     return k.slice(1, k.length - 1).every((el) => is_1.isZeroAtomOrTensor(el));
 }
+// coefficients divided by the leading one, which becomes exactly 1:
+// divide() of a sum by itself expands to 1/(a+b)*a+1/(a+b)*b instead
 function normalisedCoeff(poly, x) {
     const miniStack = coeff_1.coeff(poly, x);
     const divideBy = miniStack[miniStack.length - 1];
-    return miniStack.map((item) => multiply_1.divide(item, divideBy));
+    return miniStack.map((item, i) => i === miniStack.length - 1 ? defs_1.Constants.one : multiply_1.divide(item, divideBy));
 }
 function roots(POLY, X) {
     // the simplification of nested radicals uses "roots", which in turn uses
@@ -124,6 +125,12 @@ function roots(POLY, X) {
     return tensor;
 }
 exports.roots = roots;
+// roots() returns a lone root bare instead of as a one element list,
+// e.g. for the repeated root of the resolvent of (x^2+2)^2
+function rootsList(poly, x) {
+    const r = roots(poly, x);
+    return defs_1.istensor(r) ? r.tensor.elem : [r];
+}
 // ok to generate these roots take a look at their form
 // in the case of even and odd exponents here:
 // http://www.wolframalpha.com/input/?i=roots+x%5E14+%2B+1
@@ -215,7 +222,9 @@ function mini_solve(coefficients) {
         const E = coefficients.pop();
         return _solveDegree4(A, B, C, D, E);
     }
-    return [];
+    // an unsolved factor of degree > 4: returning the roots of the other
+    // factors only would silently drop roots
+    return run_1.stop('roots: the polynomial is not factorable, try nroots');
 }
 function _solveDegree1(A, B) {
     return [multiply_1.negate(multiply_1.divide(B, A))];
@@ -352,9 +361,9 @@ function _solveDegree4(A, B, C, D, E) {
 }
 function _solveDegree4Biquadratic(A, B, C, D, E) {
     log.debug('biquadratic case');
-    const biquadraticSolutions = roots(add_1.add(multiply_1.multiply(A, power_1.power(symbol_1.symbol(defs_1.SECRETX), bignum_1.integer(2))), add_1.add(multiply_1.multiply(C, symbol_1.symbol(defs_1.SECRETX)), E)), symbol_1.symbol(defs_1.SECRETX));
+    const biquadraticSolutions = rootsList(add_1.add(multiply_1.multiply(A, power_1.power(symbol_1.symbol(defs_1.SECRETX), bignum_1.integer(2))), add_1.add(multiply_1.multiply(C, symbol_1.symbol(defs_1.SECRETX)), E)), symbol_1.symbol(defs_1.SECRETX));
     const results = [];
-    for (const sol of biquadraticSolutions.tensor.elem) {
+    for (const sol of biquadraticSolutions) {
         results.push(simplify_1.simplify(power_1.power(sol, bignum_1.rational(1, 2))));
         results.push(simplify_1.simplify(multiply_1.negate(power_1.power(sol, bignum_1.rational(1, 2)))));
     }
@@ -372,11 +381,11 @@ function _solveDegree4ZeroB(A, B, C, D, E) {
     const coeff4 = add_1.add(multiply_1.multiply(bignum_1.rational(-1, 2), multiply_1.multiply(R_p, R_r)), add_1.add(multiply_1.divide(power_1.power(R_p, bignum_1.integer(3)), bignum_1.integer(2)), multiply_1.multiply(bignum_1.rational(-1, 8), power_1.power(R_q, bignum_1.integer(2)))));
     const arg1 = add_1.add(power_1.power(symbol_1.symbol(defs_1.SECRETX), bignum_1.integer(3)), add_1.add(multiply_1.multiply(coeff2, power_1.power(symbol_1.symbol(defs_1.SECRETX), bignum_1.integer(2))), add_1.add(multiply_1.multiply(coeff3, symbol_1.symbol(defs_1.SECRETX)), coeff4)));
     log.debug(`resolventCubic: ${arg1}`);
-    const resolventCubicSolutions = roots(arg1, symbol_1.symbol(defs_1.SECRETX));
+    const resolventCubicSolutions = rootsList(arg1, symbol_1.symbol(defs_1.SECRETX));
     log.debug(`resolventCubicSolutions: ${resolventCubicSolutions}`);
     let R_m = null;
     //R_m = resolventCubicSolutions.tensor.elem[1]
-    for (const sol of resolventCubicSolutions.tensor.elem) {
+    for (const sol of resolventCubicSolutions) {
         log.debug(`examining solution: ${sol}`);
         const toBeCheckedIfZero = abs_1.absValFloat(add_1.add(multiply_1.multiply(sol, bignum_1.integer(2)), R_p));
         log.debug(`abs value is: ${sol}`);
@@ -415,7 +424,7 @@ function _solveDegree4NonzeroB(A, B, C, D, E) {
     const r_q_x_2 = multiply_1.multiply(R_p, power_1.power(symbol_1.symbol(defs_1.SECRETX), bignum_1.integer(2)));
     const r_q_x = multiply_1.multiply(R_q, symbol_1.symbol(defs_1.SECRETX));
     const simplified = simplify_1.simplify(add_1.add_all([four_x_4, r_q_x_2, r_q_x, R_r]));
-    const depressedSolutions = roots(simplified, symbol_1.symbol(defs_1.SECRETX));
+    const depressedSolutions = rootsList(simplified, symbol_1.symbol(defs_1.SECRETX));
     log.debug(`p for depressed quartic: ${R_p}`);
     log.debug(`q for depressed quartic: ${R_q}`);
     log.debug(`r for depressed quartic: ${R_r}`);
@@ -425,7 +434,7 @@ function _solveDegree4NonzeroB(A, B, C, D, E) {
     log.debug(`R_r: ${R_r}`);
     log.debug(`solving depressed quartic: ${simplified}`);
     log.debug(`depressedSolutions: ${depressedSolutions}`);
-    return depressedSolutions.tensor.elem.map((sol) => {
+    return depressedSolutions.map((sol) => {
         const result = simplify_1.simplify(add_1.subtract(sol, multiply_1.divide(B, multiply_1.multiply(bignum_1.integer(4), A))));
         log.debug(`solution from depressed: ${result}`);
         return result;

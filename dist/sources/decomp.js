@@ -6,6 +6,7 @@ const find_1 = require("../runtime/find");
 const symbol_1 = require("../runtime/symbol");
 const misc_1 = require("../sources/misc");
 const add_1 = require("./add");
+const atomize_1 = require("./atomize");
 const eval_1 = require("./eval");
 const guess_1 = require("./guess");
 const list_1 = require("./list");
@@ -22,13 +23,14 @@ const multiply_1 = require("./multiply");
 // unclear to me at the moment
 // why this is exposed as something that can
 // be evalled. Never called.
+// Returns the constant (w.r.t. the variable) parts as a vector,
+// or the single part if there is only one.
 function Eval_decomp(p1) {
-    console.log('Eval_decomp is being called!!!!!!!!!!!!!!!!!!!!');
     const arg = eval_1.Eval(defs_1.cadr(p1));
     p1 = eval_1.Eval(defs_1.caddr(p1));
     const variable = p1 === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(arg) : p1;
     const result = decomp(false, arg, variable);
-    return list_1.makeList(symbol_1.symbol(defs_1.NIL), ...result);
+    return atomize_1.atomize(list_1.makeList(symbol_1.symbol(defs_1.NIL), ...result));
 }
 exports.Eval_decomp = Eval_decomp;
 function pushTryNotToDuplicateLocal(localStack, item) {

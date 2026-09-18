@@ -16,7 +16,7 @@ exports.Eval_shape = Eval_shape;
 function shape(p1) {
     if (!defs_1.istensor(p1)) {
         if (!is_1.isZeroAtomOrTensor(p1)) {
-            run_1.stop('transpose: tensor expected, 1st arg is not a tensor');
+            run_1.stop('shape: tensor expected, 1st arg is not a tensor');
         }
         return defs_1.Constants.zero;
     }

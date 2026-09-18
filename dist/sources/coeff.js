@@ -53,6 +53,13 @@ exports.Eval_coeff = Eval_coeff;
 //-----------------------------------------------------------------------------
 function coeff(p, x) {
     const coefficients = [];
+    // each c is evaluated, so p must be too, else p - c may not cancel
+    // structurally (-(-1)^(5/6) vs its evaluated rectangular form) and the
+    // loop divides by x until subst(p, x, 0) divides by zero. x stays free.
+    p = symbol_1.inChildScope(() => {
+        symbol_1.set_binding(x, x);
+        return eval_1.Eval(p);
+    });
     while (true) {
         const c = eval_1.Eval(subst_1.subst(p, x, defs_1.Constants.zero));
         coefficients.push(c);

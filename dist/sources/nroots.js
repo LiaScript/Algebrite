@@ -106,10 +106,9 @@ function monic(n) {
     nroots_y.i = nroots_c[n - 1].i;
     const t = nroots_y.r * nroots_y.r + nroots_y.i * nroots_y.i;
     for (let k = 0; k < n - 1; k++) {
-        nroots_c[k].r =
-            (nroots_c[k].r * nroots_y.r + nroots_c[k].i * nroots_y.i) / t;
-        nroots_c[k].i =
-            (nroots_c[k].i * nroots_y.r - nroots_c[k].r * nroots_y.i) / t;
+        const { r, i } = nroots_c[k];
+        nroots_c[k].r = (r * nroots_y.r + i * nroots_y.i) / t;
+        nroots_c[k].i = (i * nroots_y.r - r * nroots_y.i) / t;
     }
     nroots_c[n - 1].r = 1.0;
     nroots_c[n - 1].i = 0.0;

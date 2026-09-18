@@ -62,9 +62,14 @@ function doubleToReasonableString(d) {
     }
     else {
         const maxFixedPrintoutDigits = bignum_1.nativeInt(symbol_1.get_binding(symbol_1.symbol(defs_1.MAX_FIXED_PRINTOUT_DIGITS)));
-        //console.log "maxFixedPrintoutDigits: " + maxFixedPrintoutDigits
-        //console.log "type: " + typeof(maxFixedPrintoutDigits)
-        //console.log "toFixed: " + d.toFixed(maxFixedPrintoutDigits)
+        // Fixed notation would show fewer than 3 significant digits below
+        // 10^(3-digits) (1e-7 printed as 0.000000..., which reads as zero),
+        // and doubles no longer hold every integer digit from 10^15 on.
+        const abs = Math.abs(d);
+        if (abs !== 0 &&
+            (abs < Math.pow(10, Math.min(3 - maxFixedPrintoutDigits, -1)) || abs >= 1e15)) {
+            return scientificString(d, maxFixedPrintoutDigits);
+        }
         stringRepresentation = '' + d.toFixed(maxFixedPrintoutDigits);
         // remove any trailing zeroes after the dot
         // see https://stackoverflow.com/questions/26299160/using-regex-how-do-i-remove-the-trailing-zeros-from-a-decimal-number
@@ -84,6 +89,22 @@ function doubleToReasonableString(d) {
     return stringRepresentation;
 }
 exports.doubleToReasonableString = doubleToReasonableString;
+// 1.5*10^(-7) (1.5 \cdot 10^{-7} in LaTeX), with the same number of
+// mantissa decimals and the same "..." marker for rounding as fixed output
+function scientificString(d, digits) {
+    const [rounded, exp] = d.toExponential(digits).split('e');
+    let mantissa = rounded
+        .replace(/(\.\d*?[1-9])0+$/, '$1')
+        .replace(/\.0+$/, '.0');
+    if (parseFloat(`${mantissa}e${exp}`) !== d) {
+        mantissa = rounded + '...';
+    }
+    const e = parseInt(exp, 10);
+    if (defs_1.defs.printMode === defs_1.PRINTMODE_LATEX) {
+        return `${mantissa} \\cdot 10^{${e}}`;
+    }
+    return `${mantissa}*10^${e < 0 ? `(${e})` : e}`;
+}
 // does nothing
 function clear_term() { }
 exports.clear_term = clear_term;
@@ -148,15 +169,49 @@ function append(p1, p2) {
     return list_1.makeList(...arr);
 }
 exports.append = append;
+// Integer-order Bessel functions from their integral representations.
+// J: (1/2pi) int_0^2pi cos(n t - x sin t) dt, the trapezoidal rule is
+// exponentially accurate for this periodic integrand.
 function jn(n, x) {
-    run_1.stop('Not implemented');
-    // See https://git.musl-libc.org/cgit/musl/tree/src/math/jn.c
-    // https://github.com/SheetJS/bessel
+    if (x === 0) {
+        return n === 0 ? 1 : 0;
+    }
+    const m = 2 * Math.ceil(Math.abs(x) + Math.abs(n)) + 64;
+    let sum = 0;
+    for (let k = 0; k < m; k++) {
+        const t = (2 * Math.PI * k) / m;
+        sum += Math.cos(n * t - x * Math.sin(t));
+    }
+    return sum / m;
 }
 exports.jn = jn;
+// Y (x > 0): (1/pi) int_0^pi sin(x sin t - n t) dt
+//   - (1/pi) int_0^inf (e^(n t) + (-1)^n e^(-n t)) e^(-x sinh t) dt,
+// with Y_(-n) = (-1)^n Y_n. Simpson's rule, the second integral cut off
+// where its integrand is below e^-50 of its scale.
+// ponytail: ~8 significant digits, a series/asymptotic expansion if more
 function yn(n, x) {
-    run_1.stop('Not implemented');
-    // See https://git.musl-libc.org/cgit/musl/tree/src/math/jn.c
-    // https://github.com/SheetJS/bessel
+    if (!(x > 0)) {
+        run_1.stop('bessely: x must be positive');
+    }
+    const sign = n < 0 && n % 2 !== 0 ? -1 : 1;
+    n = Math.abs(n);
+    const simpson = (f, a, b) => {
+        const m = 4000;
+        const h = (b - a) / m;
+        let s = f(a) + f(b);
+        for (let k = 1; k < m; k++) {
+            s += (k % 2 ? 4 : 2) * f(a + k * h);
+        }
+        return (s * h) / 3;
+    };
+    const first = simpson((t) => Math.sin(x * Math.sin(t) - n * t), 0, Math.PI);
+    let T = 1;
+    while (x * Math.sinh(T) - n * T < 50) {
+        T += 1;
+    }
+    const parity = n % 2 ? -1 : 1;
+    const second = simpson((t) => (Math.exp(n * t) + parity * Math.exp(-n * t)) * Math.exp(-x * Math.sinh(t)), 0, T);
+    return (sign * (first - second)) / Math.PI;
 }
 exports.yn = yn;

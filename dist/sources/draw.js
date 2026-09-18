@@ -7,6 +7,7 @@ const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const float_1 = require("./float");
+const scan_1 = require("./scan");
 let drawHandler;
 let drawCallback;
 function setDrawHandler(handler, callback) {
@@ -32,11 +33,11 @@ function Eval_draw(p1) {
         : [toFloat(defs_1.cadddr(p1)), toFloat(defs_1.caddddr(p1))];
     // ponytail: f binds the variable globally, so it is only valid while the
     // handler runs synchronously inside this Eval; sample eagerly if needed later.
-    const f = (v) => {
+    const at = (p, v) => {
         const saved = symbol_1.get_binding(variable);
         symbol_1.set_binding(variable, bignum_1.double(v));
         try {
-            return toFloat(body);
+            return toFloat(p);
         }
         catch (e) {
             return NaN;
@@ -45,11 +46,36 @@ function Eval_draw(p1) {
             symbol_1.set_binding(variable, saved);
         }
     };
+    const opts = defs_1.cadr(defs_1.cddddr(p1)) === symbol_1.symbol(defs_1.NIL) ? undefined : eval_1.Eval(defs_1.cadr(defs_1.cddddr(p1)));
+    const str = (p) => (defs_1.isstr(p) ? p.str : p.toString());
+    const options = !opts ? undefined : defs_1.istensor(opts) ? opts.elem.map(str) : str(opts);
+    const num = (s) => {
+        try {
+            return toFloat(scan_1.scan(s)[1]);
+        }
+        catch (e) {
+            return NaN;
+        }
+    };
+    // the variable is free in the plotted expression, even if it has a value
+    const savedVariable = symbol_1.get_binding(variable);
+    symbol_1.set_binding(variable, variable);
+    let evaluated;
+    try {
+        evaluated = eval_1.Eval(body);
+    }
+    finally {
+        symbol_1.set_binding(variable, savedVariable);
+    }
+    const parts = defs_1.istensor(evaluated) ? evaluated.elem : undefined;
+    const f = (v) => (parts ? parts.map((p) => at(p, v)) : at(body, v));
     drawHandler({
-        expr: eval_1.Eval(body).toString(),
+        expr: parts ? parts.map((p) => p.toString()) : evaluated.toString(),
         variable: variable.toString(),
         range,
         f,
+        options,
+        num,
         callback: drawCallback,
     });
     return symbol_1.symbol(defs_1.NIL);

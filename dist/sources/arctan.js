@@ -9,9 +9,11 @@ const bignum_1 = require("./bignum");
 const denominator_1 = require("./denominator");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
+const add_1 = require("./add");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const numerator_1 = require("./numerator");
+const quantity_1 = require("./quantity");
 /* arctan =====================================================================
 
 Tags
@@ -28,12 +30,12 @@ Returns the inverse tangent of x.
 
 */
 function Eval_arctan(x) {
-    return arctan(eval_1.Eval(defs_1.cadr(x)));
+    return arctan(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), 'arctan'));
 }
 exports.Eval_arctan = Eval_arctan;
 function arctan(x) {
     if (defs_1.car(x) === symbol_1.symbol(defs_1.TAN)) {
-        return defs_1.cadr(x);
+        return arctanOfTan(defs_1.cadr(x)) || list_1.makeList(symbol_1.symbol(defs_1.ARCTAN), x);
     }
     if (defs_1.isdouble(x)) {
         return bignum_1.double(Math.atan(x.d));
@@ -51,7 +53,7 @@ function arctan(x) {
         if (defs_1.car(p2) === symbol_1.symbol(defs_1.SIN) &&
             defs_1.car(p3) === symbol_1.symbol(defs_1.COS) &&
             misc_1.equal(defs_1.cadr(p2), defs_1.cadr(p3))) {
-            return defs_1.cadr(p2);
+            return arctanOfTan(defs_1.cadr(p2)) || list_1.makeList(symbol_1.symbol(defs_1.ARCTAN), x);
         }
     }
     // arctan(1/sqrt(3)) -> pi/6
@@ -75,3 +77,9 @@ function arctan(x) {
     return list_1.makeList(symbol_1.symbol(defs_1.ARCTAN), x);
 }
 exports.arctan = arctan;
+// arctan(tan(u)) = u - k pi, which lies in [-pi/2, pi/2]; only decidable
+// when u is a real constant (arctan(tan(x)) is not x), else null
+function arctanOfTan(u) {
+    const k = Math.round(is_1.realconstant(u) / Math.PI);
+    return isNaN(k) ? null : add_1.subtract(u, multiply_1.multiply(bignum_1.integer(k), defs_1.Constants.Pi()));
+}

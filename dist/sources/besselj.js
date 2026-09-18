@@ -13,6 +13,7 @@ const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
 const sin_1 = require("./sin");
+const misc_1 = require("./misc");
 /* besselj =====================================================================
 
 Tags
@@ -52,6 +53,7 @@ Examples:
 
 */
 function Eval_besselj(p1) {
+    misc_1.checkArgCount(p1, 2);
     return besselj(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
 }
 exports.Eval_besselj = Eval_besselj;
@@ -70,8 +72,8 @@ function yybesselj(X, N) {
     if (is_1.isZeroAtomOrTensor(X) && is_1.isZeroAtomOrTensor(N)) {
         return defs_1.Constants.one;
     }
-    // besselj(0,n) = 0
-    if (is_1.isZeroAtomOrTensor(X) && !isNaN(n)) {
+    // besselj(0,n) = 0 for integer n != 0 and for n > 0
+    if (is_1.isZeroAtomOrTensor(X) && (!isNaN(n) || is_1.ispositivenumber(N))) {
         return defs_1.Constants.zero;
     }
     // half arguments

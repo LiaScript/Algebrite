@@ -2,6 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Eval_prime = void 0;
 const defs_1 = require("../runtime/defs");
+const symbol_1 = require("../runtime/symbol");
+const is_1 = require("./is");
+const list_1 = require("./list");
 const run_1 = require("../runtime/run");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
@@ -19,6 +22,12 @@ function Eval_prime(p1) {
 }
 exports.Eval_prime = Eval_prime;
 function prime(p1) {
+    if (!is_1.isinteger(p1)) {
+        if (defs_1.isNumericAtom(p1)) {
+            run_1.stop('prime: Argument out of range.');
+        }
+        return list_1.makeList(symbol_1.symbol(defs_1.PRIME), p1);
+    }
     let n = bignum_1.nativeInt(p1);
     if (n < 1 || n > defs_1.MAXPRIMETAB) {
         run_1.stop('prime: Argument out of range.');

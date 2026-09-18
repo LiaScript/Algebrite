@@ -7,6 +7,7 @@ const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
+const misc_1 = require("./misc");
 //-----------------------------------------------------------------------------
 //
 //  Author : philippe.billet@noos.fr
@@ -17,6 +18,7 @@ const list_1 = require("./list");
 //
 //-----------------------------------------------------------------------------
 function Eval_erfc(p1) {
+    misc_1.checkArgCount(p1, 1);
     return yerfc(eval_1.Eval(defs_1.cadr(p1)));
 }
 exports.Eval_erfc = Eval_erfc;

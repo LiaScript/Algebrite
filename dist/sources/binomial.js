@@ -1,23 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_binomial = void 0;
+exports.binomial = exports.Eval_binomial = void 0;
 const defs_1 = require("../runtime/defs");
-const misc_1 = require("../sources/misc");
+const symbol_1 = require("../runtime/symbol");
 const add_1 = require("./add");
+const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const factorial_1 = require("./factorial");
+const is_1 = require("./is");
+const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 //  Binomial coefficient
 //
-//  Input:    tos-2    n
-//
-//      tos-1    k
-//
-//  Output:    Binomial coefficient on stack
-//
 //  binomial(n, k) = n! / k! / (n - k)!
 //
-//  The binomial coefficient vanishes for k < 0 or k > n. (A=B, p. 19)
+//  generalized as in Concrete Mathematics (5.1): for integer k >= 0 it is
+//  n (n - 1) ... (n - k + 1) / k!, which also holds for negative and
+//  fractional n, and it vanishes for integer k < 0.
 function Eval_binomial(p1) {
     const N = eval_1.Eval(defs_1.cadr(p1));
     const K = eval_1.Eval(defs_1.caddr(p1));
@@ -25,25 +24,21 @@ function Eval_binomial(p1) {
 }
 exports.Eval_binomial = Eval_binomial;
 function binomial(N, K) {
-    return ybinomial(N, K);
-}
-function ybinomial(N, K) {
-    if (!BINOM_check_args(N, K)) {
+    const k = bignum_1.nativeInt(K);
+    if (k < 0) {
         return defs_1.Constants.zero;
+    }
+    if (defs_1.isNumericAtom(N) && !isNaN(k)) {
+        let result = defs_1.Constants.one;
+        for (let j = 0; j < k; j++) {
+            result = multiply_1.divide(multiply_1.multiply(result, add_1.subtract(N, bignum_1.integer(j))), bignum_1.integer(j + 1));
+        }
+        return result;
+    }
+    // n! has a pole at negative integers, the factorial form is meaningless
+    if (is_1.isinteger(N) && is_1.isnegativenumber(N)) {
+        return list_1.makeList(symbol_1.symbol(defs_1.BINOMIAL), N, K);
     }
     return multiply_1.divide(multiply_1.divide(factorial_1.factorial(N), factorial_1.factorial(K)), factorial_1.factorial(add_1.subtract(N, K)));
 }
-function BINOM_check_args(N, K) {
-    if (defs_1.isNumericAtom(N) && misc_1.lessp(N, defs_1.Constants.zero)) {
-        return false;
-    }
-    else if (defs_1.isNumericAtom(K) && misc_1.lessp(K, defs_1.Constants.zero)) {
-        return false;
-    }
-    else if (defs_1.isNumericAtom(N) && defs_1.isNumericAtom(K) && misc_1.lessp(N, K)) {
-        return false;
-    }
-    else {
-        return true;
-    }
-}
+exports.binomial = binomial;

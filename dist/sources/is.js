@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.isnpi = exports.isquarterturn = exports.isimaginaryunit = exports.isfloating = exports.isMinusSqrtThreeOverTwo = exports.isSqrtThreeOverTwo = exports.isminusoneoversqrttwo = exports.isoneoversqrttwo = exports.isminusoneovertwo = exports.isoneovertwo = exports.equalq = exports.equaln = exports.isfraction = exports.isoneover = exports.isNumberOneOverSomething = exports.isintegerfactor = exports.issymbolic = exports.isnegative = exports.iseveninteger = exports.iscomplexnumber = exports.iscomplexnumberdouble = exports.isimaginarynumber = exports.isnegativeterm = exports.ispolyexpandedform = exports.isunivarpolyfactoredorexpandedform = exports.isposint = exports.isnonnegativeinteger = exports.isintegerorintegerfloat = exports.isinteger = exports.isone = exports.isminusone = exports.isplusone = exports.isplustwo = exports.ispositivenumber = exports.isnegativenumber = exports.isZeroLikeOrNonZeroLikeOrUndetermined = exports.isZeroAtomOrTensor = exports.isZeroAtom = void 0;
+exports.realconstant = exports.isnpi = exports.isquarterturn = exports.isimaginaryunit = exports.isfloating = exports.isMinusSqrtThreeOverTwo = exports.isSqrtThreeOverTwo = exports.isminusoneoversqrttwo = exports.isoneoversqrttwo = exports.isminusoneovertwo = exports.isoneovertwo = exports.equalq = exports.equaln = exports.isfraction = exports.isoneover = exports.isNumberOneOverSomething = exports.isintegerfactor = exports.issymbolic = exports.isnegative = exports.iseveninteger = exports.iscomplexnumber = exports.iscomplexnumberdouble = exports.isimaginarynumber = exports.isnegativeterm = exports.ispolyexpandedform = exports.ispolyfactoredorexpandedform = exports.isunivarpolyfactoredorexpandedform = exports.isposint = exports.isnonnegativeinteger = exports.isintegerorintegerfloat = exports.isinteger = exports.isone = exports.isminusone = exports.isplusone = exports.isplustwo = exports.ispositivenumber = exports.isnegativenumber = exports.isZeroLikeOrNonZeroLikeOrUndetermined = exports.isZeroAtomOrTensor = exports.isZeroAtom = void 0;
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
 const symbol_1 = require("../runtime/symbol");
@@ -253,6 +253,7 @@ function countTrue(...a) {
 function ispolyfactoredorexpandedform(p, x) {
     return ispolyfactoredorexpandedform_factor(p, x);
 }
+exports.ispolyfactoredorexpandedform = ispolyfactoredorexpandedform;
 function ispolyfactoredorexpandedform_factor(p, x) {
     if (defs_1.ismultiply(p)) {
         return p.tail().every((el) => {
@@ -608,3 +609,11 @@ function isnpi(p) {
     return n;
 }
 exports.isnpi = isnpi;
+// float value of a real constant such as 3 or 4/5*pi, NaN when p has free
+// variables or an imaginary part. Used to pick the principal branch in
+// arcsin(sin(u)) and friends, which is only decidable for a known u.
+function realconstant(p) {
+    const f = float_1.zzfloat(p);
+    return defs_1.isdouble(f) ? f.d : NaN;
+}
+exports.realconstant = realconstant;

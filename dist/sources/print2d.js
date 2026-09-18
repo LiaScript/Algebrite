@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.print2dascii = void 0;
+const at_1 = require("./at");
 const defs_1 = require("../runtime/defs");
 const otherCFunctions_1 = require("../runtime/otherCFunctions");
 const symbol_1 = require("../runtime/symbol");
@@ -466,6 +467,9 @@ function emit_quantity(p) {
     const magnitude = defs_1.cadr(p);
     const dimTensor = defs_1.caddr(p);
     const dim = dimTensor.tensor.elem.map((e) => bignum_1.nativeDouble(e));
+    if (is_1.isnegativenumber(magnitude)) {
+        __emit_char('-');
+    }
     emit_factor(magnitude);
     __emit_char(' ');
     __emit_str(unit_1.formatDimension(dim));
@@ -603,6 +607,17 @@ function emit_function(p) {
     }
     if (defs_1.isfactorial(p)) {
         emit_factorial_function(p);
+        return;
+    }
+    // at(d(y(x),x),x,v) as y'(v)
+    const prime = at_1.primeName(p);
+    if (prime !== null) {
+        for (const c of prime) {
+            __emit_char(c);
+        }
+        __emit_char('(');
+        emit_expr(defs_1.cadddr(p));
+        __emit_char(')');
         return;
     }
     if (defs_1.car(p) === symbol_1.symbol(defs_1.DERIVATIVE)) {

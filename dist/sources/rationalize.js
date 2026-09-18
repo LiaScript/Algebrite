@@ -8,6 +8,7 @@ const eval_1 = require("./eval");
 const gcd_1 = require("./gcd");
 const is_1 = require("./is");
 const multiply_1 = require("./multiply");
+const misc_1 = require("./misc");
 const tensor_1 = require("./tensor");
 function Eval_rationalize(p1) {
     return rationalize(eval_1.Eval(defs_1.cadr(p1)));
@@ -84,6 +85,18 @@ function __rationalize_tensor(p1) {
     tensor_1.check_tensor_dimensions(p1);
     return p1;
 }
+// Common denominator built from the denominators' own factors: each term
+// is multiplied by it and must cancel its denominator syntactically. A true
+// lcm can lose that, e.g. lcm(x^2+1,4*x^2+4) = 4*x^2+4 does not cancel
+// 1/(x^2+1). So only factors with the same base are merged, x^2 and x^3
+// into x^3; any other factor is multiplied in.
 function __lcm(p1, p2) {
-    return multiply_1.divide(multiply_1.multiply(p1, p2), gcd_1.gcd(p1, p2));
+    const base = (f) => (defs_1.ispower(f) ? defs_1.cadr(f) : f);
+    const factors = defs_1.ismultiply(p1) ? p1.tail() : [p1];
+    const i = factors.findIndex((f) => misc_1.equal(base(f), base(p2)));
+    if (i < 0) {
+        return multiply_1.multiply(p1, p2);
+    }
+    factors[i] = multiply_1.divide(multiply_1.multiply(factors[i], p2), gcd_1.gcd(factors[i], p2));
+    return factors.reduce((acc, f) => multiply_1.multiply(acc, f), defs_1.Constants.one);
 }

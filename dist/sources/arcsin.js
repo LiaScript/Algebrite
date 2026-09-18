@@ -2,12 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Eval_arcsin = void 0;
 const defs_1 = require("../runtime/defs");
+const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
+const add_1 = require("./add");
+const quantity_1 = require("./quantity");
 /* arcsin =====================================================================
 
 Tags
@@ -24,14 +27,24 @@ Returns the inverse sine of x.
 
 */
 function Eval_arcsin(x) {
-    return arcsin(eval_1.Eval(defs_1.cadr(x)));
+    return arcsin(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), 'arcsin'));
 }
 exports.Eval_arcsin = Eval_arcsin;
 function arcsin(x) {
+    // arcsin(sin(u)) = (-1)^k (u - k pi), which lies in [-pi/2, pi/2];
+    // only decidable when u is a real constant, arcsin(sin(x)) is not x
     if (defs_1.car(x) === symbol_1.symbol(defs_1.SIN)) {
-        return defs_1.cadr(x);
+        const k = Math.round(is_1.realconstant(defs_1.cadr(x)) / Math.PI);
+        if (isNaN(k)) {
+            return list_1.makeList(symbol_1.symbol(defs_1.ARCSIN), x);
+        }
+        const v = add_1.subtract(defs_1.cadr(x), multiply_1.multiply(bignum_1.integer(k), defs_1.Constants.Pi()));
+        return k % 2 ? multiply_1.negate(v) : v;
     }
     if (defs_1.isdouble(x)) {
+        if (Math.abs(x.d) > 1) {
+            run_1.stop('arcsin function argument is not in the interval [-1,1]');
+        }
         return bignum_1.double(Math.asin(x.d));
     }
     // if x == 1/sqrt(2) then return 1/4*pi (45 degrees)

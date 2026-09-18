@@ -3,7 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.logarithm = exports.Eval_log = void 0;
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
+const abs_1 = require("./abs");
 const add_1 = require("./add");
+const arg_1 = require("./arg");
 const bignum_1 = require("./bignum");
 const denominator_1 = require("./denominator");
 const eval_1 = require("./eval");
@@ -13,6 +15,7 @@ const misc_1 = require("./misc");
 const multiply_1 = require("./multiply");
 const numerator_1 = require("./numerator");
 const power_1 = require("./power");
+const quantity_1 = require("./quantity");
 // Natural logarithm.
 //
 // Note that we use the mathematics / Javascript / Mathematica
@@ -23,11 +26,11 @@ const power_1 = require("./power");
 // calculations use log for the common logarithm.
 // log(x) is the natural logarithm; log(x, base) = log(x)/log(base).
 function Eval_log(p1) {
-    const x = eval_1.Eval(defs_1.cadr(p1));
+    const x = quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), 'log');
     if (!defs_1.iscons(defs_1.cddr(p1))) {
         return logarithm(x);
     }
-    const base = eval_1.Eval(defs_1.caddr(p1));
+    const base = quantity_1.requireDimensionless(eval_1.Eval(defs_1.caddr(p1)), 'log');
     return exactLog(x, base) || multiply_1.divide(logarithm(x), logarithm(base));
 }
 exports.Eval_log = Eval_log;
@@ -55,6 +58,11 @@ function logarithm(p1) {
     }
     if (defs_1.isdouble(p1)) {
         return bignum_1.double(Math.log(p1.d));
+    }
+    // principal branch: log(z) = log(|z|) + i arg(z), with -pi < arg(z) <= pi
+    // (splitting -i as log(-1) + log(i) would give 3/2 i pi)
+    if (is_1.iscomplexnumber(p1)) {
+        return add_1.add(logarithm(abs_1.absval(p1)), multiply_1.multiply(defs_1.Constants.imaginaryunit, arg_1.arg(p1)));
     }
     // rational number and not an integer?
     if (is_1.isfraction(p1)) {

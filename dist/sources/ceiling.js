@@ -9,6 +9,7 @@ const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
 const mmul_1 = require("./mmul");
+const quantity_1 = require("./quantity");
 /* ceiling =====================================================================
 
 Tags
@@ -26,7 +27,8 @@ Returns the smallest integer not less than x.
 
 */
 function Eval_ceiling(p1) {
-    return ceiling(eval_1.Eval(defs_1.cadr(p1)));
+    const arg = eval_1.Eval(defs_1.cadr(p1));
+    return quantity_1.mapQuantity(arg, ceiling) || ceiling(arg);
 }
 exports.Eval_ceiling = Eval_ceiling;
 function ceiling(p1) {

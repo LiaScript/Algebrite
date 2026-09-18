@@ -38,6 +38,14 @@ function factorpoly(POLY, X) {
     if (!defs_1.issymbol(X)) {
         return POLY;
     }
+    // i * (real polynomial): the rational root search needs real
+    // coefficients, so factor the real polynomial and put i back in front
+    const cs = coeff_1.coeff(POLY, X);
+    if (cs.every((c) => is_1.isZeroAtomOrTensor(c) || is_1.isimaginarynumber(c))) {
+        const minusI = multiply_1.negate(defs_1.Constants.imaginaryunit);
+        const realPoly = cs.reduce((acc, c, k) => add_1.add(acc, multiply_1.multiply(multiply_1.multiply(c, minusI), power_1.power(X, bignum_1.integer(k)))), defs_1.Constants.zero);
+        return multiply_1.multiply_noexpand(defs_1.Constants.imaginaryunit, yyfactorpoly(realPoly, X));
+    }
     return yyfactorpoly(POLY, X);
 }
 exports.factorpoly = factorpoly;
@@ -61,6 +69,7 @@ function yyfactorpoly(p1, p2) {
     // for univariate polynomials we could do factpoly_expo > 1
     let whichRootsAreWeFinding = 'real';
     let remainingPoly = null;
+    let quadratic;
     while (factpoly_expo > 0) {
         var foundComplexRoot, foundRealRoot;
         if (is_1.isZeroAtomOrTensor(polycoeff[0])) {
@@ -74,6 +83,10 @@ function yyfactorpoly(p1, p2) {
             }
             else if (whichRootsAreWeFinding === 'complex') {
                 [foundComplexRoot, p4] = get_factor_from_complex_root(remainingPoly, polycoeff, factpoly_expo);
+                quadratic = foundComplexRoot
+                    ? multiply_1.multiply(add_1.subtract(p4, p2), add_1.subtract(conj_1.conjugate(p4), p2))
+                    : get_quadratic_factor(polycoeff, factpoly_expo, p2);
+                foundComplexRoot = quadratic !== undefined;
             }
         }
         if (whichRootsAreWeFinding === 'real') {
@@ -126,11 +139,7 @@ function yyfactorpoly(p1, p2) {
                 break;
             }
             else {
-                const firstFactor = add_1.subtract(p4, p2); // A, x
-                //console.log("first factor: " + firstFactor)
-                const secondFactor = add_1.subtract(conj_1.conjugate(p4), p2); // p4: A, p2: x
-                //console.log("second factor: " + secondFactor)
-                p8 = multiply_1.multiply(firstFactor, secondFactor);
+                p8 = quadratic;
                 //if (factpoly_expo > 0 && isnegativeterm(polycoeff[factpoly_expo]))
                 //  negate()
                 //  negate_noexpand()
@@ -200,10 +209,10 @@ function yyfactorpoly(p1, p2) {
                   * so a factor is 1+x^2 ( = (x+i)*(x-i))
                   * BUT
                 */
-                for (let i = 0; i <= factpoly_expo; i++) {
-                    polycoeff.pop();
-                }
-                polycoeff.push(...coeff_1.coeff(remainingPoly, p2));
+                // replace all coefficients: after a real factor was divided out,
+                // polycoeff is longer than factpoly_expo + 1, and popping only that
+                // many left a stale coefficient in front
+                polycoeff.splice(0, polycoeff.length, ...coeff_1.coeff(remainingPoly, p2));
                 factpoly_expo -= 2;
             }
         }
@@ -219,17 +228,13 @@ function yyfactorpoly(p1, p2) {
     if (defs_1.DEBUG) {
         console.log(`POLY=${p1}`);
     }
-    p1 = defs_1.noexpand(condense_1.yycondense, p1);
-    //console.log("new poly with extracted common factor: " + p1)
-    //breakpoint
-    // factor out negative sign
+    // factor out negative sign, before condensing: negate() would expand
+    // a condensed -2*(x^2+x+1) back into 2*x^2+2*x+2
     if (factpoly_expo > 0 && is_1.isnegativeterm(polycoeff[factpoly_expo])) {
-        //prev_expanding = expanding
-        //expanding = 1
-        //expanding = prev_expanding
         p1 = multiply_1.negate(p1);
         p7 = multiply_1.negate_noexpand(p7);
     }
+    p1 = defs_1.noexpand(condense_1.yycondense, p1);
     p7 = multiply_1.multiply_noexpand(p7, p1);
     if (defs_1.DEBUG) {
         console.log(`RESULT=${p7}`);
@@ -380,6 +385,64 @@ function get_factor_from_complex_root(remainingPoly, polycoeff, factpoly_expo) {
         console.log('get_factor_from_complex_root returning false');
     }
     return [false, p4];
+}
+// The complex roots tried above only cover some quadratic factors: x^2+2,
+// 3*x^2+1 or real ones like x^2-2 were missed. Searches all integer
+// quadratic factors a*x^2+b*x+c instead: a divides the leading coefficient,
+// c the constant term, and the factor's values at 1 and -1, a+b+c and
+// a-b+c, divide P(1) and P(-1). These are not zero because the rational
+// roots have been divided out already. Degree >= 4 only: a quadratic
+// factor of a cubic would come with a rational root.
+function get_quadratic_factor(polycoeff, n, X) {
+    if (n < 4) {
+        return;
+    }
+    const cs = polycoeff.slice(0, n + 1);
+    const P1 = bignum_1.nativeInt(Evalpoly(defs_1.Constants.one, cs, n));
+    const Pm1 = bignum_1.nativeInt(Evalpoly(defs_1.Constants.negOne, cs, n));
+    // big values: factor_small_number could not produce the divisors
+    if (!cs.every(is_1.isinteger) ||
+        !isFinite(P1) ||
+        !isFinite(Pm1) ||
+        P1 === 0 ||
+        Pm1 === 0 ||
+        [cs[0], cs[n]].some((c) => !isFinite(bignum_1.nativeInt(c)))) {
+        return;
+    }
+    const divs = (c) => divisors_1.ydivisors(c).map(bignum_1.nativeInt);
+    for (const a of divs(cs[n])) {
+        for (const c0 of divs(cs[0])) {
+            for (const c of [c0, -c0]) {
+                for (const d0 of divs(bignum_1.integer(P1))) {
+                    for (const d of [d0, -d0]) {
+                        const b = d - a - c;
+                        if (Pm1 % (a - b + c) !== 0) {
+                            continue;
+                        }
+                        const q = add_1.add(multiply_1.multiply(bignum_1.integer(a), power_1.power(X, bignum_1.integer(2))), add_1.add(multiply_1.multiply(bignum_1.integer(b), X), bignum_1.integer(c)));
+                        if (dividesExactly(cs, n, [c, b, a])) {
+                            return q;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+// does the quadratic d[0]+d[1]*x+d[2]*x^2 divide the polynomial with
+// integer coefficients cs, leaving an integer quotient?
+function dividesExactly(cs, n, d) {
+    const r = cs.slice(0, n + 1);
+    for (let i = n; i >= 2; i--) {
+        const q = multiply_1.divide(r[i], bignum_1.integer(d[2]));
+        if (!is_1.isinteger(q)) {
+            return false;
+        }
+        r[i] = defs_1.Constants.zero;
+        r[i - 1] = add_1.subtract(r[i - 1], multiply_1.multiply(q, bignum_1.integer(d[1])));
+        r[i - 2] = add_1.subtract(r[i - 2], multiply_1.multiply(q, bignum_1.integer(d[0])));
+    }
+    return is_1.isZeroAtomOrTensor(r[0]) && is_1.isZeroAtomOrTensor(r[1]);
 }
 //-----------------------------------------------------------------------------
 //

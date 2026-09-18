@@ -14,6 +14,7 @@ const inv_1 = require("./inv");
 const is_1 = require("./is");
 const multiply_1 = require("./multiply");
 const roots_1 = require("./roots");
+const scan_1 = require("./scan");
 const simplify_1 = require("./simplify");
 const subst_1 = require("./subst");
 const tensor_1 = require("./tensor");
@@ -22,16 +23,23 @@ const tensor_1 = require("./tensor");
 // equations (e.g. transcendental) are explicitly out of scope for now.
 //
 // solve([eq1, eq2, ...], [x, y, ...]): linear system, see solveLinearSystem.
+// Equations may use = or ==; without the variable list the variables are
+// collected from the equations in order of first appearance.
 function Eval_solve(p1) {
-    // The 2nd arg is checked first: evaluating the 1st arg of solve(x=3,x)
-    // would perform the assignment, so leave that to normalizeEquation.
+    // A literal list of equations is converted element-wise before anything is
+    // evaluated: Eval of [x+y=3] would treat x+y=3 as a function definition.
+    const eqsArg = defs_1.cadr(p1);
     const vars = eval_1.Eval(defs_1.caddr(p1));
-    if (defs_1.istensor(vars)) {
-        const eqs = eval_1.Eval(defs_1.cadr(p1));
+    if (defs_1.istensor(eqsArg) || defs_1.istensor(vars)) {
+        const eqs = defs_1.istensor(eqsArg)
+            ? scan_1.build_tensor(eqsArg.elem.map(roots_1.equationToExpr))
+            : eval_1.Eval(eqsArg);
         if (!defs_1.istensor(eqs)) {
             run_1.stop('solve: a list of variables needs a list of equations');
         }
-        return solveLinearSystem(eqs, vars);
+        return solveLinearSystem(eqs, defs_1.istensor(vars)
+            ? vars
+            : scan_1.build_tensor(vars === symbol_1.symbol(defs_1.NIL) ? freeSymbols(eqs) : [vars]));
     }
     const [POLY1, X1] = roots_1.normalizeEquation(p1);
     if (!is_1.ispolyexpandedform(POLY1, X1)) {
@@ -42,11 +50,20 @@ function Eval_solve(p1) {
     return roots_1.roots(POLY1, X1);
 }
 exports.Eval_solve = Eval_solve;
+// Variables in order of first appearance.
+function freeSymbols(p) {
+    const acc = [];
+    symbol_1.collectUserSymbols(p, acc);
+    return acc;
+}
 // Returns the solution vector in variable order. Coefficients come from the
 // derivatives, constants from the equations at all-zero variables; rebuilding
 // each equation from those and comparing catches any nonlinear term.
 function solveLinearSystem(eqs, vars) {
     const n = vars.nelem;
+    if (!vars.elem.every(defs_1.issymbol) || new Set(vars.elem).size !== n) {
+        run_1.stop('solve: variables must be distinct symbols');
+    }
     if (eqs.nelem !== n) {
         run_1.stop('solve: need as many equations as variables');
     }

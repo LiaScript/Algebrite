@@ -11,6 +11,7 @@ const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
 const sin_1 = require("./sin");
+const quantity_1 = require("./quantity");
 /* cos =====================================================================
 
 Tags
@@ -27,7 +28,7 @@ Returns the cosine of x.
 
 */
 function Eval_cos(p1) {
-    return cosine(eval_1.Eval(defs_1.cadr(p1)));
+    return cosine(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), 'cos'));
 }
 exports.Eval_cos = Eval_cos;
 function cosine(p1) {

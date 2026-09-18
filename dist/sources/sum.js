@@ -14,6 +14,7 @@ const multiply_1 = require("./multiply");
 const power_1 = require("./power");
 const simplify_1 = require("./simplify");
 const subst_1 = require("./subst");
+const misc_1 = require("./misc");
 // 'sum' function
 //define A p3
 //define B p4
@@ -21,6 +22,7 @@ const subst_1 = require("./subst");
 //define X p6
 // leaves the sum at the top of the stack
 function Eval_sum(p1) {
+    misc_1.checkArgCount(p1, 4);
     // 1st arg
     const body = defs_1.cadr(p1);
     // 2nd arg (index)
@@ -38,12 +40,17 @@ function Eval_sum(p1) {
     // variable so we can put it back after the loop
     const p4 = symbol_1.get_binding(indexVariable);
     let temp = defs_1.Constants.zero;
-    for (let i = j; i <= k; i++) {
-        symbol_1.set_binding(indexVariable, bignum_1.integer(i));
-        temp = add_1.add(temp, eval_1.Eval(body));
+    try {
+        for (let i = j; i <= k; i++) {
+            symbol_1.set_binding(indexVariable, bignum_1.integer(i));
+            temp = add_1.add(temp, eval_1.Eval(body));
+        }
     }
-    // put back the index variable to original content
-    symbol_1.set_binding(indexVariable, p4);
+    finally {
+        // put back the index variable to original content,
+        // also when the body stops with an error
+        symbol_1.set_binding(indexVariable, p4);
+    }
     return temp;
 }
 exports.Eval_sum = Eval_sum;
@@ -59,6 +66,11 @@ function symbolicSum(p1, body, x) {
         const f = eval_1.Eval(body);
         const a = eval_1.Eval(defs_1.cadddr(p1));
         const b = eval_1.Eval(defs_1.caddddr(p1));
+        // numeric bounds that are not integers: the closed forms below assume
+        // integer steps from a to b, sum(k,k,1/2,3) is not F(3) - F(-1/2)
+        if ([a, b].some((p) => defs_1.isNumericAtom(p) && isNaN(bignum_1.nativeInt(p)))) {
+            return p1;
+        }
         const terms = defs_1.isadd(f) ? f.tail() : [f];
         const isPoly = (t) => !find_1.Find(t, x) || is_1.ispolyexpandedform(t, x);
         let result = polynomialSum(terms.filter(isPoly).reduce(add_1.add, defs_1.Constants.zero), x, a, b);

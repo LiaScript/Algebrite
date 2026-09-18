@@ -11,13 +11,17 @@ const bignum_1 = require("./bignum");
 const derivative_1 = require("./derivative");
 const eval_1 = require("./eval");
 const guess_1 = require("./guess");
+const denominator_1 = require("./denominator");
+const expand_1 = require("./expand");
 const is_1 = require("./is");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
+const numerator_1 = require("./numerator");
 const partition_1 = require("./partition");
 const scan_1 = require("./scan");
 const simplify_1 = require("./simplify");
 const transform_1 = require("./transform");
+const quantity_1 = require("./quantity");
 /*
  Table of integrals
 
@@ -95,6 +99,10 @@ const itab = [
     // 61
     'f(1/(a+b*x^2),1/(2*sqrt(-a*b))*log((a+x*sqrt(-a*b))/(a-x*sqrt(-a*b))),or(not(number(a*b)),a*b<0))',
     // 62 is the same as 60
+    // monic quadratic with a linear term, by completing the square
+    // (only a and b are pattern variables, so the leading coefficient is 1)
+    'f(1/(x^2+a*x+b),2/sqrt(4*b-a^2)*arctan((2*x+a)/sqrt(4*b-a^2)),or(not(number(4*b-a^2)),4*b-a^2>0))',
+    'f(x/(x^2+a*x+b),1/2*log(x^2+a*x+b)-a/sqrt(4*b-a^2)*arctan((2*x+a)/sqrt(4*b-a^2)),or(not(number(4*b-a^2)),4*b-a^2>0))',
     // 63
     'f(x/(a+b*x^2),1/2*1/b*log(a+b*x^2))',
     //64
@@ -366,6 +374,7 @@ const itab = [
     'f(x^3*exp(a*x+b),exp(a*x+b)*x^3/a-3/a*integral(x^2*exp(a*x+b),x))',
 ];
 function Eval_integral(p1) {
+    misc_1.checkArgCount(p1, 1, Infinity);
     let n = 0;
     // evaluate 1st arg to get function F
     p1 = defs_1.cdr(p1);
@@ -454,6 +463,10 @@ function Eval_integral(p1) {
 }
 exports.Eval_integral = Eval_integral;
 function integral(F, X) {
+    const q = quantity_1.mapQuantity(F, (magnitude) => integral(magnitude, X));
+    if (q) {
+        return q;
+    }
     let integ;
     if (defs_1.isadd(F)) {
         integ = integral_of_sum(F, X);
@@ -465,12 +478,24 @@ function integral(F, X) {
         integ = integral_of_form(F, X);
     }
     if (find_1.Find(integ, symbol_1.symbol(defs_1.INTEGRAL))) {
+        // a rational function the table does not cover: integrate its partial
+        // fractions term by term
+        if (isrationalfunction(F, X)) {
+            const G = expand_1.apart(F, X);
+            if (!misc_1.equal(G, F)) {
+                return integral(G, X);
+            }
+        }
         run_1.stop('integral: sorry, could not find a solution');
     }
     // polish then normalize
     return eval_1.Eval(simplify_1.simplify(integ));
 }
 exports.integral = integral;
+function isrationalfunction(F, X) {
+    const ispoly = (p) => !find_1.Find(p, X) || is_1.ispolyfactoredorexpandedform(p, X);
+    return ispoly(numerator_1.numerator(F)) && ispoly(denominator_1.denominator(F));
+}
 function integral_of_sum(F, X) {
     F = defs_1.cdr(F);
     let result = integral(defs_1.car(F), X);
@@ -557,7 +582,7 @@ function hash_function(u, x) {
     const arg_hash = italu_hashcode(defs_1.cadr(u), x);
     const base = hashcode_values[name.printname];
     if (!base) {
-        throw new Error('Unsupported function ' + name.printname);
+        return NaN; // no table entry has this function, integral() stops
     }
     return Math.pow(base, arg_hash);
 }
@@ -892,5 +917,11 @@ var hashed_itab = {
     '1.064970': ['f(x^3*exp(a*x),exp(a*x)*x^3/a-3/a*integral(x^2*exp(a*x),x))'],
     '1.242392': [
         'f(x^3*exp(a*x+b),exp(a*x+b)*x^3/a-3/a*integral(x^2*exp(a*x+b),x))',
+    ],
+    '0.331992': [
+        'f(1/(x^2+a*x+b),2/sqrt(4*b-a^2)*arctan((2*x+a)/sqrt(4*b-a^2)),or(not(number(4*b-a^2)),4*b-a^2>0))',
+    ],
+    '0.317158': [
+        'f(x/(x^2+a*x+b),1/2*log(x^2+a*x+b)-a/sqrt(4*b-a^2)*arctan((2*x+a)/sqrt(4*b-a^2)),or(not(number(4*b-a^2)),4*b-a^2>0))',
     ],
 };

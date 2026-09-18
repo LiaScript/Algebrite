@@ -19,6 +19,7 @@ const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const numerator_1 = require("./numerator");
 const power_1 = require("./power");
+const quantity_1 = require("./quantity");
 const real_1 = require("./real");
 const rect_1 = require("./rect");
 const simplify_1 = require("./simplify");
@@ -105,6 +106,11 @@ function absval(p1) {
     const input = p1;
     if (DEBUG_ABS) {
         console.log(`ABS of ${p1}`);
+    }
+    // |q| of a quantity keeps its dimension: (quantity |magnitude| dim)
+    // (checked on input so the type guard doesn't narrow p1 below)
+    if (quantity_1.isQuantity(input)) {
+        return list_1.makeList(defs_1.car(input), absval(defs_1.cadr(input)), defs_1.caddr(input));
     }
     // handle all the "number" cases first -----------------------------------------
     if (is_1.isZeroAtomOrTensor(p1)) {

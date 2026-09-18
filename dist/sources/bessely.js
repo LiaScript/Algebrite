@@ -10,6 +10,7 @@ const is_1 = require("./is");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
+const misc_1 = require("./misc");
 /* bessely =====================================================================
 
 Tags
@@ -27,6 +28,7 @@ Bessel function of second kind.
 
 */
 function Eval_bessely(p1) {
+    misc_1.checkArgCount(p1, 2);
     return bessely(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
 }
 exports.Eval_bessely = Eval_bessely;

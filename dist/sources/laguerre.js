@@ -9,6 +9,7 @@ const eval_1 = require("./eval");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const subst_1 = require("./subst");
+const misc_1 = require("./misc");
 /*
  Laguerre function
 
@@ -35,6 +36,7 @@ In the "for" loop i = n-1 so the recurrence relation becomes
   (i+1)*L(x,n,k) = (2*i+1-x+k)*L(x,n-1,k) - (i+k)*L(x,n-2,k)
 */
 function Eval_laguerre(p1) {
+    misc_1.checkArgCount(p1, 2, 3);
     const X = eval_1.Eval(defs_1.cadr(p1));
     const N = eval_1.Eval(defs_1.caddr(p1));
     const p2 = eval_1.Eval(defs_1.cadddr(p1));
@@ -44,7 +46,8 @@ function Eval_laguerre(p1) {
 exports.Eval_laguerre = Eval_laguerre;
 function laguerre(X, N, K) {
     let n = bignum_1.nativeInt(N);
-    if (n < 0 || isNaN(n)) {
+    // tensors: x^2 would be a dot product, so they are not mapped over
+    if (n < 0 || isNaN(n) || defs_1.istensor(X)) {
         return list_1.makeList(symbol_1.symbol(defs_1.LAGUERRE), X, N, K);
     }
     if (defs_1.issymbol(X)) {

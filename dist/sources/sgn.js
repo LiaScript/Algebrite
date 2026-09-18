@@ -9,7 +9,7 @@ const is_1 = require("./is");
 const list_1 = require("./list");
 const mmul_1 = require("./mmul");
 const multiply_1 = require("./multiply");
-const power_1 = require("./power");
+const quantity_1 = require("./quantity");
 //-----------------------------------------------------------------------------
 //
 //  Author : philippe.billet@noos.fr
@@ -19,7 +19,8 @@ const power_1 = require("./power");
 //
 //-----------------------------------------------------------------------------
 function Eval_sgn(p1) {
-    return sgn(eval_1.Eval(defs_1.cadr(p1)));
+    const arg = eval_1.Eval(defs_1.cadr(p1));
+    return quantity_1.mapQuantity(arg, sgn, false) || sgn(arg);
 }
 exports.Eval_sgn = Eval_sgn;
 function sgn(X) {
@@ -28,7 +29,7 @@ function sgn(X) {
             return defs_1.Constants.one;
         }
         if (X.d === 0) {
-            return defs_1.Constants.one;
+            return defs_1.Constants.zero;
         }
         return defs_1.Constants.negOne;
     }
@@ -42,7 +43,8 @@ function sgn(X) {
         return defs_1.Constants.one;
     }
     if (is_1.iscomplexnumber(X)) {
-        return multiply_1.multiply(power_1.power(defs_1.Constants.negOne, abs_1.absval(X)), X);
+        // sgn(z) = z/|z| for complex z
+        return multiply_1.divide(X, abs_1.absval(X));
     }
     if (is_1.isnegativeterm(X)) {
         return multiply_1.multiply(list_1.makeList(symbol_1.symbol(defs_1.SGN), multiply_1.negate(X)), defs_1.Constants.negOne);

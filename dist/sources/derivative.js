@@ -28,11 +28,13 @@ const sin_1 = require("./sin");
 const sinh_1 = require("./sinh");
 const subst_1 = require("./subst");
 const tensor_1 = require("./tensor");
+const quantity_1 = require("./quantity");
 // derivative
 //define F p3
 //define X p4
 //define N p5
 function Eval_derivative(p1) {
+    misc_1.checkArgCount(p1, 1, Infinity);
     // evaluate 1st arg to get function F
     p1 = defs_1.cdr(p1);
     let F = eval_1.Eval(defs_1.car(p1));
@@ -121,6 +123,10 @@ function Eval_derivative(p1) {
 }
 exports.Eval_derivative = Eval_derivative;
 function derivative(p1, p2) {
+    const q = quantity_1.mapQuantity(p1, (magnitude) => derivative(magnitude, p2));
+    if (q) {
+        return q;
+    }
     if (defs_1.isNumericAtom(p2)) {
         run_1.stop('undefined function');
     }

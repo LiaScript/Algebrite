@@ -12,6 +12,7 @@ const arcsinh_1 = require("../sources/arcsinh");
 const arctan_1 = require("../sources/arctan");
 const arctanh_1 = require("../sources/arctanh");
 const arg_1 = require("../sources/arg");
+const atomize_1 = require("../sources/atomize");
 const besselj_1 = require("../sources/besselj");
 const bessely_1 = require("../sources/bessely");
 const bignum_1 = require("../sources/bignum");
@@ -26,6 +27,7 @@ const cofactor_1 = require("../sources/cofactor");
 const condense_1 = require("../sources/condense");
 const conj_1 = require("../sources/conj");
 const contract_1 = require("../sources/contract");
+const cross_1 = require("../sources/cross");
 const cos_1 = require("../sources/cos");
 const cosh_1 = require("../sources/cosh");
 const decomp_1 = require("../sources/decomp");
@@ -62,6 +64,12 @@ const limit_1 = require("../sources/limit");
 const list_1 = require("../sources/list");
 const log_1 = require("../sources/log");
 const lookup_1 = require("../sources/lookup");
+const stats_1 = require("../sources/stats");
+const trigexpand_1 = require("../sources/trigexpand");
+const nsolve_1 = require("../sources/nsolve");
+const laplace_1 = require("../sources/laplace");
+const at_1 = require("../sources/at");
+const assume_1 = require("../sources/assume");
 const minmax_1 = require("../sources/minmax");
 const mod_1 = require("../sources/mod");
 const multiply_1 = require("../sources/multiply");
@@ -100,8 +108,9 @@ const zero_1 = require("../sources/zero");
 const defs_1 = require("./defs");
 const symbol_1 = require("./symbol");
 let init_flag = 0;
+// Called once at startup and after every error: only the first call sets
+// up the symbol table, so an error doesn't wipe the user's definitions.
 function init() {
-    init_flag = 0;
     defs_1.reset_after_error();
     defs_1.defs.chainOfUserSymbolsNotFunctionsBeingEvaluated = [];
     if (init_flag) {
@@ -112,36 +121,6 @@ function init() {
     defn();
 }
 exports.init = init;
-/* cross =====================================================================
-
-Tags
-----
-scripting, JS, internal, treenode, general concept, script_defined
-
-Parameters
-----------
-u,v
-
-General description
--------------------
-Returns the cross product of vectors u and v.
-
-*/
-/* curl =====================================================================
-
-Tags
-----
-scripting, JS, internal, treenode, general concept, script_defined
-
-Parameters
-----------
-u
-
-General description
--------------------
-Returns the curl of vector u.
-
-*/
 const defn_str = [
     'version="' + defs_1.version + '"',
     'e=exp(1)',
@@ -156,12 +135,6 @@ const defn_str = [
     'maxFixedPrintoutDigits=6',
     'printLeaveEAlone=1',
     'printLeaveXAlone=0',
-    // cross definition
-    'cross(u,v)=[u[2]*v[3]-u[3]*v[2],u[3]*v[1]-u[1]*v[3],u[1]*v[2]-u[2]*v[1]]',
-    // curl definition
-    'curl(v)=[d(v[3],y)-d(v[2],z),d(v[1],z)-d(v[3],x),d(v[2],x)-d(v[1],y)]',
-    // div definition
-    'div(v)=d(v[1],x)+d(v[2],y)+d(v[3],z)',
     // Note that we use the mathematics / Javascript / Mathematica
     // convention that "log" is indeed the natural logarithm.
     //
@@ -173,7 +146,7 @@ const defn_str = [
     // derivative, integral, float and simplify work with no extra code.
     'sec(x)=1/cos(x)',
     'csc(x)=1/sin(x)',
-    'cot(x)=1/tan(x)',
+    'cot(x)=cos(x)/sin(x)',
     'arcsec(x)=arccos(1/x)',
     'arccsc(x)=arcsin(1/x)',
     // ponytail: arccot(0) stops with divide-by-zero; real arccot.ts if needed
@@ -208,7 +181,7 @@ function defn() {
     symbol_1.std_symbol(defs_1.ARCTAN, arctan_1.Eval_arctan);
     symbol_1.std_symbol(defs_1.ARCTANH, arctanh_1.Eval_arctanh);
     symbol_1.std_symbol(defs_1.ARG, arg_1.Eval_arg);
-    symbol_1.std_symbol(defs_1.ATOMIZE);
+    symbol_1.std_symbol(defs_1.ATOMIZE, atomize_1.Eval_atomize);
     symbol_1.std_symbol(defs_1.BESSELJ, besselj_1.Eval_besselj);
     symbol_1.std_symbol(defs_1.BESSELY, bessely_1.Eval_bessely);
     symbol_1.std_symbol(defs_1.BINDING, eval_1.Eval_binding);
@@ -226,6 +199,8 @@ function defn() {
     symbol_1.std_symbol(defs_1.CONDENSE, condense_1.Eval_condense);
     symbol_1.std_symbol(defs_1.CONJ, conj_1.Eval_conj);
     symbol_1.std_symbol(defs_1.CONTRACT, contract_1.Eval_contract);
+    symbol_1.std_symbol(defs_1.CROSS, cross_1.Eval_cross);
+    symbol_1.std_symbol(defs_1.CURL, cross_1.Eval_curl);
     symbol_1.std_symbol(defs_1.CONVERT, quantity_1.Eval_convert);
     symbol_1.std_symbol(defs_1.COS, cos_1.Eval_cos);
     symbol_1.std_symbol(defs_1.COSH, cosh_1.Eval_cosh);
@@ -238,6 +213,7 @@ function defn() {
     symbol_1.std_symbol(defs_1.DIM, eval_1.Eval_dim);
     symbol_1.std_symbol(defs_1.DIMENSIONOF, quantity_1.Eval_dimensionof);
     symbol_1.std_symbol(defs_1.DIRAC, dirac_1.Eval_dirac);
+    symbol_1.std_symbol(defs_1.DIV, cross_1.Eval_div);
     symbol_1.std_symbol(defs_1.DIVISORS, eval_1.Eval_divisors);
     symbol_1.std_symbol(defs_1.DO, eval_1.Eval_do);
     symbol_1.std_symbol(defs_1.DOT, inner_1.Eval_inner);
@@ -271,10 +247,9 @@ function defn() {
     symbol_1.std_symbol(defs_1.INTEGRAL, integral_1.Eval_integral);
     symbol_1.std_symbol(defs_1.INV, eval_1.Eval_inv);
     symbol_1.std_symbol(defs_1.INVG, eval_1.Eval_invg);
-    symbol_1.std_symbol(defs_1.ISINTEGER, eval_1.Eval_isinteger);
+    symbol_1.std_symbol(defs_1.ISINTEGER, assume_1.Eval_isinteger);
     symbol_1.std_symbol(defs_1.ISPRIME, isprime_1.Eval_isprime);
     symbol_1.std_symbol(defs_1.LAGUERRE, laguerre_1.Eval_laguerre);
-    //  std_symbol(LAPLACE, Eval_laplace)
     symbol_1.std_symbol(defs_1.LCM, lcm_1.Eval_lcm);
     symbol_1.std_symbol(defs_1.LEADING, leading_1.Eval_leading);
     symbol_1.std_symbol(defs_1.LEGENDRE, legendre_1.Eval_legendre);
@@ -282,6 +257,26 @@ function defn() {
     symbol_1.std_symbol(defs_1.LOG, log_1.Eval_log);
     symbol_1.std_symbol(defs_1.LOOKUP, lookup_1.Eval_lookup);
     symbol_1.std_symbol(defs_1.MATRIXRANK, rref_1.Eval_matrixrank);
+    symbol_1.std_symbol(defs_1.MEAN, stats_1.Eval_mean);
+    symbol_1.std_symbol(defs_1.MEDIAN, stats_1.Eval_median);
+    symbol_1.std_symbol(defs_1.VARIANCE, stats_1.Eval_variance);
+    symbol_1.std_symbol(defs_1.SVARIANCE, stats_1.Eval_svariance);
+    symbol_1.std_symbol(defs_1.SD, stats_1.Eval_sd);
+    symbol_1.std_symbol(defs_1.SSD, stats_1.Eval_ssd);
+    symbol_1.std_symbol(defs_1.RANDOM, stats_1.Eval_random);
+    symbol_1.std_symbol(defs_1.TRIGEXPAND, trigexpand_1.Eval_trigexpand);
+    symbol_1.std_symbol(defs_1.TRIGSIMP, simplify_1.Eval_trigsimp);
+    symbol_1.std_symbol(defs_1.NSOLVE, nsolve_1.Eval_nsolve);
+    symbol_1.std_symbol(defs_1.LAPLACE, laplace_1.Eval_laplace);
+    symbol_1.std_symbol(defs_1.INVLAPLACE, laplace_1.Eval_invlaplace);
+    symbol_1.std_symbol(defs_1.AT, at_1.Eval_at);
+    symbol_1.std_symbol(defs_1.ASSUME, assume_1.Eval_assume);
+    symbol_1.std_symbol(defs_1.FORGET, assume_1.Eval_forget);
+    symbol_1.std_symbol(defs_1.ASSUMPTIONS, assume_1.Eval_assumptions);
+    symbol_1.std_symbol(defs_1.ISREAL, assume_1.Eval_isreal);
+    symbol_1.std_symbol(defs_1.ISPOSITIVE, assume_1.Eval_ispositive);
+    symbol_1.std_symbol(defs_1.ISNEGATIVE, assume_1.Eval_isnegative);
+    symbol_1.std_symbol(defs_1.ISNONZERO, assume_1.Eval_isnonzero);
     symbol_1.std_symbol(defs_1.MAX, minmax_1.Eval_max);
     symbol_1.std_symbol(defs_1.MIN, minmax_1.Eval_min);
     symbol_1.std_symbol(defs_1.MOD, mod_1.Eval_mod);

@@ -41,12 +41,17 @@ function Eval_for(p1) {
     // remember contents of the index
     // variable so we can put it back after the loop
     const p4 = symbol_1.get_binding(loopingVariable);
-    for (let i = j; i <= k; i++) {
-        symbol_1.set_binding(loopingVariable, bignum_1.integer(i));
-        eval_1.Eval(defs_1.cadr(p1));
+    try {
+        for (let i = j; i <= k; i++) {
+            symbol_1.set_binding(loopingVariable, bignum_1.integer(i));
+            eval_1.Eval(defs_1.cadr(p1));
+        }
     }
-    // put back the index variable to original content
-    symbol_1.set_binding(loopingVariable, p4);
+    finally {
+        // put back the index variable to original content,
+        // also when the body stops with an error
+        symbol_1.set_binding(loopingVariable, p4);
+    }
     // return value
     return symbol_1.symbol(defs_1.NIL);
 }

@@ -9,6 +9,7 @@ const add_1 = require("./add");
 const bignum_1 = require("./bignum");
 const factor_1 = require("./factor");
 const is_1 = require("./is");
+const run_1 = require("../runtime/run");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
 //-----------------------------------------------------------------------------
@@ -21,6 +22,12 @@ const power_1 = require("./power");
 //
 //-----------------------------------------------------------------------------
 function divisors(p) {
+    if (is_1.isZeroAtomOrTensor(p)) {
+        run_1.stop('divisors: every integer divides 0');
+    }
+    if (defs_1.isNumericAtom(p) && !is_1.isinteger(p)) {
+        run_1.stop('divisors: integer or polynomial term expected');
+    }
     const values = ydivisors(p);
     const n = values.length;
     values.sort(misc_1.cmp_expr);

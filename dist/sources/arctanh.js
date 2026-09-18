@@ -8,6 +8,7 @@ const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
+const quantity_1 = require("./quantity");
 /* arctanh =====================================================================
 
 Tags
@@ -24,7 +25,7 @@ Returns the inverse hyperbolic tangent of x.
 
 */
 function Eval_arctanh(x) {
-    return arctanh(eval_1.Eval(defs_1.cadr(x)));
+    return arctanh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), 'arctanh'));
 }
 exports.Eval_arctanh = Eval_arctanh;
 function arctanh(x) {

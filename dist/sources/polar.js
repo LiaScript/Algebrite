@@ -7,6 +7,7 @@ const abs_1 = require("./abs");
 const arg_1 = require("./arg");
 const eval_1 = require("./eval");
 const multiply_1 = require("./multiply");
+const tensor_1 = require("./tensor");
 /*
 Convert complex z to polar form
 
@@ -20,6 +21,11 @@ function Eval_polar(p1) {
 }
 exports.Eval_polar = Eval_polar;
 function polar(p1) {
+    if (defs_1.istensor(p1)) {
+        const t = tensor_1.copy_tensor(p1);
+        t.tensor.elem = t.tensor.elem.map(polar);
+        return t;
+    }
     // there are points where we turn polar
     // representations into rect, we set a "stack flag"
     // here to avoid that, so we don't undo the

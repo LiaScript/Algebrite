@@ -26,7 +26,8 @@ exports.hermite = hermite;
 // uses the recurrence relation H(x,n+1)=2*x*H(x,n)-2*n*H(x,n-1)
 function yyhermite(X, N) {
     const n = bignum_1.nativeInt(N);
-    if (n < 0 || isNaN(n)) {
+    // tensors: x^2 would be a dot product, so they are not mapped over
+    if (n < 0 || isNaN(n) || defs_1.istensor(X)) {
         return list_1.makeList(symbol_1.symbol(defs_1.HERMITE), X, N);
     }
     if (defs_1.issymbol(X)) {

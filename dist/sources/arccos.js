@@ -2,12 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Eval_arccos = void 0;
 const defs_1 = require("../runtime/defs");
+const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
+const add_1 = require("./add");
+const quantity_1 = require("./quantity");
 /* arccos =====================================================================
 
 Tags
@@ -24,14 +27,25 @@ Returns the inverse cosine of x.
 
 */
 function Eval_arccos(x) {
-    return arccos(eval_1.Eval(defs_1.cadr(x)));
+    return arccos(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), 'arccos'));
 }
 exports.Eval_arccos = Eval_arccos;
 function arccos(x) {
+    // arccos(cos(u)) = |u - 2 k pi|, which lies in [0, pi];
+    // only decidable when u is a real constant, arccos(cos(x)) is not x
     if (defs_1.car(x) === symbol_1.symbol(defs_1.COS)) {
-        return defs_1.cadr(x);
+        const d = is_1.realconstant(defs_1.cadr(x));
+        if (isNaN(d)) {
+            return list_1.makeList(symbol_1.symbol(defs_1.ARCCOS), x);
+        }
+        const k = Math.round(d / (2 * Math.PI));
+        const v = add_1.subtract(defs_1.cadr(x), multiply_1.multiply(bignum_1.integer(2 * k), defs_1.Constants.Pi()));
+        return d - 2 * k * Math.PI < 0 ? multiply_1.negate(v) : v;
     }
     if (defs_1.isdouble(x)) {
+        if (Math.abs(x.d) > 1) {
+            run_1.stop('arccos function argument is not in the interval [-1,1]');
+        }
         return bignum_1.double(Math.acos(x.d));
     }
     // if x == 1/sqrt(2) then return 1/4*pi (45 degrees)

@@ -7,6 +7,7 @@ const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
+const quantity_1 = require("./quantity");
 /* cosh =====================================================================
 
 Tags
@@ -29,7 +30,7 @@ Returns the hyperbolic cosine of x
 
 */
 function Eval_cosh(p1) {
-    return ycosh(eval_1.Eval(defs_1.cadr(p1)));
+    return ycosh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), 'cosh'));
 }
 exports.Eval_cosh = Eval_cosh;
 function ycosh(p1) {

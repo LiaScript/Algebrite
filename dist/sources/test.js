@@ -8,6 +8,7 @@ const eval_1 = require("./eval");
 const float_1 = require("./float");
 const is_1 = require("./is");
 const misc_1 = require("./misc");
+const quantity_1 = require("./quantity");
 const simplify_1 = require("./simplify");
 // If the number of args is odd then the last arg is the default result.
 // Works like a switch statement. Could also be used for piecewise
@@ -288,6 +289,11 @@ function cmp_values(arg1, arg2) {
     }
     let t = 0;
     let p1 = add_1.subtract(simplify_1.simplify(arg1), simplify_1.simplify(arg2));
+    // same-dimension quantities subtract to a quantity (incompatible ones
+    // already stopped inside subtract) — its sign is the magnitude's sign
+    if (quantity_1.isQuantity(p1)) {
+        p1 = defs_1.cadr(p1);
+    }
     // try floating point if necessary
     if (p1.k !== defs_1.NUM && p1.k !== defs_1.DOUBLE) {
         p1 = eval_1.Eval(float_1.yyfloat(p1));

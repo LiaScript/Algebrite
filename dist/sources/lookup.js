@@ -118,7 +118,7 @@ const symbol_1 = require("../runtime/symbol");
 //       => gives z
 function Eval_lookup(p1) {
     p1 = defs_1.cadr(p1);
-    if (!defs_1.iscons(p1) && defs_1.cadr(p1).k === defs_1.SYM) {
+    if (defs_1.issymbol(p1)) {
         p1 = symbol_1.get_binding(p1);
     }
     return p1;

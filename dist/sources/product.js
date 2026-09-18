@@ -7,6 +7,7 @@ const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const multiply_1 = require("./multiply");
+const misc_1 = require("./misc");
 // 'product' function
 //define A p3
 //define B p4
@@ -14,12 +15,13 @@ const multiply_1 = require("./multiply");
 //define X p6
 // leaves the product at the top of the stack
 function Eval_product(p1) {
+    misc_1.checkArgCount(p1, 4);
     // 1st arg
     const body = defs_1.cadr(p1);
     // 2nd arg (index)
     const indexVariable = defs_1.caddr(p1);
     if (!defs_1.issymbol(indexVariable)) {
-        run_1.stop('sum: 2nd arg?');
+        run_1.stop('product: 2nd arg?');
     }
     // 3rd arg (lower limit)
     const j = eval_1.evaluate_integer(defs_1.cadddr(p1));
@@ -35,19 +37,24 @@ function Eval_product(p1) {
     // variable so we can put it back after the loop
     const oldIndexVariableValue = symbol_1.get_binding(indexVariable);
     let temp = defs_1.Constants.one;
-    for (let i = j; i <= k; i++) {
-        symbol_1.set_binding(indexVariable, bignum_1.integer(i));
-        const arg2 = eval_1.Eval(body);
-        const temp2 = multiply_1.multiply(temp, arg2);
-        if (defs_1.DEBUG) {
-            console.log(`product - factor 1: ${arg2}`);
-            console.log(`product - factor 2: ${temp}`);
-            console.log(`product - result: ${temp2}`);
+    try {
+        for (let i = j; i <= k; i++) {
+            symbol_1.set_binding(indexVariable, bignum_1.integer(i));
+            const arg2 = eval_1.Eval(body);
+            const temp2 = multiply_1.multiply(temp, arg2);
+            if (defs_1.DEBUG) {
+                console.log(`product - factor 1: ${arg2}`);
+                console.log(`product - factor 2: ${temp}`);
+                console.log(`product - result: ${temp2}`);
+            }
+            temp = temp2;
         }
-        temp = temp2;
     }
-    // put back the index variable to original content
-    symbol_1.set_binding(indexVariable, oldIndexVariableValue);
+    finally {
+        // put back the index variable to original content,
+        // also when the body stops with an error
+        symbol_1.set_binding(indexVariable, oldIndexVariableValue);
+    }
     return temp;
 }
 exports.Eval_product = Eval_product;

@@ -6,6 +6,7 @@ const misc_1 = require("../sources/misc");
 const add_1 = require("./add");
 const eval_1 = require("./eval");
 const gcd_1 = require("./gcd");
+const is_1 = require("./is");
 const multiply_1 = require("./multiply");
 // Condense an expression by factoring common terms.
 function Eval_condense(p1) {
@@ -33,7 +34,8 @@ function yycondense(p1) {
     // Now we expand which normalizes the result and, in some cases,
     // simplifies it too (see test case H).
     const arg1 = misc_1.yyexpand(temp2);
-    // multiply result by gcd
-    return multiply_1.divide(arg1, p2);
+    // multiply result by gcd (unless it is 1: a float 1.0 would stay behind
+    // as a 1.0*(...) product, on which arg() recursed forever)
+    return is_1.isplusone(termsGCD) ? arg1 : multiply_1.divide(arg1, p2);
 }
 exports.yycondense = yycondense;

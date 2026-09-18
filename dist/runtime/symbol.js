@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clear_symbol = exports.clearRenamedVariablesToAvoidBindingToExternalScope = exports.iskeyword = exports.symbol = exports.collectUserSymbols = exports.clear_symbols = exports.reset_symbols = exports.get_binding = exports.set_binding = exports.get_printname = exports.usr_symbol = exports.std_unit_symbol = exports.std_symbol = exports.inChildScope = exports.Eval_symbolsinfo = void 0;
+exports.clear_symbol = exports.clearRenamedVariablesToAvoidBindingToExternalScope = exports.iskeyword = exports.symbol = exports.collectUserSymbols = exports.clear_symbols = exports.reset_symbols = exports.is_usr_symbol = exports.get_binding = exports.set_binding = exports.get_printname = exports.usr_symbol = exports.std_unit_symbol = exports.std_symbol = exports.inChildScope = exports.Eval_symbolsinfo = void 0;
 const count_1 = require("./count");
 const defs_1 = require("./defs");
 const run_1 = require("./run");
@@ -54,9 +54,11 @@ class Scope {
     clear() {
         this.bindings.clear();
     }
+    // Removes the binding only: the symbol itself stays, since expressions
+    // and builtins (symbol('y'), keywords like sin, units like m) still
+    // refer to it.
     delete(s) {
         var _a;
-        this.symbols.delete(s.printname);
         this.bindings.delete(s.printname);
         (_a = this.parent) === null || _a === void 0 ? void 0 : _a.delete(s);
     }
@@ -185,6 +187,7 @@ function is_usr_symbol(p) {
     }
     return /^[abcdjnrstxyz]_?$/.test(p.printname) || !keywordScope.has(p);
 }
+exports.is_usr_symbol = is_usr_symbol;
 // total clearout of symbol table
 function reset_symbols() {
     keywordScope = new Scope();

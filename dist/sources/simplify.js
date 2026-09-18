@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.simplify_trig = exports.simplify = exports.simplifyForCodeGeneration = exports.Eval_simplify = void 0;
+exports.Eval_trigsimp = exports.simplify_trig = exports.simplify = exports.simplifyForCodeGeneration = exports.Eval_simplify = void 0;
 const alloc_1 = require("../runtime/alloc");
 const count_1 = require("../runtime/count");
 const defs_1 = require("../runtime/defs");
@@ -27,6 +27,7 @@ const roots_1 = require("./roots");
 const simfac_1 = require("./simfac");
 const tensor_1 = require("./tensor");
 const transform_1 = require("./transform");
+const trigexpand_1 = require("./trigexpand");
 const transpose_1 = require("./transpose");
 const denominator_1 = require("./denominator");
 const gcd_1 = require("./gcd");
@@ -149,6 +150,7 @@ function simplify(p1) {
     p1 = f3(p1);
     p1 = f4(p1);
     p1 = f5(p1);
+    p1 = f11(p1);
     p1 = f9(p1);
     p1 = simplify_polarRect(p1);
     if (defs_1.do_simplify_nested_radicals) {
@@ -264,6 +266,20 @@ function simplify_trig(p1) {
     return f5(p1);
 }
 exports.simplify_trig = simplify_trig;
+// try expanding sums and multiples in trig arguments, e.g.
+// sin(2x)/cos(x) -> 2 sin(x); only kept when strictly shorter
+function f11(p1) {
+    if (!find_1.Find(p1, symbol_1.symbol(defs_1.SIN)) && !find_1.Find(p1, symbol_1.symbol(defs_1.COS))) {
+        return p1;
+    }
+    const p2 = f5(trigexpand_1.trigexpand(p1));
+    return count_1.count(p2) < count_1.count(p1) ? p2 : p1;
+}
+// trigsimp(x): simplify with the trig rewrites applied last
+function Eval_trigsimp(p1) {
+    return simplify_trig(simplify(eval_1.Eval(defs_1.cadr(p1))));
+}
+exports.Eval_trigsimp = Eval_trigsimp;
 function f5(p1) {
     if (!find_1.Find(p1, symbol_1.symbol(defs_1.SIN)) && !find_1.Find(p1, symbol_1.symbol(defs_1.COS))) {
         return p1;

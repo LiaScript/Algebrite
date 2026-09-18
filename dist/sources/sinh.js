@@ -7,11 +7,12 @@ const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
+const quantity_1 = require("./quantity");
 //            exp(x) - exp(-x)
 //  sinh(x) = ----------------
 //                   2
 function Eval_sinh(p1) {
-    return ysinh(eval_1.Eval(defs_1.cadr(p1)));
+    return ysinh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), 'sinh'));
 }
 exports.Eval_sinh = Eval_sinh;
 function ysinh(p1) {

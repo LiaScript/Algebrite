@@ -386,8 +386,10 @@ exports.print_number = print_number;
 function gcd_numbers(p1, p2) {
     //  if (!isinteger(p1) || !isinteger(p2))
     //    stop("integer args expected for gcd")
+    // largest r with p1/r and p2/r integers: gcd of the numerators over the
+    // lcm of the denominators, gcd(1/2,1/3) = 1/6
     const a = mgcd_1.mgcd(p1.q.a, p2.q.a);
-    const b = mgcd_1.mgcd(p1.q.b, p2.q.b);
+    const b = p1.q.b.multiply(p2.q.b).divide(mgcd_1.mgcd(p1.q.b, p2.q.b));
     return new defs_1.Num(setSignTo(a, 1), b);
 }
 exports.gcd_numbers = gcd_numbers;

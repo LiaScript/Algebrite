@@ -9,9 +9,10 @@ const is_1 = require("./is");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
+const quantity_1 = require("./quantity");
 // Tangent function of numerical and symbolic arguments
 function Eval_tan(p1) {
-    return tangent(eval_1.Eval(defs_1.cadr(p1)));
+    return tangent(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), 'tan'));
 }
 exports.Eval_tan = Eval_tan;
 function tangent(p1) {
