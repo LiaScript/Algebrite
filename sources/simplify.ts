@@ -2,6 +2,7 @@ import { alloc_tensor } from '../runtime/alloc';
 import { count, countOccurrencesOfSymbol } from '../runtime/count';
 import {
   ADD,
+  AND,
   caddr,
   cadr,
   car,
@@ -12,16 +13,16 @@ import {
   defs,
   do_simplify_nested_radicals,
   FACTORIAL,
-  INF,
   FUNCTION,
+  INF,
   INTEGRAL,
   isadd,
-  isdouble,
   iscons,
-  issymbol,
+  isdouble,
   isinnerordot,
   ismultiply,
   ispower,
+  issymbol,
   istensor,
   MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES,
   MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE,
@@ -31,10 +32,17 @@ import {
   MULTIPLY,
   NIL,
   noexpand,
+  NOT,
+  OR,
   POWER,
   SECRETX,
   SIN,
   Tensor,
+  TESTEQ,
+  TESTGE,
+  TESTGT,
+  TESTLE,
+  TESTLT,
   TRANSPOSE,
   U,
 } from '../runtime/defs';
@@ -217,6 +225,13 @@ export function simplify(p1: U): U {
 
   if (istensor(p1)) {
     return simplify_tensor(p1);
+  }
+
+  // comparisons, and/or/not: the parts are simplified, evaluating the whole
+  // again cancels and joins them (logic_simplify.ts)
+  const logical = [TESTEQ, TESTLT, TESTLE, TESTGT, TESTGE, AND, OR, NOT];
+  if (iscons(p1) && logical.some((name) => car(p1) === symbol(name))) {
+    return Eval(makeList(car(p1), ...p1.tail().map(simplify)));
   }
 
   // nothing to gain on inf, and the rewrites below invert subexpressions,
