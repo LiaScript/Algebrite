@@ -292,6 +292,26 @@ run_test([
   'limit(log(abs(sqrt(3)-tan(x/2)))-log(abs(sqrt(3)+tan(x/2))),x,pi)',
   '0',
 
+  // the same with the common coefficient 1/sqrt(3) of the antiderivative
+  // of 1/(1+2*cos(x)), and with a symbolic one
+  'limit(-log(abs(3^(1/2)-tan(1/2*x)))/(3^(1/2))+log(abs(3^(1/2)+tan(1/2*x)))/(3^(1/2)),x,pi,left)',
+  '0',
+
+  'limit(a*log(abs(sqrt(3)-tan(x/2)))-a*log(abs(sqrt(3)+tan(x/2))),x,pi)',
+  '0',
+
+  // sign of the coefficient: log(abs(sin(x))/x^2) goes to +inf like
+  // log(1/abs(x)); at x = 10^(-6): 13.8155/sqrt(3) = 7.9764
+  'limit(1/sqrt(3)*log(abs(sin(x)))-2/sqrt(3)*log(abs(x)),x,0)',
+  'inf',
+
+  'limit(2/sqrt(3)*log(abs(x))-1/sqrt(3)*log(abs(sin(x))),x,0)',
+  '-inf',
+
+  // +inf or -inf with the sign of a: no answer without it
+  'limit(a*log(abs(sin(x)))-2*a*log(abs(x)),x,0)',
+  "Stop: limit: could not resolve after repeated L'Hopital iterations",
+
   // sin*cos/(3*cos^2+sin^2) at pi/2
   'limit(tan(x)/(3+tan(x)^2),x,pi/2)',
   '0',
