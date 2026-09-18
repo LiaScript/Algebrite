@@ -404,7 +404,13 @@ function combineLogs(F: U, X: U, A: U, sides: number[]): U | undefined {
     const rest = F.tail().filter((t) => !logs.includes(t)).reduce(add, Constants.zero);
     const L = limit(inside, X, A, sides);
     const R = limit(rest, X, A, sides);
-    return isPositive(L) === true && !Find(R, symbol(INF)) ? add(logarithm(L), R) : undefined;
+    if (Find(R, symbol(INF))) {
+      return undefined;
+    }
+    if (L === symbol(INF) || isZeroAtomOrTensor(L)) {
+      return L === symbol(INF) ? L : negate(symbol(INF));
+    }
+    return isPositive(L) === true ? add(logarithm(L), R) : undefined;
   } catch (e) {
     return undefined;
   }
@@ -441,9 +447,9 @@ function leadingTerm(F: U, X: U, A: U, sides: number[]): U | undefined {
       if (Find(d, symbol(INF)) || isZeroAtomOrTensor(d)) {
         continue;
       }
-      const n = limit(divide(N, T), X, A, sides);
-      if (!Find(n, symbol(INF))) {
-        return divide(n, d);
+      const q = signedInf(divide(limit(divide(N, T), X, A, sides), d));
+      if (!Find(q, symbol(INF)) || isInfinite(q)) {
+        return q;
       }
     } catch (e) {
       // the next term
@@ -760,6 +766,18 @@ function resolveInf(p: U): U {
       }
     }
   }
+  // A jump function whose argument arrives at the jump: sgn(1/inf) is not
+  // sgn(0) = 0, 1/x comes from above. limitAt decides it beside the point.
+  if (isJumpFunction(head) && head !== symbol(ABS) && Find(cadr(p), inf) && !isInfinite(arg)) {
+    const atJump =
+      head === symbol(MOD) ||
+      (head === symbol(SGN)
+        ? isZeroAtomOrTensor(arg)
+        : isinteger(head === symbol(ROUND) ? add(arg, rational(1, 2)) : arg));
+    if (atJump) {
+      stop('limit: jump function at its jump');
+    }
+  }
   // before Eval, which would turn arctan(-inf) into -arctan(inf)
   if (args.length === 1 && isInfinite(arg)) {
     const s = arg === inf ? Constants.one : Constants.negOne;
@@ -839,7 +857,7 @@ function lhopital(
   F: U,
   X: U,
   valueOf: ValueOf,
-  infinite: (n: U, d: U) => U | undefined,
+  infinite: (n: U, d: U, D: U) => U | undefined,
   steps?: { left: number }
 ): U | undefined {
   if (hasJump(F, X)) {
@@ -877,7 +895,7 @@ function lhopital(
       if (isInfinite(d)) {
         return Constants.zero;
       }
-      const r = isInfinite(n) || isZeroAtomOrTensor(d) ? infinite(n, d) : divide(n, d);
+      const r = isInfinite(n) || isZeroAtomOrTensor(d) ? infinite(n, d, D) : divide(n, d);
       if (r !== undefined) {
         return r;
       }
@@ -907,9 +925,18 @@ function lhopitalAtInfinity(F: U, X: U, sign: U): U | undefined {
     const v = atInfinity(part, X, sign);
     return v !== undefined || !proper ? v : finiteOrInfinite(() => limit(part, X, A));
   };
-  return lhopital(F, X, valueOf, (n, d) =>
-    isZeroAtomOrTensor(d) ? undefined : signedInf(divide(n, d))
-  );
+  return lhopital(F, X, valueOf, (n, d, D) => {
+    if (!isZeroAtomOrTensor(d)) {
+      return signedInf(divide(n, d));
+    }
+    // n/0: the side from which D comes to 0 is known for exp(x) at -inf
+    const side = facts(D);
+    if (isZeroAtomOrTensor(n) || !(side.positive || side.negative)) {
+      return undefined;
+    }
+    const q = signedInf(multiply(side.positive ? n : negate(n), symbol(INF)));
+    return isInfinite(q) ? q : undefined;
+  });
 }
 
 // The limit of a part of F for lhopital, or undefined for none and for

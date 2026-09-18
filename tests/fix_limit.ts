@@ -704,3 +704,84 @@ run_test([
   'limit(x*log(sin(x)),x,0,right)',
   '0',
 ]);
+
+// infinite limits the new fallbacks left open
+run_test([
+  // 13701, 1.37e6
+  'limit(x^2/floor(x),x,infinity)',
+  'inf',
+
+  'limit(-x^2/floor(x),x,infinity)',
+  '-inf',
+
+  // log((x^2+1)/x): 9.5, 14.1, growing
+  'limit(log(x^2+1)-log(x),x,infinity)',
+  'inf',
+
+  'limit(log(x)-log(x^2+1),x,infinity)',
+  '-inf',
+
+  // -2.7e5937, -1.1e594965
+  'limit(exp(-x)/x^3,x,-infinity)',
+  '-inf',
+
+  'limit(exp(-x)/x^2,x,-infinity)',
+  'inf',
+
+  'limit(exp(-x)/x,x,-infinity)',
+  '-inf',
+]);
+
+// A jump function at infinity whose argument arrives at the jump: the
+// substitution gave sgn(0) = 0, floor(0) = 0 (also on the old master).
+// 1/x comes to 0 from above at inf, from below at -inf.
+run_test([
+  'limit(sgn(1/x),x,infinity)',
+  '1',
+
+  'limit(sgn(1/x),x,-infinity)',
+  '-1',
+
+  'limit(sgn(-1/x^2),x,-infinity)',
+  '-1',
+
+  // 1/2+1/2*sgn(1/x)
+  'limit(heaviside(1/x),x,infinity)',
+  '1',
+
+  'limit(floor(1/x),x,infinity)',
+  '0',
+
+  'limit(floor(-1/x),x,infinity)',
+  '-1',
+
+  'limit(ceiling(1/x),x,infinity)',
+  '1',
+
+  'limit(floor(2+1/x),x,-infinity)',
+  '1',
+
+  'limit(round(1/2+1/x),x,infinity)',
+  '1',
+
+  'limit(round(1/2-1/x),x,infinity)',
+  '0',
+
+  // away from the jump the substitution is right
+  'limit(floor(5/2+1/x),x,infinity)',
+  '2',
+
+  'limit(sgn(3-1/x),x,infinity)',
+  '1',
+
+  'limit(abs(1/x-2),x,infinity)',
+  '2',
+
+  // the sign of a is not known
+  'limit(sgn(a*x),x,0,right)',
+  'Stop: limit: could not resolve a jump function',
+
+  // the evaluator's mod is the one of integers
+  'limit(mod(x,2),x,2,left)',
+  'Stop: limit: could not resolve a jump function',
+]);
