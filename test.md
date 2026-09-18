@@ -845,6 +845,8 @@ sum((-1)^(k+1)/k,k,1,inf)    # alternating harmonic series
 
 sum(k/2^k,k,1,inf)           # polynomial times power: 2
 
+sum(1/(k*(2*k+1)),k,1,inf)   # partial fractions that do not telescope: 2 - 2 log 2
+
 sum((-1)^k/(2*k+1),k,0,inf)  # the Leibniz series: pi/4
 
 sum(x^k/k!,k,0,inf)          # exponential series
@@ -1012,6 +1014,10 @@ integral(abs(x),x)            # absolute value of a linear term
 integral(sin(x)/x,x)          # the sine integral Si
 
 defint(sin(x)/x,x,0,inf)      # the Dirichlet integral
+
+defint(1/(2+cos(x)),x,0,2*pi) # the jump of tan(x/2) at pi is added
+
+defint(1/(1+cos(x)),x,0,4)    # a pole inside the interval stops
 ```
 @Algebrite.pretty
 
@@ -1498,6 +1504,11 @@ example below sums `1..5` into `s`. Wildcards in a `pattern()` template
 end with an underscore, e.g. `x_`. A semicolon separates statements like a
 line break.
 
+The sign of a constant such as `pi-4` or `sqrt(2)-sqrt(3)` is taken from
+certified digits, so `abs(pi-4)` is `4-pi` and `sqrt(10^20+1)>10^10` is `1`. A
+constant that is zero in disguise, `2*sin(1)*cos(1)-sin(2)`, stays undecided
+unless `simplify` can prove it.
+
 A comparison that cannot be decided stays a comparison, in its simplest form:
 common terms cancel and numeric factors are divided out, `x+y>y` is `x>0`. A
 symbolic factor is divided out only when its sign is known (section 13).
@@ -1539,6 +1550,10 @@ or(x<1,x>=1)                    # always true: 1
 not(and(x>1,y<2))               # De Morgan
 
 min(3,x,5)                      # numbers are merged
+
+abs(pi-4)                       # the sign of a constant is known
+
+sqrt(10^20+1)>10^10             # decided with certified digits, not with a double
 ```
 @Algebrite.eval
 
@@ -1626,7 +1641,9 @@ see timelimit` instead of freezing the browser tab, and the next statement
 works normally. `timelimit=60` allows more, `timelimit=0` switches the limit
 off, `clearall` restores the default. The clock cannot interrupt a single step
 of big number arithmetic, such as `isprime` of a number with thousands of
-digits.
+digits. For the same reason a power whose result would have more than a
+million digits, `2^(10^8)`, stops at once; `powermod(a, b, m)` computes
+`a^b mod m` without building the power.
 
 ```Maxima
 timelimit=1          # one second per statement
