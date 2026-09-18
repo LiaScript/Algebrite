@@ -13,11 +13,13 @@ import {
   U
 } from '../runtime/defs';
 import { symbol } from "../runtime/symbol";
+import { absval } from './abs';
 import { add, subtract } from './add';
+import { arg } from './arg';
 import { double, integer, nativeDouble } from './bignum';
 import { denominator } from './denominator';
 import { Eval } from './eval';
-import { equaln, isfraction, isnegativenumber } from './is';
+import { equaln, iscomplexnumber, isfraction, isnegativenumber } from './is';
 import { makeList } from './list';
 import { equal } from './misc';
 import { divide, multiply, negate } from './multiply';
@@ -76,6 +78,15 @@ export function logarithm(p1: U): U {
 
   if (isdouble(p1)) {
     return double(Math.log(p1.d));
+  }
+
+  // principal branch: log(z) = log(|z|) + i arg(z), with -pi < arg(z) <= pi
+  // (splitting -i as log(-1) + log(i) would give 3/2 i pi)
+  if (iscomplexnumber(p1)) {
+    return add(
+      logarithm(absval(p1)),
+      multiply(Constants.imaginaryunit, arg(p1))
+    );
   }
 
   // rational number and not an integer?
