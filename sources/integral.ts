@@ -54,7 +54,7 @@ import { scan_meta } from './scan';
 import { simplify } from './simplify';
 import { transform } from './transform';
 import { mapQuantity } from './quantity';
-import { heuristicIntegral, realTrigReciprocal } from './integral_heuristic';
+import { heuristicIntegral, realRootLogs, realTrigReciprocal } from './integral_heuristic';
 
 /*
  Table of integrals
@@ -484,7 +484,7 @@ function evalIntegral(p1: U) {
       for (let i = 0; i < n; i++) {
         // with log already in the integrand it isn't real for u < 0 anyway
         const G = withoutConstant(integral(temp, X));
-        temp = Find(temp, symbol(LOG)) ? G : realLogs(G, X);
+        temp = Find(temp, symbol(LOG)) ? G : realRootLogs(realLogs(G, X), X);
       }
     } else {
       n = -n;

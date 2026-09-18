@@ -368,7 +368,8 @@ export function realRootLogs(F: U, X: U): U {
     }
     // a provably real w is left to realLogs, which sees the simplified result
     const w = cadr(L);
-    if (isReal(w) === true || isPositive(w) === true) {
+    // an argument with abs(X) in it has been made real by its table entry
+    if (isReal(w) === true || isPositive(w) === true || Find(w, symbol(ABS))) {
       return t;
     }
     // abs takes the numeric content out, 1/5*abs(...), and log(1/5) is a

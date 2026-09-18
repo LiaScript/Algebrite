@@ -51,7 +51,9 @@ run_test([
   '0',
 
   //20
-  'integral(1/sqrt(a+x^2),x)-(log(x+(a+x^2)^(1/2)))',
+  // abs: for a < 0 the argument is negative on the branch x < -sqrt(-a),
+  // where log(abs(...)) is the real antiderivative
+  'integral(1/sqrt(a+x^2),x)-(log(abs(x+(a+x^2)^(1/2))))',
   '0',
 
   //27
@@ -247,11 +249,13 @@ run_test([
   '0',
 
   //156
-  'integral(sqrt(X^2+A),X)-1/2*(X*sqrt(X^2+A)+A*log(X+sqrt(X^2+A)))',
+  // from here on: log(abs(X+sqrt(X^2+A))). For A < 0 the argument is negative on
+  // the branch X < -sqrt(-A), where log(abs(...)) is the real antiderivative
+  'integral(sqrt(X^2+A),X)-1/2*(X*sqrt(X^2+A)+A*log(abs(X+sqrt(X^2+A))))',
   '0',
 
   //157
-  'integral(1/sqrt(X^2+A),X)-log(X+sqrt(X^2+A))',
+  'integral(1/sqrt(X^2+A),X)-log(abs(X+sqrt(X^2+A)))',
   '0',
 
   //158
@@ -300,7 +304,7 @@ run_test([
   //"0",
 
   //168
-  'integral(X^2*sqrt(X^2+A),X)-1/4*X*(X^2+A)^(3/2)+1/8*A*X*sqrt(X^2+A)+1/8*A^2*log(X+sqrt(X^2+A))',
+  'integral(X^2*sqrt(X^2+A),X)-1/4*X*(X^2+A)^(3/2)+1/8*A*X*sqrt(X^2+A)+1/8*A^2*log(abs(X+sqrt(X^2+A)))',
   '0',
 
   //169
@@ -312,7 +316,7 @@ run_test([
   '0',
 
   //171
-  'integral(X^2/sqrt(X^2+A),X)-1/2*X*sqrt(X^2+A)+1/2*A*log(X+sqrt(X^2+A))',
+  'integral(X^2/sqrt(X^2+A),X)-1/2*X*sqrt(X^2+A)+1/2*A*log(abs(X+sqrt(X^2+A)))',
   '0',
 
   //172
@@ -344,7 +348,7 @@ run_test([
 -1/6*X*(X^2-2^2)^(5/2)\
 -1/24*(2^2)*X*(X^2-2^2)^(3/2)\
 +1/16*(2^4)X*sqrt(X^2-2^2)\
--1/16*(2^6)*log(X+sqrt(X^2-2^2))`,
+-1/16*(2^6)*log(abs(X+sqrt(X^2-2^2)))`,
   '0',
 
   //177+
@@ -438,7 +442,7 @@ run_test([
   '0',
 
   //273
-  'integral(sqrt(7*X^2+C),X)-X*sqrt(7*X^2+C)/2-C*log(X*sqrt(7)+sqrt(7*X^2+C))/2/sqrt(7)',
+  'integral(sqrt(7*X^2+C),X)-X*sqrt(7*X^2+C)/2-C*log(abs(X*sqrt(7)+sqrt(7*X^2+C)))/2/sqrt(7)',
   '0',
 
   //274

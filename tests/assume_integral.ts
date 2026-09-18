@@ -38,7 +38,7 @@ run_test([
   'arcsin(x/(a^(1/2)))',
 
   'integral(sqrt(a*x^2+b),x)',
-  '1/2*x*(a*x^2+b)^(1/2)+b*log((a*x^2+b)^(1/2)+a^(1/2)*x)/(2*a^(1/2))',
+  '1/2*x*(a*x^2+b)^(1/2)+b*log(abs((a*x^2+b)^(1/2)+a^(1/2)*x))/(2*a^(1/2))',
 
   // a < 0: log form instead of arctan, no arcsin of an imaginary argument
   'forget(a)',

@@ -378,7 +378,8 @@ run_test([
   'abs(float(eval(d(G,x)-x^2/sqrt(5*x^2-3),x,-2)))<10^(-9)',
   '1',
 
-  // a positive radicand needs no abs
+  // a positive radicand: the argument is positive, the abs that every
+  // provably real log argument gets does no harm
   'integral(1/sqrt(x^2+4),x)',
-  'log(x+(x^2+4)^(1/2))',
+  'log(abs(x+(x^2+4)^(1/2)))',
 ]);
