@@ -10,6 +10,7 @@ import {
   COS,
   E,
   isadd,
+  iscons,
   isdouble,
   ismultiply,
   ispower,
@@ -30,10 +31,12 @@ import { withSign } from './assume';
 import { add, subtract } from './add';
 import { integer, rational } from './bignum';
 import { denominator } from './denominator';
+import { imag } from './imag';
 import { derivative } from './derivative';
 import { Eval } from './eval';
 import { zzfloat } from './float';
 import {
+  iscomplexnumberdouble,
   isinteger,
   isnegativenumber,
   isone,
@@ -45,6 +48,7 @@ import { equal, exponential, yyexpand } from './misc';
 import { divide, multiply, negate } from './multiply';
 import { numerator } from './numerator';
 import { power } from './power';
+import { divpoly } from './quotient';
 import { rationalize } from './rationalize';
 import { rootsList } from './roots';
 import { simplify } from './simplify';
@@ -108,7 +112,7 @@ export function solveEquation(E: U, x: U, depth = 0): U[] {
     return [];
   }
   if (ispolyexpandedform(E, x)) {
-    return rootsList(E, x);
+    return exactRoots(E, x);
   }
   if (depth > MAX_DEPTH) {
     cannot(x);
@@ -261,7 +265,7 @@ function viaKernel(Eu: U, u: U, kernel: U, x: U, depth: number): U[] {
   }
   const what = kind(kernel, x);
   const result: U[] = [];
-  for (const c of rootsList(P, u)) {
+  for (const c of exactRoots(P, u)) {
     if (Find(c, x) && what !== 'radical' && what !== 'abs') {
       cannot(x);
     }
@@ -286,7 +290,7 @@ function invert(kernel: U, what: Kind, c: U, x: U, depth: number): U[] {
       eqs = [subtract(g, exponential(c))];
       break;
     case 'sin': {
-      if (outsideUnitInterval(c)) {
+      if (notReal(c) || outsideUnitInterval(c)) {
         return [];
       }
       const a = call(ARCSIN, c);
@@ -294,7 +298,7 @@ function invert(kernel: U, what: Kind, c: U, x: U, depth: number): U[] {
       break;
     }
     case 'cos': {
-      if (outsideUnitInterval(c)) {
+      if (notReal(c) || outsideUnitInterval(c)) {
         return [];
       }
       const a = call(ARCCOS, c);
@@ -302,6 +306,9 @@ function invert(kernel: U, what: Kind, c: U, x: U, depth: number): U[] {
       break;
     }
     case 'tan':
+      if (notReal(c)) {
+        return [];
+      }
       eqs = [subtract(g, periodic(call(ARCTAN, c), Constants.Pi()))];
       break;
     case 'arcsin':
@@ -347,9 +354,105 @@ function call(fn: string, ...args: U[]): U {
   return Eval(makeList(usr_symbol(fn), ...args));
 }
 
+// Trig equations are solved over the reals: sin(x) = 2 has no solution, and
+// neither has sin(x) = i. Rationals are compared exactly; a radical may float
+// to 1.0000000000000002 and still be 1, which must not drop its family.
 function outsideUnitInterval(c: U): boolean {
+  if (isrational(c)) {
+    return c.a.abs().compare(c.b) > 0;
+  }
   const f = zzfloat(c);
-  return isdouble(f) && Math.abs(f.d) > 1;
+  return isdouble(f) && Math.abs(f.d) > 1 + 1e-9;
+}
+
+function notReal(c: U): boolean {
+  const f = zzfloat(c);
+  return iscomplexnumberdouble(f) && Math.abs(toNumber(imag(f))) > 1e-9;
+}
+
+// roots() of a polynomial whose coefficients hold radicals returns nested
+// radicals or Cardano forms even for roots like -1 or 3^(1/2)/2:
+// T^2+(1+3^(1/2)/2)*T+3^(1/2)/2 has the root -1/2-1/4*3^(1/2)-1/2*(7/4-3^(1/2))^(1/2),
+// which is -1. A root whose float value is close to r or +-sqrt(r) for a small
+// rational r is confirmed by exact substitution and divided off, the quotient
+// is solved again, and what stays unrecognised is denested by simplify.
+function exactRoots(P: U, u: U): U[] {
+  const roots = rootsList(P, u);
+  const found: U[] = [];
+  let Q = P;
+  for (const c of roots) {
+    const f = isrational(c) ? NaN : toNumber(c);
+    const sign = f < 0 ? Constants.negOne : Constants.one;
+    const square = nearRational(f * f);
+    const v = [
+      nearRational(f),
+      square && multiply(sign, power(square, rational(1, 2)))
+    ].find(
+      (v) =>
+        v !== undefined &&
+        !found.some((w) => equal(v, w)) &&
+        isZeroAtomOrTensor(simplify(Eval(subst(P, u, v))))
+    );
+    if (v !== undefined) {
+      found.push(v);
+      Q = divpoly(Q, subtract(u, v), u);
+    }
+  }
+  if (found.length > 0) {
+    return found.concat(Find(Q, u) ? exactRoots(Q, u) : []);
+  }
+  // (real numbers only: a root with parameters in it stays as roots() gave it)
+  return roots.map((c) =>
+    realForm(!Number.isNaN(toNumber(c)) && hasNestedRadical(c) ? simplify(c) : c)
+  );
+}
+
+// roots() writes the real root (1/2-1/4*2^(1/2))^(1/2) as
+// i*(-1/2+1/4*2^(1/2))^(1/2): a real number that shows i is the root of its
+// square, with its sign.
+function realForm(c: U): U {
+  const f = zzfloat(c);
+  if (!isdouble(f) || !Find(c, Constants.imaginaryunit)) {
+    return c;
+  }
+  const root = power(Eval(yyexpand(power(c, integer(2)))), rational(1, 2));
+  const r = f.d < 0 ? negate(root) : root;
+  return !Find(r, Constants.imaginaryunit) && Math.abs(toNumber(r) - f.d) < 1e-12
+    ? r
+    : c;
+}
+
+// A root inside a root, (7/4-3^(1/2))^(1/2). Only these go through simplify:
+// it would also turn the 1/4*6^(1/2)-1/4*2^(1/2) that arcsin knows as
+// sin(pi/12) into another form.
+function hasNestedRadical(p: U, inside = false): boolean {
+  if (!iscons(p)) {
+    return false;
+  }
+  const radical = ispower(p) && isrational(caddr(p)) && !isinteger(caddr(p));
+  return (
+    (radical && inside) ||
+    p.tail().some((q) => hasNestedRadical(q, inside || radical))
+  );
+}
+
+// The fraction p/q with q <= 1000 next to f (continued fraction), if there
+// is one within rounding.
+function nearRational(f: number): U | undefined {
+  let [p0, q0, p1, q1] = [0, 1, 1, 0];
+  let r = f;
+  while (Number.isFinite(r) && Math.abs(f) < 1e6) {
+    const a = Math.floor(r);
+    [p0, q0, p1, q1] = [p1, q1, a * p1 + p0, a * q1 + q0];
+    if (q1 > 1000) {
+      return undefined;
+    }
+    if (Math.abs(f - p1 / q1) < 1e-9 * Math.max(1, Math.abs(f))) {
+      return rational(p1, q1);
+    }
+    r = 1 / (r - a);
+  }
+  return undefined;
 }
 
 // g = a for each angle a, dropping angles that differ by a multiple of 2*pi

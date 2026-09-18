@@ -18,6 +18,7 @@ import { subtract } from './add';
 import { gcd_numbers } from './bignum';
 import { Eval } from './eval';
 import { factorpoly } from './factorpoly';
+import { gcdMultivariate } from './gcd_multivariate';
 import {
   isnegativenumber,
   isplusone,
@@ -35,9 +36,9 @@ import { divide, multiply } from './multiply';
 import { power } from './power';
 
 // Greatest common denominator
-// can also be run on polynomials, however
-// it works only on the integers and it works
-// by factoring the polynomials (not Euclidean algorithm)
+// Polynomials with rational coefficients go through Euclid's algorithm
+// (gcd_rational_polys in one variable, gcd_multivariate.ts in several),
+// everything else is compared term by term and factor by factor.
 export function Eval_gcd(p1: U) {
   p1 = cdr(p1);
   let result = Eval(car(p1));
@@ -71,7 +72,7 @@ function gcd_main(p1: U, p2: U): U {
     return p1;
   }
 
-  const euclid = gcd_rational_polys(p1, p2);
+  const euclid = gcd_rational_polys(p1, p2) || gcdMultivariate(p1, p2);
   if (euclid) {
     return euclid;
   }

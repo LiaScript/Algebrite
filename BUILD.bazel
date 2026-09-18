@@ -868,6 +868,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_fix_solve_gcd",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_solve_gcd.ts",
+)
+
+nodejs_test(
     name = "test_fix_integral_heuristic",
     data = [
         ":tsc",
