@@ -1,3 +1,4 @@
+import { facts } from './assume';
 import {
   ABS,
   caddr,
@@ -173,6 +174,15 @@ export function absval(p1: U): U {
       console.log(` --> ABS of ${input} : ${p1}`);
     }
     return p1;
+  }
+
+  // a sign known from the assumptions (or derived, like exp(x) > 0)
+  const known = facts(p1);
+  if (known.real && known.negative === false) {
+    return p1;
+  }
+  if (known.negative) {
+    return negate(p1);
   }
 
   // ??? should there be a shortcut case here for the imaginary unit?

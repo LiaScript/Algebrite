@@ -1,3 +1,4 @@
+import { facts } from './assume';
 import {
   ARG,
   ASSUME_REAL_VARIABLES,
@@ -151,10 +152,16 @@ function yyarg(p1: U): U {
       : symbol(PI);
   }
 
-  // you'd think that something like
-  // arg(a) is always 0 when a is real but no,
-  // arg(a) is pi when a is negative so we have
-  // to leave unexpressed
+  // arg(a) is 0 for a > 0 and pi for a < 0, so without a known sign a
+  // symbol is left unexpressed
+  const known = facts(p1);
+  if (known.positive || known.negative) {
+    const float = isdouble(p1) || defs.evaluatingAsFloats;
+    return known.positive
+      ? float ? Constants.zeroAsDouble : Constants.zero
+      : float ? Constants.piAsDouble : symbol(PI);
+  }
+
   if (issymbol(p1)) {
     return makeList(symbol(ARG), p1);
   }

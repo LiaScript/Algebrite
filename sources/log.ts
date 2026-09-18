@@ -1,3 +1,4 @@
+import { isNegative, isPositive } from './assume';
 import {
   caddr,
   cadr,
@@ -19,7 +20,7 @@ import { arg } from './arg';
 import { double, integer, nativeDouble } from './bignum';
 import { denominator } from './denominator';
 import { Eval } from './eval';
-import { equaln, iscomplexnumber, isfraction, isnegativenumber } from './is';
+import { equaln, iscomplexnumber, iseveninteger, isfraction, isnegativenumber } from './is';
 import { makeList } from './list';
 import { equal } from './misc';
 import { divide, multiply, negate } from './multiply';
@@ -94,13 +95,21 @@ export function logarithm(p1: U): U {
     return subtract(logarithm(numerator(p1)), logarithm(denominator(p1)));
   }
 
-  // log(a ^ b) --> b log(a)
+  // log(a ^ b) --> b log(a), for a < 0 and even b: b log(-a)
   if (ispower(p1)) {
-    return multiply(caddr(p1), logarithm(cadr(p1)));
+    const [a, b] = [cadr(p1), caddr(p1)];
+    if (isNegative(a) && iseveninteger(b)) {
+      return multiply(b, logarithm(negate(a)));
+    }
+    return multiply(b, logarithm(a));
   }
 
-  // log(a * b) --> log(a) + log(b)
+  // log(a * b) --> log(a) + log(b), but not across a negative factor of a
+  // positive product: log(-y) for y < 0 is real and stays
   if (ismultiply(p1)) {
+    if (isPositive(p1) && p1.tail().some((f) => isNegative(f))) {
+      return makeList(symbol(LOG), p1);
+    }
     return p1.tail().map(logarithm).reduce(add, Constants.zero);
   }
 

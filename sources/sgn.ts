@@ -1,3 +1,4 @@
+import { facts } from './assume';
 import {
   cadr,
   Constants,
@@ -54,6 +55,11 @@ export function sgn(X: U): U {
   if (iscomplexnumber(X)) {
     // sgn(z) = z/|z| for complex z
     return divide(X, absval(X));
+  }
+
+  const known = facts(X);
+  if (known.positive || known.negative || known.zero) {
+    return known.positive ? Constants.one : known.negative ? Constants.negOne : Constants.zero;
   }
 
   if (isnegativeterm(X)) {

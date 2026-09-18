@@ -1,3 +1,4 @@
+import { isNegative, isReal } from './assume';
 import {
   ABS,
   ARCTAN,
@@ -330,7 +331,11 @@ function yypower(base: U, exponent: U): U {
   // sqrt(x*y) != x^(1/2) y^(1/2) (counterexample" x = -1 and y = -1)
   // BUT we can carve-out here some cases where this
   // transformation is correct
-  if (ismultiply(base) && isinteger(exponent)) {
+  if (
+    ismultiply(base) &&
+    (isinteger(exponent) ||
+      base.tail().every((f) => isReal(f) && isNegative(f) === false))
+  ) {
     base = cdr(base);
     let result = power(car(base), exponent);
     if (iscons(base)) {

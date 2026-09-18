@@ -212,3 +212,117 @@ run_test([
   'ispositive(q)',
   'ispositive(q)',
 ]);
+
+// Rules that use the assumptions. Without assumptions the results stay as
+// before (see the last block).
+run_test([
+  'assume(x,positive)',
+  '',
+
+  'assume(y,negative)',
+  '',
+
+  'assume(n,integer)',
+  '',
+
+  // abs and sqrt
+  'abs(x)',
+  'x',
+
+  'abs(y)',
+  '-y',
+
+  'abs(-2*x)',
+  '2*x',
+
+  'abs(x*y)',
+  '-x*y',
+
+  'abs(y^3)',
+  '-y^3',
+
+  'sqrt(x^2)',
+  'x',
+
+  'sqrt(y^2)',
+  '-y',
+
+  'sqrt(4*x^2)',
+  '2*x',
+
+  'abs(exp(y))',
+  'exp(y)',
+
+  // sgn
+  'sgn(x)',
+  '1',
+
+  'sgn(y)',
+  '-1',
+
+  'sgn(x*y)',
+  '-1',
+
+  // comparisons
+  'x>0',
+  '1',
+
+  'y<0',
+  '1',
+
+  'x>y',
+  '1',
+
+  'test(y<0,a,b)',
+  'a',
+
+  'max(x,y)',
+  'x',
+
+  'min(x,0)',
+  '0',
+
+  // arg
+  'arg(x)',
+  '0',
+
+  'arg(y)',
+  'pi',
+
+  // log: log(a^b) = b log(a) needs a > 0
+  'log(x^2)',
+  '2*log(x)',
+
+  'log(y^2)',
+  '2*log(-y)',
+
+  'log(-y)',
+  'log(-y)',
+
+  'log(x*y^2)',
+  'log(x)+2*log(-y)',
+]);
+
+// without assumptions everything stays as before
+run_test([
+  'abs(z)',
+  'abs(z)',
+
+  'sqrt(z^2)',
+  'abs(z)',
+
+  'sgn(z)',
+  'sgn(z)',
+
+  'z>0',
+  'testgt(z,0)',
+
+  'arg(z)',
+  'arg(z)',
+
+  'log(z^2)',
+  '2*log(z)',
+
+  'log(-z)',
+  'log(z)+i*pi',
+]);

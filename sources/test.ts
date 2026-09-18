@@ -1,3 +1,4 @@
+import { facts } from './assume';
 import {
   caddr,
   cadr,
@@ -321,6 +322,8 @@ export function cmp_values(arg1: U, arg2: U): Sign {
     p1 = cadr(p1);
   }
 
+  const difference = p1;
+
   // try floating point if necessary
   if (p1.k !== NUM && p1.k !== DOUBLE) {
     p1 = Eval(yyfloat(p1));
@@ -349,9 +352,11 @@ export function cmp_values(arg1: U, arg2: U): Sign {
         t = 1;
       }
       break;
-    default:
-      //console.log "comparison is null"
-      t = null;
+    default: {
+      // the sign may be known from the assumptions
+      const known = facts(difference);
+      t = known.positive ? 1 : known.negative ? -1 : known.zero ? 0 : null;
+    }
   }
 
   return t;
