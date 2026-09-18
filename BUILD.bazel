@@ -445,6 +445,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_piecewise",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/piecewise.ts",
+)
+
+nodejs_test(
     name = "test_pattern",
     data = [
         ":tsc",
