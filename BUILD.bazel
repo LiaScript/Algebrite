@@ -742,6 +742,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_fourier",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fourier.ts",
+)
+
+nodejs_test(
     name = "test_for",
     data = [
         ":tsc",
