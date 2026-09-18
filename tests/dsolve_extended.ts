@@ -58,13 +58,13 @@ run_test([
 
   // sinh(x)
   's3',
-  '-1/2*exp(-x)+1/2*exp(x)',
+  '1/2*exp(x)-1/2*exp(-x)',
 
   "dsolve(d(y(x),x,3)=0,y(x),y(0)=1,y'(0)=2,y''(0)=6)",
-  '1+2*x+3*x^2',
+  '3*x^2+2*x+1',
 
   'dsolve(d(y(x),x,3)=0,y(x),y(0)=1,d(y(x),x,2)(0)=6)',
-  '1+C1*x+3*x^2',
+  '3*x^2+C1*x+1',
 ]);
 
 // boundary conditions at two points
@@ -73,7 +73,7 @@ run_test([
   'sin(x)',
 
   'dsolve(d(y(x),x,2)=0,y(x),y(0)=1,y(1)=3)',
-  '1+2*x',
+  '2*x+1',
 
   // exp(x)/(e - 1/e) - exp(-x)/(e - 1/e)
   's=dsolve(d(y(x),x,2)-y(x),y(x),y(0)=0,y(1)=1)',
@@ -116,15 +116,9 @@ run_test([
   'subst(0,x,d(s,x))',
   '0',
 
-  // two constants are left, C1 and C2
-  'simplify(d(s,C1))==0',
-  '0',
-
-  'simplify(d(s,C2))==0',
-  '0',
-
-  'd(s,C3)',
-  '0',
+  // C1 = 0 and C2 = -C3; what is left of C3 and C4 is now C1 and C2
+  's',
+  'C1*x*cos(x)-C1*sin(x)+C2*x*sin(x)',
 
   // a condition that says nothing new
   'dsolve(d(y(x),x,2)+y(x),y(x),y(0)=0,y(pi)=0)',
@@ -207,7 +201,7 @@ run_test([
   '0',
 
   's',
-  'C1*x^(-2^(1/2))+C2*x^(2^(1/2))',
+  'C1/(x^(2^(1/2)))+C2*x^(2^(1/2))',
 
   // divided by x^2, multiplied by a constant
   'dsolve(d(y(x),x,2)+d(y(x),x)/x-y(x)/x^2=0,y(x))',
@@ -222,7 +216,7 @@ run_test([
 
   // other names
   'dsolve(t^2*d(u(t),t,2)+t*d(u(t),t)-4*u(t),u(t))',
-  'C1/t^2+C2*t^2',
+  'C1/(t^2)+C2*t^2',
 
   // third order, (r-1)^3
   's=dsolve(x^3*d(y(x),x,3)+x*d(y(x),x)-y(x),y(x))',
@@ -267,7 +261,7 @@ run_test([
 
   // y(1) = 2, y'(1) = 0
   "dsolve(x^2*d(y(x),x,2)+x*d(y(x),x)-y(x),y(x),y(1)=2,y'(1)=0)",
-  '1/x+x',
+  'x+1/x',
 
   // boundary values
   'dsolve(x^2*d(y(x),x,2)-2*y(x)=0,y(x),y(1)=1,y(2)=4)',
@@ -280,10 +274,71 @@ run_test([
   '',
 
   'dsolve(x^2*d(y(x),x,2)+x*d(y(x),x)-a^2*y(x),y(x))',
-  'C1*x^a+C2*x^(-a)',
+  'C1*x^a+C2/(x^a)',
 
   'dsolve(x^2*d(y(x),x,2)+x*d(y(x),x)+a^2*y(x),y(x))',
   'C1*cos(a*log(x))+C2*sin(a*log(x))',
+]);
+
+// second order, a right side laplace can't transform: variation of
+// parameters, yp = -y1 integral(y2 g/W) + y2 integral(y1 g/W)
+run_test([
+  's=dsolve(d(y(x),x,2)+y(x)=1/cos(x),y(x))',
+  '',
+
+  's',
+  'C1*cos(x)+C2*sin(x)+x*sin(x)+cos(x)*log(cos(x))',
+
+  'simplify(d(s,x,2)+s-1/cos(x))',
+  '0',
+
+  // x exp(x) log(x) - x exp(x), the second term goes into C2
+  's=dsolve(d(y(x),x,2)-2*d(y(x),x)+y(x)=exp(x)/x,y(x))',
+  '',
+
+  's',
+  'C1*exp(x)+C2*x*exp(x)+x*exp(x)*log(x)',
+
+  'simplify(d(s,x,2)-2*d(s,x)+s-exp(x)/x)',
+  '0',
+
+  // leading coefficient 2
+  'dsolve(2*d(y(x),x,2)+2*y(x)=2/cos(x),y(x))',
+  'C1*cos(x)+C2*sin(x)+x*sin(x)+cos(x)*log(cos(x))',
+
+  "s=dsolve(d(y(x),x,2)+y(x)=1/cos(x),y(x),y(0)=1,y'(0)=0)",
+  '',
+
+  's',
+  'cos(x)+x*sin(x)+cos(x)*log(cos(x))',
+
+  // Euler-Cauchy, in t = log(x): y'' - y = exp(t)/(1+exp(t))
+  's=dsolve(x^2*d(y(x),x,2)+x*d(y(x),x)-y(x)=x/(1+x),y(x))',
+  '',
+
+  'simplify(x^2*d(s,x,2)+x*d(s,x)-s-x/(1+x))',
+  '0',
+
+  // sine and cosine integral
+  's=dsolve(d(y(x),x,2)+y(x)=1/x,y(x))',
+  '',
+
+  's',
+  'C1*cos(x)+C2*sin(x)+Ci(x)*sin(x)-Si(x)*cos(x)',
+
+  'simplify(d(s,x,2)+s-1/x)',
+  '0',
+
+  // the integral of sin(x)^2/cos(x) is not found
+  'dsolve(d(y(x),x,2)+y(x)=tan(x),y(x))',
+  'Stop: dsolve: no particular solution for the right side tan(x)',
+
+  'dsolve(x^2*d(y(x),x,2)+x*d(y(x),x)-y(x)=sin(x),y(x))',
+  'Stop: dsolve: no particular solution for the right side sin(x)',
+
+  // a condition where the solution has no value
+  'dsolve(x^2*d(y(x),x,2)+x*d(y(x),x)-y(x),y(x),y(0)=1)',
+  'Stop: dsolve: the solution C1/x+C2*x has no value at x = 0',
 ]);
 
 // float coefficients: roots +- 0.5
@@ -291,12 +346,15 @@ run_test([
   's=dsolve(x^2*d(y(x),x,2)+x*d(y(x),x)-0.25*y(x),y(x))',
   '',
 
+  's',
+  '1.0*C1/(x^0.5)+1.0*C2*x^0.5',
+
   'abs(float(subst(1,C2,subst(1,C1,subst(2,x,x^2*d(s,x,2)+x*d(s,x)-0.25*s)))))<10^(-12)',
   '1',
 
   // 2^0.5 + 2^(-0.5)
   'float(subst(1,C2,subst(1,C1,subst(2,x,s))))',
-  '2.12132...',
+  '2.121320...',
 ]);
 
 // exact equations M + N y' = 0 with dM/dy = dN/dx: Psi(x,y) = C1 with
@@ -305,6 +363,9 @@ run_test([
   // x^2 y + x + y^2 = C1
   's=dsolve(2*x*y(x)+1+(x^2+2*y(x))*d(y(x),x)=0,y(x))',
   '',
+
+  's',
+  '[-1/2*x^2-1/2*(4*C1-4*x+x^4)^(1/2),-1/2*x^2+1/2*(4*C1-4*x+x^4)^(1/2)]',
 
   'simplify(2*x*s[1]+1+(x^2+2*s[1])*d(s[1],x))',
   '0',
@@ -357,7 +418,7 @@ run_test([
 
   // no formula for y: the relation, as for separable equations
   'dsolve(y(x)*cos(x)+2*x*exp(y(x))+(sin(x)+x^2*exp(y(x))-1)*d(y(x),x)=0,y(x))',
-  'Stop: dsolve: can only give the implicit solution x^2*exp(y(x))+y(x)*sin(x)-y(x) = C1',
+  'Stop: dsolve: can only give the implicit solution -y(x)+x^2*exp(y(x))+sin(x)*y(x) = C1',
 ]);
 
 // homogeneous equations y' = F(y/x): y = v x gives the separable
@@ -388,11 +449,11 @@ run_test([
 
   // x v' = exp(v): -exp(-v) = log(x) + C1
   'dsolve(d(y(x),x)=exp(y(x)/x)+y(x)/x,y(x))',
-  'Stop: dsolve: can only give the implicit solution -exp(-y(x)/x)-log(x) = C1',
+  'Stop: dsolve: can only give the implicit solution -log(x)-exp(-y(x)/x) = C1',
 
   // x v' = -(v^2+1)/(v+1): (x^2 + y^2) exp(2 arctan(y/x)) = C1
   'dsolve(d(y(x),x)=(y(x)-x)/(y(x)+x),y(x))',
-  'Stop: dsolve: can only give the implicit solution (x^2+y(x)^2)*exp(2*arctan(y(x)/x)) = C1',
+  'Stop: dsolve: can only give the implicit solution x^2*exp(2*arctan(y(x)/x))+exp(2*arctan(y(x)/x))*y(x)^2 = C1',
 ]);
 
 // y'' = f(x, y'): first order in p = y', then y = integral(p) + C2
@@ -416,16 +477,15 @@ run_test([
   'simplify(d(s,x,2)-d(s,x)^2)',
   '0',
 
-  // both constants are there
-  'simplify(d(s,C1))==0',
-  '0',
-
-  'd(s,C2)',
-  '1',
+  's',
+  'C2-log(x+C1)',
 
   // p' = 1 + p^2: p = tan(x + C1)
   's=dsolve(d(y(x),x,2)=1+d(y(x),x)^2,y(x))',
   '',
+
+  's',
+  'C2-log(cos(x+C1))',
 
   'simplify(d(s,x,2)-1-d(s,x)^2)',
   '0',
@@ -443,8 +503,34 @@ run_test([
   'simplify(d(s,x,2)-d(s,x)^2)',
   '0',
 
-  'd(s,C1)',
+  's',
+  '-log(x+1)',
+
+  // third order without y and y': q' = q^2 for q = y'', integrated twice
+  's=dsolve(d(y(x),x,3)=d(y(x),x,2)^2,y(x))',
+  '',
+
+  's',
+  'C3+x-C1*log(x+C1)+C2*x-x*log(x+C1)',
+
+  'simplify(d(s,x,3)-d(s,x,2)^2)',
   '0',
+
+  // a constant inside tan: tan(C1) = 1, y = -log(cos(x+pi/4)) - log(2)/2
+  "s=dsolve(d(y(x),x,2)=1+d(y(x),x)^2,y(x),y(0)=0,y'(0)=1)",
+  '',
+
+  's',
+  '-1/2*log(2)-log(cos(x+1/4*pi))',
+
+  'simplify(d(s,x,2)-1-d(s,x)^2)',
+  '0',
+
+  'simplify(subst(0,x,s))',
+  '0',
+
+  'simplify(subst(0,x,d(s,x)))',
+  '1',
 ]);
 
 // what stays unsupported says so
@@ -481,7 +567,7 @@ run_test([
 
   // separable and exact
   'dsolve(x+y(x)*d(y(x),x)=0,y(x))',
-  '[-(-x^2+2*C1)^(1/2),(-x^2+2*C1)^(1/2)]',
+  '[-(-2*C1-x^2)^(1/2),(-2*C1-x^2)^(1/2)]',
 
   'dsolve(x*d(y(x),x)=2*y(x),y(x))',
   'C1*x^2',

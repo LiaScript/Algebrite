@@ -6,12 +6,14 @@ import {
   cadddr,
   cadr,
   car,
+  cdddr,
   cddr,
   cdr,
   Cons,
   Constants,
   COS,
   DERIVATIVE,
+  EVAL,
   INVLAPLACE,
   isadd,
   iscons,
@@ -41,7 +43,7 @@ import { integral } from './integral';
 import { isNegative, isPositive, isReal } from './assume';
 import { iseveninteger, ispolyexpandedform, isZeroAtomOrTensor } from './is';
 import { invlaplace, laplace, linear } from './laplace';
-import { checkArgCount, exponential } from './misc';
+import { exponential } from './misc';
 import { divide, multiply, negate } from './multiply';
 import { numerator } from './numerator';
 import { power } from './power';
@@ -49,7 +51,7 @@ import { real } from './real';
 import { equationToExpr, roots } from './roots';
 import { build_tensor } from './scan';
 import { simplify } from './simplify';
-import { solveLinearSystem } from './solve';
+import { solveEquation, tidySolutions } from './solve_transcendental';
 import { subst } from './subst';
 
 /* dsolve =================================================================
@@ -58,53 +60,75 @@ dsolve(ode, y(x)) solves an ordinary differential equation for y(x) and
 returns the right side y(x) = ..., with constants C1, C2, ...; several
 branches (y' = x/y) come as a list. Covered:
 
-  first order, y' = f(x,y): linear, separable, Bernoulli
-  any order: linear with constant coefficients (forcing via laplace)
+  first order, y' = f(x,y): linear, separable, Bernoulli, homogeneous
+    y' = F(y/x), exact M + N y' = 0
+  any order: linear with constant coefficients (forcing via laplace),
+    Euler-Cauchy sum a_k x^k y^(k) = q(x), and equations without y, which
+    are one order lower in y'
 
-dsolve(ode, y(x), [y(0)=1, y'(0)=0]) fits the constants to initial values.
+dsolve(ode, y(x), y(0)=1, y'(0)=0) fits the constants to initial or
+boundary values, given as further arguments or as a list; y'(0) can be
+written d(y(x),x)(0). With fewer conditions than constants the remaining
+constants are renumbered from C1.
+
+An equation that can't be solved for y stops with the relation
+H(x, y(x)) = C1 in the message.
+
+Euler-Cauchy solutions are written with log(x): real for x > 0, and with
+the complex log(x) they solve the equation for x < 0 as well.
 
 ponytail: no singular solutions (h(y) = 0 of a separable y' = g(x) h(y)),
 no variation of parameters (forcing laplace can't transform, like 1/x),
-no exact, homogeneous or Euler equations.
+no Riccati, no y'' = f(y, y'), no systems.
 
 */
 
 type Condition = { order: number; at: U; value: U };
 
 export function Eval_dsolve(p1: U): U {
-  checkArgCount(p1, 2, 3);
   const ode = equationToExpr(cadr(p1));
   const Y = Eval(caddr(p1));
   if (!iscons(Y) || !issymbol(cadr(Y)) || cddr(Y) !== symbol(NIL)) {
     stop('dsolve: 2nd argument must be a function call like y(x)');
   }
-  const ics = cadddr(p1);
-  const conds = ics === symbol(NIL) ? [] : conditions(ics, Y);
+  const conds: Condition[] = [];
+  for (let p = cdddr(p1); iscons(p); p = cdr(p)) {
+    const ics = car(p);
+    conds.push(...(istensor(ics) ? ics.tensor.elem : [ics]).map((e) => condition(e, Y)));
+  }
   const sols = dsolve(ode, Y, conds);
   if (sols.length === 0) {
-    stop('dsolve: no solution satisfies the initial conditions');
+    stop('dsolve: no solution satisfies the conditions');
   }
   return sols.length === 1 ? sols[0] : build_tensor(sols);
 }
 
-// [y(0)=1, y'(0)=0], read without Eval: y(0)=1 would define y
-function conditions(ics: U, Y: U): Condition[] {
-  const elems = istensor(ics) ? ics.tensor.elem : [ics];
-  return elems.map((e) => {
-    if (car(e) !== symbol(SETQ) && car(e) !== symbol(TESTEQ)) {
-      stop('dsolve: initial conditions must look like y(0)=1');
-    }
-    const lhs = Eval(cadr(e));
-    const value = Eval(caddr(e));
-    if (car(lhs) === car(Y) && cddr(lhs) === symbol(NIL)) {
-      return { order: 0, at: cadr(lhs), value };
-    }
-    const order = car(lhs) === symbol(AT) ? primeOrder(cadr(lhs), caddr(lhs)) : 0;
-    if (order === 0) {
-      stop('dsolve: initial conditions must look like y(0)=1 or y\'(0)=1');
-    }
-    return { order, at: cadddr(lhs), value };
-  });
+// y(0)=1, y'(0)=0 or d(y(x),x)(0)=0, read without Eval: y(0)=1 would define y
+function condition(e: U, Y: U): Condition {
+  const isEquation = car(e) === symbol(SETQ) || car(e) === symbol(TESTEQ);
+  // the parser reads d(y(x),x)(0) as the call eval(d(y(x),x))(0)
+  const callee = car(cadr(e));
+  let lhs =
+    car(callee) === symbol(EVAL) && cddr(cadr(e)) === symbol(NIL)
+      ? at(Eval(cadr(callee)), cadr(Y), Eval(cadr(cadr(e))))
+      : Eval(cadr(e));
+  let x0: U = cadr(lhs);
+  let order = 0;
+  if (car(lhs) === symbol(AT)) {
+    order = primeOrder(cadr(lhs), caddr(lhs));
+    x0 = cadddr(lhs);
+    lhs = cadr(lhs);
+  } else if (car(lhs) === symbol(DERIVATIVE)) {
+    order = primeOrder(lhs, caddr(lhs)); // y'(a) is d(y(a),a)
+    x0 = caddr(lhs);
+  }
+  for (let i = 0; i < order; i++) {
+    lhs = cadr(lhs);
+  }
+  if (!isEquation || car(lhs) !== car(Y) || cddr(lhs) !== symbol(NIL)) {
+    stop("dsolve: conditions must look like y(0)=1, y'(0)=1 or d(y(x),x,2)(0)=1");
+  }
+  return { order, at: x0, value: Eval(caddr(e)) };
 }
 
 const constant = (i: number) => usr_symbol('C' + i);
@@ -125,39 +149,56 @@ export function dsolve(ode: U, Y: U, conds: Condition[]): U[] {
   const y = usr_symbol('$y');
   const ds = Array.from({ length: n }, (_, k) => usr_symbol('$d' + (k + 1)));
   let E = ode;
+  let dY = Y;
+  const dYs = ds.map(() => (dY = new Cons(symbol(DERIVATIVE), new Cons(dY, new Cons(x, symbol(NIL))))));
   for (let k = n; k >= 1; k--) {
-    let dk = Y;
-    for (let i = 0; i < k; i++) {
-      dk = new Cons(symbol(DERIVATIVE), new Cons(dk, new Cons(x, symbol(NIL))));
-    }
-    E = subst(E, dk, ds[k - 1]);
+    E = subst(E, dYs[k - 1], ds[k - 1]);
   }
   E = Eval(subst(E, Y, y));
   if (Find(E, car(Y))) {
     stop('dsolve: ' + car(Y) + ' must only appear as ' + Y + ' and its derivatives');
   }
+  const sols = solveOrder(E, [y, ...ds], x, conds, [Y, ...dYs]);
+  if (sols === null) {
+    stop(
+      'dsolve: unsupported equation. Supported: first order separable, linear, ' +
+        "Bernoulli, homogeneous y'=F(y/x), exact; linear with constant " +
+        "coefficients; Euler-Cauchy; y''=f(x,y')"
+    );
+  }
+  return sols;
+}
 
+// E = 0 in vars = [y, y', ..., y^(n)]; Ys are their names for messages
+function solveOrder(E: U, vars: U[], x: U, conds: Condition[], Ys: U[]): U[] | null {
+  const n = vars.length - 1;
   if (n === 1) {
-    const lin = linear(E, ds[0]);
-    if (lin !== null && !isZero(lin[0])) {
-      const f = divide(negate(lin[1]), lin[0]); // y' = f(x, y)
-      const sol =
-        firstOrderLinear(f, y, x, conds) ??
-        separable(f, y, x, conds, Y) ??
-        bernoulli(f, y, x, conds);
-      if (sol !== null) {
-        return sol;
-      }
+    const sols = firstOrder(E, vars[0], vars[1], x, conds, Ys[0]);
+    if (sols !== null) {
+      return sols;
     }
   }
-  const sol = constantCoefficients(E, [y, ...ds], x, conds);
-  if (sol !== null) {
-    return sol;
+  const lin = linearCoefficients(E, vars);
+  const sol = lin && (constantCoefficients(lin.a, lin.q, x) ?? eulerCauchy(lin.a, lin.q, x));
+  if (sol) {
+    return fitAll([sol], x, n, conds);
   }
-  stop(
-    'dsolve: only separable, first-order linear, Bernoulli or linear ' +
-      'equations with constant coefficients are supported'
-  );
+  // without y: one order lower in p = y', then y = integral(p) + Cn
+  if (n > 1 && !Find(E, vars[0])) {
+    const Ep = vars.slice(1).reduce((acc, v, k) => subst(acc, v, vars[k]), E);
+    const ps = solveOrder(Ep, vars.slice(0, n), x, [], Ys.slice(1));
+    if (ps !== null) {
+      const sols = ps.map((p) => {
+        const I = tryIntegral(p, x);
+        if (I === null) {
+          stop('dsolve: no integral of ' + Ys[1] + ' = ' + p);
+        }
+        return add(I, constant(n));
+      });
+      return fitAll(sols, x, n, conds);
+    }
+  }
+  return null;
 }
 
 // highest k of d(...d(y(x),x)...,x) in p
@@ -177,6 +218,23 @@ function order(p: U, Y: U, x: U): number {
 
 // ---------------------------------------------------------------- order 1
 
+function firstOrder(E: U, y: U, d1: U, x: U, conds: Condition[], Y: U): U[] | null {
+  const lin = linear(E, d1);
+  if (lin === null || isZero(lin[0])) {
+    return null;
+  }
+  const f = divide(negate(lin[1]), lin[0]); // y' = f(x, y)
+  const tryExact = (l: [U, U] | null) => l && exact(l[1], l[0], y, x, conds, Y);
+  return (
+    firstOrderLinear(f, y, x, conds) ??
+    separable(f, y, x, conds, Y) ??
+    bernoulli(f, y, x, conds) ??
+    homogeneous(f, y, x, conds, Y) ??
+    tryExact(lin) ??
+    tryExact(linear(numerator(E), d1)) // with the denominators cleared
+  );
+}
+
 // y' = a(x) y + b(x): y = (integral(mu b) + C1)/mu with mu = exp(-integral(a))
 function firstOrderLinear(f: U, y: U, x: U, conds: Condition[]): U[] | null {
   const lin = linear(f, y);
@@ -186,11 +244,17 @@ function firstOrderLinear(f: U, y: U, x: U, conds: Condition[]): U[] | null {
   const [a, b] = lin;
   const mu = expOf(integral(negate(a), x), x);
   const sol = divide(add(integral(multiply(mu, b), x), constant(1)), mu);
-  return [fit(sol, x, 1, conds)];
+  return fitAll([sol], x, 1, conds);
 }
 
-// y' = g(x) h(y): integral(1/h, y) = integral(g, x) + C, solved for y
+// y' = g(x) h(y)
 function separable(f: U, y: U, x: U, conds: Condition[], Y: U): U[] | null {
+  const rel = separableRelation(f, y, x, conds);
+  return rel && explicit(rel.H, rel.C, y, x, conds, Y);
+}
+
+// y' = g(x) h(y): integral(1/h, y) = integral(g, x) + C as H(x, y) = C
+function separableRelation(f: U, y: U, x: U, conds: Condition[]): { H: U; C: U } | null {
   let g: U = null;
   let h: U = null;
   for (const x0 of [1, 2, 3]) {
@@ -203,12 +267,15 @@ function separable(f: U, y: U, x: U, conds: Condition[], Y: U): U[] | null {
   if (g === null || Find(g, y)) {
     return null;
   }
-  const G = integral(divide(Constants.one, h), y);
-  const F = integral(g, x);
+  const G = tryIntegral(divide(Constants.one, h), y) ?? tryIntegral(simplify(divide(Constants.one, h)), y);
+  const F = tryIntegral(g, x);
+  if (G === null || F === null) {
+    return null;
+  }
 
-  // G = F + C as H(x, y) = C. With logs, k (log|u| + c log|v| + ...) =
-  // F + C is u v^c ... exp(-F/k) = C, the signs and exp(C/k) go into the
-  // constant; k arctan(u) = F + C is u = tan((F + C)/k).
+  // With logs, k (log|u| + c log|v| + ...) = F + C is
+  // u v^c ... exp(-F/k) = C, the signs and exp(C/k) go into the constant;
+  // k arctan(u) = F + C is u = tan((F + C)/k).
   const t0 = terms(G).find((t) => factors(t).some(isLog));
   const k = t0 && divide(t0, factors(t0).find(isLog));
   const atan = factors(G).find((p) => car(p) === symbol(ARCTAN));
@@ -222,7 +289,11 @@ function separable(f: U, y: U, x: U, conds: Condition[], Y: U): U[] | null {
     H = subtract(cadr(atan), Eval(makeCall(TAN, divide(add(F, C), ka))));
     C = Constants.zero;
   }
+  return { H, C };
+}
 
+// H(x, y) = C solved for y: linear or a polynomial in y
+function explicit(H: U, C: U, y: U, x: U, conds: Condition[], Y: U): U[] {
   const lin = linear(H, y);
   let sols: U[];
   if (lin !== null && !isZero(lin[0])) {
@@ -266,35 +337,99 @@ function bernoulli(f: U, y: U, x: U, conds: Condition[]): U[] | null {
     }
     return { ...c, value: power(c.value, m) };
   });
-  const [v] = firstOrderLinear(add(multiply(multiply(m, a), y), multiply(m, b)), y, x, vconds);
-  const root = power(v, divide(Constants.one, m));
+  const vs = firstOrderLinear(add(multiply(multiply(m, a), y), multiply(m, b)), y, x, vconds);
+  if (vs.length === 0) {
+    return [];
+  }
+  const root = power(vs[0], divide(Constants.one, m));
   const sols = iseveninteger(m) ? [negate(root), root] : [root];
   return keepSatisfying(sols, x, conds);
 }
 
-// ------------------------------------------------- constant coefficients
+// y' = F(y/x): y = v x gives the separable x v' = F(v) - v
+function homogeneous(f: U, y: U, x: U, conds: Condition[], Y: U): U[] | null {
+  const v = usr_symbol('$v');
+  const F = simplify(Eval(subst(f, y, multiply(v, x))));
+  if (Find(F, x)) {
+    return null;
+  }
+  const vconds = conds.map((c) => (c.order > 0 ? c : { ...c, value: divide(c.value, c.at) }));
+  const rel = separableRelation(divide(simplify(subtract(F, v)), x), v, x, vconds);
+  return rel && explicit(Eval(subst(rel.H, v, divide(y, x))), rel.C, y, x, conds, Y);
+}
 
-// sum a_k y^(k) = q(x): exp(r x) for the roots r of sum a_k r^k, times
-// x^j for a root of multiplicity > j, plus a particular solution from
-// invlaplace(laplace(q)/P(s))
-function constantCoefficients(E: U, vars: U[], x: U, conds: Condition[]): U[] | null {
+// M + N y' = 0 with dM/dy = dN/dx: Psi(x, y) = C for
+// Psi = integral(M, x) + integral(N - d(integral(M, x), y), y)
+function exact(M: U, N: U, y: U, x: U, conds: Condition[], Y: U): U[] | null {
+  if (!isZero(subtract(derivative(M, y), derivative(N, x)))) {
+    return null;
+  }
+  const P = tryIntegral(M, x);
+  const rest = P && simplify(subtract(N, derivative(P, y)));
+  const R = rest && !Find(rest, x) ? tryIntegral(rest, y) : null;
+  if (R === null) {
+    return null;
+  }
+  const Psi = add(P, R);
+  const C = conds.length === 0 ? constant(1) : initialConstant(Psi, y, x, conds);
+  return explicit(Psi, C, y, x, conds, Y);
+}
+
+// ------------------------------------------------------ linear, any order
+
+// E = sum a_k vars[k] - q with a_k and q free of vars, else null
+function linearCoefficients(E: U, vars: U[]): { a: U[]; q: U } | null {
   const a: U[] = [];
   let rest = E;
   for (const v of vars) {
     const lin = linear(rest, v);
-    if (lin === null || !freeOf(lin[0], x, ...vars)) {
+    if (lin === null || !freeOf(lin[0], ...vars)) {
       return null;
     }
     a.push(lin[0]);
     rest = lin[1];
   }
-  const q = negate(rest);
-  if (!freeOf(q, ...vars)) {
+  return freeOf(rest, ...vars) ? { a, q: negate(rest) } : null;
+}
+
+// sum a_k y^(k) = q(x) with constant a_k
+function constantCoefficients(a: U[], q: U, x: U): U | null {
+  if (!freeOf(build_tensor(a), x)) {
     return null;
   }
-
   const r = usr_symbol('$r');
   const P = a.reduce((acc: U, ak, k) => add(acc, multiply(ak, power(r, integer(k)))), Constants.zero);
+  return characteristic(P, r, a.length - 1, q, x);
+}
+
+// sum a_k x^k y^(k) = q(x), up to a common factor of the a_k: with
+// x = exp(t) it has constant coefficients in t, the characteristic
+// polynomial is sum a_k r (r-1) ... (r-k+1)
+function eulerCauchy(a: U[], q: U, x: U): U | null {
+  const n = a.length - 1;
+  const lead = divide(a[n], power(x, integer(n))); // the common factor
+  const b = a.map((ak, k) => simplify(divide(ak, multiply(lead, power(x, integer(k))))));
+  if (!freeOf(build_tensor(b), x)) {
+    return null;
+  }
+  const r = usr_symbol('$r');
+  const t = usr_symbol('$t');
+  let falling: U = Constants.one; // r (r-1) ... (r-k+1)
+  let P: U = Constants.zero;
+  b.forEach((bk, k) => {
+    P = add(P, multiply(bk, falling));
+    falling = multiply(falling, subtract(r, integer(k)));
+  });
+  const qt = Eval(subst(divide(q, lead), x, exponential(t)));
+  const sol = characteristic(P, r, n, qt, t, divide(q, lead));
+  return Eval(subst(sol, t, makeCall(LOG, x)));
+}
+
+// general solution of P(d/dx) y = q for the polynomial P(r) of degree n:
+// exp(r x) for the roots r of P, times x^j for a root of multiplicity > j,
+// plus a particular solution from invlaplace(laplace(q)/P(s)) or, for
+// n = 2, from variation of parameters. rightSide is q for the message.
+function characteristic(P: U, r: U, n: number, q: U, x: U, rightSide = q): U {
   const rs = roots(P, r);
   const basis: U[] = [];
   for (const root of istensor(rs) ? rs.tensor.elem : [rs]) {
@@ -317,22 +452,35 @@ function constantCoefficients(E: U, vars: U[], x: U, conds: Condition[]): U[] | 
       }
     }
   }
-  if (basis.length !== vars.length - 1) {
+  if (basis.length !== n) {
     stop('dsolve: could not find all roots of ' + P);
   }
 
-  let sol = basis.reduce((acc: U, f, i) => add(acc, multiply(constant(i + 1), f)), Constants.zero);
-  if (!isZero(q)) {
-    const s = usr_symbol('$s');
-    const yp = invlaplace(divide(laplace(q, x, s), Eval(subst(P, r, s))), s, x);
-    if (Find(yp, symbol(LAPLACE)) || Find(yp, symbol(INVLAPLACE))) {
-      stop('dsolve: no particular solution for the right side ' + q);
-    }
-    // terms of yp that solve the homogeneous equation go into the constants
-    const particular = terms(yp).filter((t) => !basis.some((b) => freeOf(divide(t, b), x)));
-    sol = particular.reduce(add, sol);
+  const sol = basis.reduce((acc: U, f, i) => add(acc, multiply(constant(i + 1), f)), Constants.zero);
+  if (isZero(q)) {
+    return sol;
   }
-  return [fit(sol, x, basis.length, conds)];
+  const s = usr_symbol('$s');
+  let yp = invlaplace(divide(laplace(q, x, s), Eval(subst(P, r, s))), s, x);
+  if (Find(yp, symbol(LAPLACE)) || Find(yp, symbol(INVLAPLACE))) {
+    yp = n === 2 ? variationOfParameters(basis, divide(q, coeff(P, r)[2]), x) : null;
+  }
+  if (yp === null) {
+    stop('dsolve: no particular solution for the right side ' + rightSide);
+  }
+  // terms of yp that solve the homogeneous equation go into the constants
+  const particular = terms(yp).filter((t) => !basis.some((b) => freeOf(divide(t, b), x)));
+  return particular.reduce(add, sol);
+}
+
+// y'' + ... = g: yp = -y1 integral(y2 g/W) + y2 integral(y1 g/W) with the
+// Wronskian W = y1 y2' - y2 y1'
+function variationOfParameters([y1, y2]: U[], g: U, x: U): U | null {
+  const W = subtract(multiply(y1, derivative(y2, x)), multiply(y2, derivative(y1, x)));
+  const gW = divide(g, simplify(W));
+  const I1 = tryIntegral(simplify(multiply(y2, gW)), x);
+  const I2 = tryIntegral(simplify(multiply(y1, gW)), x);
+  return I1 && I2 && Eval(subtract(multiply(y2, I2), multiply(y1, I1)));
 }
 
 // number of successive derivatives of P, P itself first, that vanish at root
@@ -347,6 +495,15 @@ function multiplicity(P: U, r: U, root: U): number {
 // ------------------------------------------------------------- helpers
 
 const isLog = (p: U) => car(p) === symbol(LOG);
+
+// integral() stops when it finds none
+function tryIntegral(f: U, x: U): U | null {
+  try {
+    return integral(f, x);
+  } catch (e) {
+    return null;
+  }
+}
 
 // real roots for c y^n + d, roots() writes y^2 = x^2 + C as
 // y = i (-x^2 - C)^(1/2)
@@ -381,16 +538,67 @@ function stripAbs(p: U): U {
   return Eval(strip(p));
 }
 
-// the n constants of sol fitted to the conditions, a linear system in them
-function fit(sol: U, x: U, n: number, conds: Condition[]): U {
+// The constants C1..Cn of each solution fitted to the conditions one by
+// one: a condition is solved for a constant, linearly if possible, else by
+// solve, where several values give several solutions. The constants that
+// stay are renumbered from C1. A solution the conditions contradict drops
+// out.
+function fitAll(sols: U[], x: U, n: number, conds: Condition[]): U[] {
   if (conds.length === 0) {
-    return sol;
+    return sols;
   }
   const Cs = Array.from({ length: n }, (_, i) => constant(i + 1));
-  const eqs = conds.map((c) => subtract(atOrder(sol, x, c), c.value));
-  const values = solveLinearSystem(build_tensor(eqs), build_tensor(Cs));
-  const vs = istensor(values) ? values.tensor.elem : [values];
-  return simplify(Cs.reduce((acc: U, C, i) => Eval(subst(acc, C, vs[i])), sol));
+  const fitted = sols.reduce((acc: U[], sol) => acc.concat(fit(sol, x, Cs, conds)), []);
+  return fitted.map((sol) => {
+    Cs.filter((C) => Find(sol, C)).forEach((C, i) => {
+      sol = subst(sol, C, constant(i + 1));
+    });
+    return simplify(Eval(sol));
+  });
+}
+
+function fit(sol: U, x: U, Cs: U[], conds: Condition[]): U[] {
+  if (conds.length === 0) {
+    return [sol];
+  }
+  let eq: U;
+  try {
+    eq = subtract(atOrder(sol, x, conds[0]), conds[0].value);
+  } catch (e) {
+    stop('dsolve: the solution ' + sol + ' has no value at ' + x + ' = ' + conds[0].at);
+  }
+  if (isZero(eq)) {
+    return fit(sol, x, Cs, conds.slice(1));
+  }
+  const open = Cs.filter((C) => Find(eq, C));
+  for (const solveFor of [linearConstant, solvedConstant]) {
+    for (const C of open) {
+      const values = solveFor(eq, C);
+      if (values.length > 0) {
+        return values.reduce(
+          (acc: U[], v) => acc.concat(fit(Eval(subst(sol, C, v)), x, Cs, conds.slice(1))),
+          []
+        );
+      }
+    }
+  }
+  if (open.length > 0) {
+    stop('dsolve: cannot fit the constants to the condition at ' + conds[0].at);
+  }
+  return [];
+}
+
+function linearConstant(eq: U, C: U): U[] {
+  const lin = linear(eq, C);
+  return lin === null || isZero(lin[0]) ? [] : [divide(negate(lin[1]), lin[0])];
+}
+
+function solvedConstant(eq: U, C: U): U[] {
+  try {
+    return tidySolutions(solveEquation(eq, C));
+  } catch (e) {
+    return [];
+  }
 }
 
 // C1 = H(x0, y0) for the relation H(x, y) = C1 of a separable equation
