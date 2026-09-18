@@ -703,3 +703,51 @@ run_test([
   'factor(-3*i*x^2+3*i,x)',
   '-3*i*(x-1)*(x+1)',
 ]);
+
+// Square roots of numbers leave the denominator: multiply by the conjugate
+// (sqrt(r) -> -sqrt(r)) until no square root is left. Checked by
+// multiplying back with the old denominator.
+run_test([
+  // (1+sqrt2)(sqrt2-1) = 1
+  'simplify(1/(1+2^(1/2)))',
+  '-1+2^(1/2)',
+
+  // (3-sqrt2)(3+sqrt2) = 7
+  'simplify(1/(3-2^(1/2)))',
+  '3/7+1/7*2^(1/2)',
+
+  // golden ratio: (1/2+sqrt5/2)(1/2-sqrt5/2) = -1
+  'simplify(-1/(1/2+1/2*5^(1/2)))',
+  '1/2-1/2*5^(1/2)',
+
+  // (sqrt2+sqrt3)(sqrt3-sqrt2) = 1
+  'simplify(1/(2^(1/2)+3^(1/2)))',
+  '-2^(1/2)+3^(1/2)',
+
+  // two rounds: (1+sqrt2+sqrt3)(1+sqrt2-sqrt3) = 2 sqrt2,
+  // numerically 1/4.146264 = 0.241181 = 0.5+0.353553-0.612372
+  'simplify(1/(1+2^(1/2)+3^(1/2)))',
+  '1/2+1/4*2^(1/2)-1/4*2^(1/2)*3^(1/2)',
+
+  // symbols in the numerator are fine
+  'simplify(x/(1+2^(1/2)))',
+  '(-1+2^(1/2))*x',
+
+  // left alone: symbols in the denominator, roots other than square roots,
+  // and a lone root, which is the normal form 1/2^(1/2)
+  'simplify(1/(x+2^(1/2)))',
+  '1/(x+2^(1/2))',
+
+  'simplify(1/(1+x^(1/2)))',
+  '1/(1+x^(1/2))',
+
+  'simplify(1/(1+2^(1/3)))',
+  '1/(1+2^(1/3))',
+
+  'simplify(1/2^(1/2))',
+  '1/2^(1/2)',
+
+  // i was already handled
+  'simplify(1/(1+i))',
+  '1/2*(1-i)',
+]);

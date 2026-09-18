@@ -35,14 +35,12 @@ run_test([
   '[[-i,1],[i,1]]',
 
   // irrational: lambda^2 = lambda+1, so A[lambda,1] = [lambda+1,lambda]
-  // = lambda[lambda,1]. The vectors are [lambda,1], written as
-  // -1/(1-lambda) = lambda since lambda(1-lambda) = -1; there is no
-  // rationalisation of radical denominators yet.
+  // = lambda[lambda,1]
   'eigenvalues([[1,1],[1,0]])',
   '[1/2-1/2*5^(1/2),1/2+1/2*5^(1/2)]',
 
   'eigenvectors([[1,1],[1,0]])',
-  '[[-1/(1/2+1/2*5^(1/2)),1],[-1/(1/2-1/2*5^(1/2)),1]]',
+  '[[1/2-1/2*5^(1/2),1],[1/2+1/2*5^(1/2),1]]',
 
   // 3x3: A[0,-2,1] = [0,-2,1], A[1,0,0] = 2[1,0,0],
   // A[0,1/2,1] = [0,11/2,11]

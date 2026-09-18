@@ -17,6 +17,7 @@ import {
   INTEGRAL,
   isadd,
   iscons,
+  issymbol,
   isinnerordot,
   ismultiply,
   ispower,
@@ -52,6 +53,8 @@ import {
   isimaginaryunit,
   isminusone,
   isnegativenumber, isone,
+  isoneovertwo,
+  ispositivenumber,
   isZeroAtomOrTensor,
 } from './is';
 import { makeList } from './list';
@@ -69,6 +72,7 @@ import { rationalize } from './rationalize';
 import { real } from './real';
 import { rect } from './rect';
 import { roots } from './roots';
+import { subst } from './subst';
 import { simfac } from './simfac';
 import { check_tensor_dimensions } from './tensor';
 import { transform } from './transform';
@@ -247,7 +251,39 @@ export function simplify(p1: U): U {
 
   p1 = simplify_rectToClock(p1);
   p1 = simplify_rational_expressions(p1);
+  p1 = rationalize_sqrt_denominator(p1);
 
+  return p1;
+}
+
+// Multiply by the conjugate (sqrt(r) -> -sqrt(r)) until no square root of a
+// number is left in the denominator: 1/(1+2^(1/2)) = -1+2^(1/2). Each round
+// removes one root, 1/(1+2^(1/2)+3^(1/2)) takes two. Only for a sum without
+// symbols in the denominator: a lone 1/2^(1/2) is the normal form, and
+// 1/(x+2^(1/2)) = (x-2^(1/2))/(x^2-2) would just grow.
+function rationalize_sqrt_denominator(p1: U): U {
+  const hasSymbol = (p: U): boolean =>
+    issymbol(p) || (iscons(p) && p.tail().some(hasSymbol));
+  const numericSqrt = (p: U): U | undefined => {
+    if (ispower(p) && ispositivenumber(cadr(p)) && isoneovertwo(caddr(p))) {
+      return p;
+    }
+    return iscons(p) ? p.tail().map(numericSqrt).find(Boolean) : undefined;
+  };
+
+  let denom = denominator(p1);
+  if (!isadd(denom) || hasSymbol(denom)) {
+    return p1;
+  }
+  for (let sqrt = numericSqrt(denom); sqrt; sqrt = numericSqrt(denom)) {
+    const conj = Eval(subst(denom, sqrt, negate(sqrt)));
+    const newDenom = multiply(denom, conj);
+    if (Find(newDenom, sqrt)) {
+      return p1; // not linear in sqrt, e.g. nested inside another root
+    }
+    p1 = divide(multiply(numerator(p1), conj), newDenom);
+    denom = denominator(p1);
+  }
   return p1;
 }
 
