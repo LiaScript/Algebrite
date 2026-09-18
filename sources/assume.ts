@@ -42,6 +42,7 @@ import { stop } from '../runtime/run';
 import { collectUserSymbols, get_binding, symbol } from '../runtime/symbol';
 import { coeff } from './coeff';
 import { Eval } from './eval';
+import { certifiedSign } from './bigfloat';
 import { zzfloat } from './float';
 import { isinteger, ispolyexpandedform, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
@@ -187,34 +188,38 @@ export function facts(p: U): Facts {
     iscons(p) &&
     !hasSymbol(p)
   ) {
-    return close({ ...f, ...constantSign(p) }) ?? f;
+    const s = constantSign(p);
+    return (s && close({ ...f, positive: s > 0, negative: s < 0, zero: false })) || f;
   }
   return f;
 }
 
-const hasSymbol = (p: U): boolean =>
+export const hasSymbol = (p: U): boolean =>
   iscons(p)
     ? p.tail().some(hasSymbol)
     : issymbol(p) && p !== symbol(PI) && p !== symbol(E);
 
-// The sign of the float value, undecided within 1e-6 of zero. facts() is
-// asked again while the value is computed (abs, sqrt), hence the guard.
-let decidingConstantSign = false;
-function constantSign(p: U): Facts {
+// The sign of a constant without symbols from its certified digits
+// (certifiedSign of bigfloat.ts), never from a double: sin(3^34) or
+// exp(pi*sqrt(163))-262537412640768744 have the wrong sign there. 1 or -1
+// when certain, 0 when the value cannot be told from zero, undefined when
+// it cannot be evaluated as a real number. Kept per cons cell: facts() asks
+// several times for the same expression.
+const signCache = new WeakMap<U, number | undefined>();
+let decidingConstantSign = false; // lambertw starts from a double: Eval, facts
+export function constantSign(p: U): number | undefined {
   if (decidingConstantSign) {
-    return {};
+    return undefined;
   }
-  decidingConstantSign = true;
-  try {
-    const v = zzfloat(p);
-    return isdouble(v) && Math.abs(v.d) > 1e-6
-      ? { positive: v.d > 0, negative: v.d < 0, zero: false }
-      : {};
-  } catch (error) {
-    return {};
-  } finally {
-    decidingConstantSign = false;
+  if (!signCache.has(p)) {
+    decidingConstantSign = true;
+    try {
+      signCache.set(p, certifiedSign(p));
+    } finally {
+      decidingConstantSign = false;
+    }
   }
+  return signCache.get(p);
 }
 
 function structuralFacts(p: U): Facts {

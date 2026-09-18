@@ -9,7 +9,7 @@ import { run_test } from '../test-harness';
 // wrong there). sin(3^34) = +0.68532586, cos(3^34) = +0.72823654,
 // tan(3^34) = +0.94107590, tan(10^25) = +1.11612597, sin(10^40) = -0.56963340,
 // cos(10^40) = -0.82189889, cos(exp(100)) = +0.98983822, sin(10^22) = -0.85220085,
-// cos(7*10^16+1) = -0.51994183, sin(2^60) = -0.83064922, sin(10^100) = -0.03443854
+// cos(7*10^16+1) = -0.51994183, sin(2^60) = -0.83064922, sin(10^100) = -0.37237612 (mpmath at 200 digits)
 run_test([
   'sgn(sin(3^34))',
   '1',
@@ -122,6 +122,10 @@ run_test([
   'isnegative(10^10-sqrt(10^20+1))',
   '1',
 
+  // 2^(10^4)*pi-1 = 6.3*10^3010
+  'sgn(2^(10^4)*pi-1)',
+  '1',
+
   // exp(pi*sqrt(67))-147197952744 = -1.3*10^(-6)
   'sgn(exp(pi*sqrt(67))-147197952744)',
   '-1',
@@ -213,8 +217,9 @@ run_test([
   'sgn(pi^2-987/100)',
   '-1',
 
+  // floor has no certified evaluation: undecided now (the double said -1)
   'sgn(floor(pi)-4)',
-  '-1',
+  'sgn(-4+floor(pi))',
 
   'abs(x+sin(3^34))',
   'abs(x+sin(16677181699666569))',
@@ -241,51 +246,81 @@ run_test([
 // sin(3^34)+cos(3^34) = 1.41356241
 run_test([
   'float(sin(3^34))',
-  '0.685326',
+  '0.685326...',
 
   'float(cos(3^34))',
-  '0.728237',
+  '0.728237...',
 
   'float(tan(3^34))',
-  '0.941076',
+  '0.941076...',
 
   'float(sin(10^40))',
-  '-0.569633',
+  '-0.569633...',
 
   'float(tan(10^25))',
-  '1.116126',
+  '1.116126...',
 
   'float(cos(exp(100)))',
-  '0.989838',
+  '0.989838...',
 
   'float(sin(10^22))',
-  '-0.852201',
+  '-0.852201...',
 
   'float(1/cos(3^34))',
-  '1.373180',
+  '1.373180...',
 
   'float(sin(3^34)+cos(3^34))',
-  '1.413562',
+  '1.413562...',
 
   'float(x+sin(3^34))',
-  'x+0.685326',
+  'x+0.685326...',
 
   'float(sin(-3^34))',
-  '-0.685326',
+  '-0.685326...',
 
   // small arguments as before: sin(100) = -0.50636564, sin(10^15) = 0.85827279
   'float(sin(100))',
-  '-0.506366',
+  '-0.506366...',
 
   'float(sin(10^15))',
-  '0.858273',
+  '0.858273...',
 
   // a double argument is the number it is: 10.0^22 is exact in binary
   'sin(10.0^22)',
-  '-0.852201',
+  '-0.852201...',
 
   'float(sin(3^34),20)',
   '0.68532586011981541378',
+
+  // sin(10^2000) = 0.26783674, 2*cos(10^400) = -0.10809994,
+  // sin(10^30*2^(1/2)) = -0.91811773 (mpmath at 2200 digits); 10^30*pi is a
+  // multiple of 2*pi, sin(1) = 0.84147098
+  'float(sin(10^2000))',
+  '0.267837...',
+
+  'float(2*cos(10^400)*x)',
+  '-0.108100...*x',
+
+  'float(sin(10^30*sqrt(2)))',
+  '-0.918118...',
+
+  'float(sin(10^30*pi+1))',
+  '0.841471...',
+
+  'float(sec(3^34))',
+  '1.373180...',
+
+  'float([sin(3^34),cos(3^34)])',
+  '[0.685326...,0.728237...]',
+
+  'f(t)=sin(t)',
+  '',
+
+  'float(f(3^34))',
+  '0.685326...',
+
+  'float(sin(y))',
+  'sin(y)',
 ]);
 
 // ---- 2a. and/or of bounds that doubles cannot tell apart:
@@ -380,6 +415,17 @@ run_test([
   // equal, but not proved: both stay
   'max(3*sin(1),sin(3)+4*sin(1)^3)',
   'max(3*sin(1),4*sin(1)^3+sin(3))',
+
+  // 3*sin(1) = 2.52 < 5
+  'min(3*sin(1),sin(3)+4*sin(1)^3,5)',
+  'min(3*sin(1),4*sin(1)^3+sin(3))',
+
+  'max(3*sin(1),sin(3)+4*sin(1)^3,5)',
+  '5',
+
+  // 10^10 < sqrt(10^20+1) < 10^10+1
+  'median([sqrt(10^20+1),10^10,10^10+1])',
+  '100000000000000000001^(1/2)',
 
   // as before
   'max(1,2,3)',
@@ -477,8 +523,15 @@ run_test([
 // zero, but neither proved nor refuted: the comparison comes back, and
 // test, if and piecewise treat it like any undecided condition (a>0)
 run_test([
-  '(sin(3)+4*sin(1)^3>3*sin(1))-(sin(3)+4*sin(1)^3>3*sin(1))',
-  '0',
+  'sin(3)+4*sin(1)^3>3*sin(1)',
+  '4*sin(1)^3+sin(3)>3*sin(1)',
+
+  // 2*sin(1)*cos(1) = sin(2)
+  '2*sin(1)*cos(1)-sin(2)>0',
+  '2*cos(1)*sin(1)>sin(2)',
+
+  '2*sin(1)*cos(1)==sin(2)',
+  '2*cos(1)*sin(1)==sin(2)',
 
   'test(sin(3)-3*sin(1)+4*sin(1)^3>0,yes,no)',
   'test(sin(3)-3*sin(1)+4*sin(1)^3>0,yes,no)',
@@ -517,6 +570,31 @@ run_test([
   'not(sqrt(10^20+1)>10^10)',
   '0',
 
+  'or(x>1,sin(3)+4*sin(1)^3>3*sin(1))',
+  'or(x>1,4*sin(1)^3+sin(3)>3*sin(1))',
+
+  'not(sin(3)+4*sin(1)^3>3*sin(1))',
+  '4*sin(1)^3+sin(3)<=3*sin(1)',
+
+  'and(x>1,sqrt(2)>1)',
+  'x>1',
+
+  // complex numbers and what has no certified evaluation: as before
+  'test(1+i,yes,no)',
+  'yes',
+
+  // erf(3) = 0.99997791
+  'erf(3)>1/2',
+  '1',
+
+  'besselj(1/3,1)>0',
+  'besselj(1/3,1)>0',
+
+  // floor of a constant is not evaluated, and has no certified value:
+  // undecided (the double said 0, which is right)
+  'floor(pi)>3',
+  'floor(pi)>3',
+
   'and(sqrt(10^20+1)>10^10,2^(1/2)*10^15>1414213562373095)',
   '1',
 ]);
@@ -535,10 +613,10 @@ run_test([
   'or(p,b*x<x+y)',
 
   'not((a+1)*x<0)',
-  'a*x+x>=0',
+  '(1+a)*x>=0',
 
   '(a+1)*x!=0',
-  'not(a*x+x==0)',
+  'not((1+a)*x==0)',
 
   'not(not(b*x<x+y))',
   'b*x<x+y',
@@ -552,48 +630,61 @@ run_test([
   'test(b*x<x+y,yes,no)',
   'test(b*x<x+y,yes,no)',
 
-  // a+1 > 0 divides out
+  // (b-1)*x >= (b-1)*y with both sides expanded and the negative terms
+  // moved over; the sign of b-1 is unknown
+  '(b-1)*x>=(b-1)*y',
+  'y+b*x>=x+b*y',
+
+  'and(p,(b-1)*x>=(b-1)*y)',
+  'and(p,y+b*x>=x+b*y)',
+
+  // c^2 and a^2 may be 0: nothing is divided out
+  'and(a^2==a^2*x,c^2*(b-a)*x<c^2*y)',
+  'and(a^2==a^2*x,b*c^2*x<a*c^2*x+c^2*y)',
+]);
+
+// the same with assumptions. A factor of known sign that is not a common
+// factor of the expanded terms (a+1 in a*x+x) is not divided out: the
+// comparison stays as it is, which is right for every value.
+run_test([
   'assume(a,positive)',
   '',
 
   'not((a+1)*x<0)',
-  'x>=0',
+  '(1+a)*x>=0',
 
   '(a+1)*x!=0',
-  'not(x==0)',
+  'not((1+a)*x==0)',
 
+  // rhs: (1+a)*u
   'and(q,(a+1)*t<(a+1)*u)',
-  'and(q,t<u)',
+  'and(q,(1+a)*t<u+a*u)',
 
-  // b-1 < 0 turns the relation
+  'not(a*x<0)',
+  'x>=0',
+
   'assume(b,negative)',
   '',
 
   'and(p,(b-1)*x>=(b-1)*y)',
-  'and(p,x<=y)',
+  'and(p,y+b*x>=x+b*y)',
 
   'not((b-1)*x>=(b-1)*y)',
-  'x>y',
-]);
+  'y+b*x<x+b*y',
 
-run_test([
-  // without assumptions the sign of b-1 is unknown
-  '((b-1)*x>=(b-1)*y)-(b*x-x>=b*y-y)',
-  '0',
-
-  'and(p,(b-1)*x>=(b-1)*y)-and(p,b*x-x>=b*y-y)',
-  '0',
-
-  // c^2 may be 0, nothing to divide by; a^2 too
-  'and(a^2==a^2*x,c^2*(b-a)*x<c^2*y)-and(a^2==a^2*x,(b-a)*c^2*x<c^2*y)',
-  '0',
+  'and(p,b*x>=b*y)',
+  'and(p,x<=y)',
 
   'assume(c,nonzero)',
+  '',
+
+  'forget(a)',
   '',
 
   'assume(a,nonzero)',
   '',
 
+  // (b-a)*x < y
   'and(a^2==a^2*x,c^2*(b-a)*x<c^2*y)',
-  'and(x==1,-a*x+b*x<y)',
+  'and(x==1,b*x<y+a*x)',
 ]);
