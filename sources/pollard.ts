@@ -1,7 +1,7 @@
 import bigInt from 'big-integer';
 import {Constants, defs, MEQUAL, MULTIPLY, Num, POWER, primetab, U,} from '../runtime/defs';
 import {mcmp} from '../runtime/mcmp';
-import {stop} from '../runtime/run';
+import {check_esc_flag} from '../runtime/run';
 import {symbol} from '../runtime/symbol';
 import {mint, setSignTo} from './bignum';
 import {equaln} from './is';
@@ -109,9 +109,7 @@ function factor_b(): U[] {
     }
 
     while (true) {
-      if (defs.esc_flag) {
-        stop('esc');
-      }
+      check_esc_flag();
 
       // g = gcd(x' - x, n_factor_number)
       let t = msub(xprime, x);

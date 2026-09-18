@@ -30,7 +30,7 @@ import {
   U,
 } from '../runtime/defs';
 import { append } from '../runtime/otherCFunctions';
-import { stop } from '../runtime/run';
+import { check_esc_flag, stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
 import { cmp_expr } from '../sources/misc';
 import { add, subtract } from './add';
@@ -66,9 +66,7 @@ export function Eval_multiply(p1: U) {
 // so you pass i*(-1)^(1/2), it wouldnt't
 // give -1, because i is not evalled
 export function multiply(arg1: U, arg2: U): U {
-  if (defs.esc_flag) {
-    stop('escape key stop');
-  }
+  check_esc_flag();
   if (isNumericAtom(arg1) && isNumericAtom(arg2)) {
     return multiply_numbers(arg1, arg2);
   }

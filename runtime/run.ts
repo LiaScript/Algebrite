@@ -12,6 +12,7 @@ import { print2dascii } from '../sources/print2d';
 import { scan } from '../sources/scan';
 import { simplifyForCodeGeneration } from '../sources/simplify';
 import { subst } from '../sources/subst';
+import { nativeDouble } from '../sources/bignum';
 import {
   AUTOEXPAND,
   BAKE,
@@ -22,6 +23,7 @@ import {
   DEBUG,
   defs,
   dotprod_unicode,
+  isNumericAtom,
   isstr,
   LAST,
   NIL,
@@ -900,6 +902,7 @@ export function top_level_eval(expr:U) {
   }
 
   defs.trigmode = 0;
+  startTimelimit();
 
   const shouldAutoexpand = symbol(AUTOEXPAND);
 
@@ -941,10 +944,31 @@ export function top_level_eval(expr:U) {
   return evalledArgument;
 }
 
+// Called from Eval, add, multiply and the long loops. The clock is read
+// every 256th call only; once the deadline has passed every call stops, so
+// a try/catch around a fallback method cannot swallow the timeout.
+let escTicks = 0;
 export function check_esc_flag() {
   if (defs.esc_flag) {
     stop('esc key');
   }
+  if (
+    defs.deadline &&
+    (++escTicks & 255) === 0 &&
+    Date.now() > defs.deadline
+  ) {
+    escTicks = 255;
+    stop(`time limit of ${defs.timelimit} s exceeded, see timelimit`);
+  }
+}
+
+// timelimit=20: seconds one top-level statement may run, 0 or a symbol: no
+// limit
+function startTimelimit() {
+  const limit = get_binding(usr_symbol('timelimit'));
+  defs.timelimit = isNumericAtom(limit) ? nativeDouble(limit) : 0;
+  defs.deadline =
+    defs.timelimit > 0 ? Date.now() + 1000 * defs.timelimit : 0;
 }
 
 // this is called when the whole notebook is re-run
