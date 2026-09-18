@@ -1,5 +1,4 @@
-import { run } from '../runtime/run';
-import { run_test, setup_test, test } from '../test-harness';
+import { run_test } from '../test-harness';
 
 // variance/sd divide by n (population), svariance/ssd by n-1 (sample).
 // Results stay exact for exact input.
@@ -184,10 +183,18 @@ run_test([
   'Stop: sd: no data',
 ]);
 
-// known bug: complex data get d*d instead of |d|^2 in the sum of squares,
-// so variance([i,-i]) is -1 (a negative variance). Using conj(d) would fix
-// it, but conj() of a symbolic difference currently returns
-// (-1)^0*abs(a-b) instead of a-b, which would break symbolic data.
-setup_test(() =>
-  test.failing('variance([i,-i])', t => t.is('1', run('variance([i,-i])')))
-);
+// complex data: the squared deviation is |d|^2 = d conj(d), not d^2
+run_test([
+  'variance([i,-i])',
+  '1',
+
+  'variance([1+i,1-i,3])',
+  '14/9',
+
+  'sd([i,-i])',
+  '1',
+
+  // symbolic data are real, unchanged by conj
+  'variance([a,b])',
+  '-1/2*a*b+1/4*a^2+1/4*b^2',
+]);
