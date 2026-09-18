@@ -392,7 +392,7 @@ const defn_str = [
   // derivative, integral, float and simplify work with no extra code.
   'sec(x)=1/cos(x)',
   'csc(x)=1/sin(x)',
-  'cot(x)=1/tan(x)',
+  'cot(x)=cos(x)/sin(x)',
   'arcsec(x)=arccos(1/x)',
   'arccsc(x)=arcsin(1/x)',
   // ponytail: arccot(0) stops with divide-by-zero; real arccot.ts if needed

@@ -13,6 +13,7 @@ import {
   SIN,
   U
 } from '../runtime/defs';
+import { stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
 import { double, integer, nativeInt, rational } from './bignum';
 import { Eval } from './eval';
@@ -22,10 +23,12 @@ import {
   isminusoneoversqrttwo,
   isMinusSqrtThreeOverTwo,
   isoneoversqrttwo,
-  isSqrtThreeOverTwo
+  isSqrtThreeOverTwo,
+  realconstant
 } from './is';
 import { makeList } from './list';
-import { multiply } from './multiply';
+import { multiply, negate } from './multiply';
+import { subtract } from './add';
 import { requireDimensionless } from './quantity';
 
 /* arcsin =====================================================================
@@ -48,11 +51,21 @@ export function Eval_arcsin(x: U) {
 }
 
 function arcsin(x: U): U {
+  // arcsin(sin(u)) = (-1)^k (u - k pi), which lies in [-pi/2, pi/2];
+  // only decidable when u is a real constant, arcsin(sin(x)) is not x
   if (car(x) === symbol(SIN)) {
-    return cadr(x);
+    const k = Math.round(realconstant(cadr(x)) / Math.PI);
+    if (isNaN(k)) {
+      return makeList(symbol(ARCSIN), x);
+    }
+    const v = subtract(cadr(x), multiply(integer(k), Constants.Pi()));
+    return k % 2 ? negate(v) : v;
   }
 
   if (isdouble(x)) {
+    if (Math.abs(x.d) > 1) {
+      stop('arcsin function argument is not in the interval [-1,1]');
+    }
     return double(Math.asin(x.d));
   }
 

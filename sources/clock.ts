@@ -1,10 +1,13 @@
-import { cadr, Constants, POWER, U } from '../runtime/defs';
+import { cadr, Constants, istensor, POWER, U } from '../runtime/defs';
 import { symbol } from "../runtime/symbol";
 import { abs } from './abs';
 import { arg } from './arg';
 import { Eval } from './eval';
+import { isintegerorintegerfloat } from './is';
+import { power } from './power';
 import { makeList } from './list';
 import { divide, multiply } from './multiply';
+import { copy_tensor } from './tensor';
 
 /*
  Convert complex z to clock form
@@ -35,15 +38,19 @@ export function Eval_clock(p1: U) {
 }
 
 export function clockform(p1: U): U {
+  if (istensor(p1)) {
+    const t = copy_tensor(p1);
+    t.tensor.elem = t.tensor.elem.map(clockform);
+    return t;
+  }
   // pushing the expression (-1)^... but note
   // that we can't use "power", as "power" evaluates
   // clock forms into rectangular form (see "-1 ^ rational"
-  // section in power)
-  const l = makeList(
-    symbol(POWER),
-    Constants.negOne,
-    divide(arg(p1), Constants.Pi())
-  );
+  // section in power); an integer exponent is just a sign
+  const n = divide(arg(p1), Constants.Pi());
+  const l = isintegerorintegerfloat(n)
+    ? power(Constants.negOne, n)
+    : makeList(symbol(POWER), Constants.negOne, n);
   const multiplied = multiply(abs(p1), l);
 
   if (DEBUG_CLOCKFORM) {

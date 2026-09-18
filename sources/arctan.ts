@@ -17,10 +17,11 @@ import {
 import { Find } from '../runtime/find';
 import { symbol } from "../runtime/symbol";
 import { equal } from '../sources/misc';
-import { double, rational } from './bignum';
+import { double, integer, rational } from './bignum';
 import { denominator } from './denominator';
 import { Eval } from './eval';
-import { equaln, equalq, isnegative, isZeroAtomOrTensor } from './is';
+import { equaln, equalq, isnegative, isZeroAtomOrTensor, realconstant } from './is';
+import { subtract } from './add';
 import { makeList } from './list';
 import { multiply, negate } from './multiply';
 import { numerator } from './numerator';
@@ -47,7 +48,7 @@ export function Eval_arctan(x: U) {
 
 export function arctan(x: U): U {
   if (car(x) === symbol(TAN)) {
-    return cadr(x);
+    return arctanOfTan(cadr(x)) || makeList(symbol(ARCTAN), x);
   }
 
   if (isdouble(x)) {
@@ -71,7 +72,7 @@ export function arctan(x: U): U {
       car(p3) === symbol(COS) &&
       equal(cadr(p2), cadr(p3))
     ) {
-      return cadr(p2);
+      return arctanOfTan(cadr(p2)) || makeList(symbol(ARCTAN), x);
     }
   }
 
@@ -99,4 +100,11 @@ export function arctan(x: U): U {
   }
 
   return makeList(symbol(ARCTAN), x);
+}
+
+// arctan(tan(u)) = u - k pi, which lies in [-pi/2, pi/2]; only decidable
+// when u is a real constant (arctan(tan(x)) is not x), else null
+function arctanOfTan(u: U): U | null {
+  const k = Math.round(realconstant(u) / Math.PI);
+  return isNaN(k) ? null : subtract(u, multiply(integer(k), Constants.Pi()));
 }
