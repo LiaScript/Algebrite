@@ -12,6 +12,7 @@ const add_1 = require("./add");
 const bignum_1 = require("./bignum");
 const coeff_1 = require("./coeff");
 const eval_1 = require("./eval");
+const float_1 = require("./float");
 const factorpoly_1 = require("./factorpoly");
 const guess_1 = require("./guess");
 const is_1 = require("./is");
@@ -58,14 +59,17 @@ function normalizeEquation(callExpr) {
     return [POLY1, X1];
 }
 exports.normalizeEquation = normalizeEquation;
-function Eval_roots(POLY) {
+function Eval_roots(p1) {
+    return float_1.evalExactly(evalRoots, p1);
+}
+exports.Eval_roots = Eval_roots;
+function evalRoots(POLY) {
     const [POLY1, X1] = normalizeEquation(POLY);
     if (!is_1.ispolyexpandedform(POLY1, X1)) {
         run_1.stop('roots: 1st argument is not a polynomial in the variable ' + X1);
     }
     return keepAssumedRoots(roots(POLY1, X1), X1, 'roots');
 }
-exports.Eval_roots = Eval_roots;
 // Drops the roots known to violate the assumptions about x. What is left
 // has the shape roots() gives: a lone root bare, several as a list, none
 // is a stop, as for a polynomial roots() can't solve.

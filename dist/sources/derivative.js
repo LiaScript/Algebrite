@@ -8,6 +8,7 @@ const symbol_1 = require("../runtime/symbol");
 const misc_1 = require("../sources/misc");
 const add_1 = require("./add");
 const besselj_1 = require("./besselj");
+const special_1 = require("./special");
 const bessely_1 = require("./bessely");
 const bignum_1 = require("./bignum");
 const cos_1 = require("./cos");
@@ -222,6 +223,10 @@ function d_scalar_scalar_1(p1, p2) {
     if (defs_1.car(p1) === symbol_1.symbol(defs_1.INTEGRAL) && defs_1.caddr(p1) === p2) {
         return derivative_of_integral(p1);
     }
+    const viaSpecial = special_1.specialDerivative(p1, (q) => derivative(q, p2));
+    if (viaSpecial !== undefined) {
+        return viaSpecial;
+    }
     return dfunction(p1, p2);
 }
 function dsum(p1, p2) {
@@ -385,33 +390,20 @@ function derfc(p1, p2) {
     const deriv = derivative(defs_1.cadr(p1), p2);
     return multiply_1.multiply(multiply_1.multiply(multiply_1.multiply(misc_1.exponential(multiply_1.multiply(power_1.power(defs_1.cadr(p1), bignum_1.integer(2)), defs_1.Constants.negOne)), power_1.power(defs_1.Constants.Pi(), bignum_1.rational(-1, 2))), bignum_1.integer(-2)), deriv);
 }
+// besselj(n, x) and bessely(n, x): J0' = -J1, Jn' = J(n-1) - n/x*Jn, and the
+// same for Y
 function dbesselj(p1, p2) {
-    if (is_1.isZeroAtomOrTensor(defs_1.caddr(p1))) {
-        return dbesselj0(p1, p2);
-    }
-    return dbesseljn(p1, p2);
-}
-function dbesselj0(p1, p2) {
-    const deriv = derivative(defs_1.cadr(p1), p2);
-    return multiply_1.multiply(multiply_1.multiply(deriv, besselj_1.besselj(defs_1.cadr(p1), defs_1.Constants.one)), defs_1.Constants.negOne);
-}
-function dbesseljn(p1, p2) {
-    const deriv = derivative(defs_1.cadr(p1), p2);
-    return multiply_1.multiply(deriv, add_1.add(besselj_1.besselj(defs_1.cadr(p1), add_1.add(defs_1.caddr(p1), defs_1.Constants.negOne)), multiply_1.multiply(multiply_1.divide(multiply_1.multiply(defs_1.caddr(p1), defs_1.Constants.negOne), defs_1.cadr(p1)), besselj_1.besselj(defs_1.cadr(p1), defs_1.caddr(p1)))));
+    return dbessel(besselj_1.besselj, defs_1.cadr(p1), defs_1.caddr(p1), p2);
 }
 function dbessely(p1, p2) {
-    if (is_1.isZeroAtomOrTensor(defs_1.caddr(p1))) {
-        return dbessely0(p1, p2);
+    return dbessel(bessely_1.bessely, defs_1.cadr(p1), defs_1.caddr(p1), p2);
+}
+function dbessel(f, n, x, p2) {
+    const deriv = derivative(x, p2);
+    if (is_1.isZeroAtomOrTensor(n)) {
+        return multiply_1.negate(multiply_1.multiply(deriv, f(x, defs_1.Constants.one)));
     }
-    return dbesselyn(p1, p2);
-}
-function dbessely0(p1, p2) {
-    const deriv = derivative(defs_1.cadr(p1), p2);
-    return multiply_1.multiply(multiply_1.multiply(deriv, besselj_1.besselj(defs_1.cadr(p1), defs_1.Constants.one)), defs_1.Constants.negOne);
-}
-function dbesselyn(p1, p2) {
-    const deriv = derivative(defs_1.cadr(p1), p2);
-    return multiply_1.multiply(deriv, add_1.add(bessely_1.bessely(defs_1.cadr(p1), add_1.add(defs_1.caddr(p1), defs_1.Constants.negOne)), multiply_1.multiply(multiply_1.divide(multiply_1.multiply(defs_1.caddr(p1), defs_1.Constants.negOne), defs_1.cadr(p1)), bessely_1.bessely(defs_1.cadr(p1), defs_1.caddr(p1)))));
+    return multiply_1.multiply(deriv, add_1.subtract(f(x, add_1.subtract(n, defs_1.Constants.one)), multiply_1.multiply(multiply_1.divide(n, x), f(x, n))));
 }
 function derivative_of_integral(p1) {
     return defs_1.cadr(p1);

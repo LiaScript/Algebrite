@@ -10,6 +10,7 @@ const add_1 = require("./add");
 const derivative_1 = require("./derivative");
 const det_1 = require("./det");
 const eval_1 = require("./eval");
+const float_1 = require("./float");
 const inner_1 = require("./inner");
 const inv_1 = require("./inv");
 const is_1 = require("./is");
@@ -22,21 +23,44 @@ const roots_1 = require("./roots");
 const rref_1 = require("./rref");
 const scan_1 = require("./scan");
 const simplify_1 = require("./simplify");
+const solve_inequality_1 = require("./solve_inequality");
+const solve_transcendental_1 = require("./solve_transcendental");
 const subst_1 = require("./subst");
+const guess_1 = require("./guess");
 const tensor_1 = require("./tensor");
-// solve(expr, x) / solve(lhs == rhs, x): polynomial equation solving only.
-// Delegates to roots() for the actual solving — see roots.ts. Non-polynomial
-// equations (e.g. transcendental) are explicitly out of scope for now.
+// solve(expr, x) / solve(lhs == rhs, x): polynomial equations go to roots()
+// (see roots.ts), everything else to solveEquation (solve_transcendental.ts)
+// and inequalities to solveInequality (solve_inequality.ts).
 //
 // solve([eq1, eq2, ...], [x, y, ...]): linear system, see solveLinearSystem,
 // or polynomial system, see solvePolySystem. Equations may use = or ==;
 // without the variable list the variables are collected from the equations
 // in order of first appearance.
+// float(solve(...)) solves exactly and converts the solutions afterwards:
+// the polynomial routines cannot work with float coefficients
 function Eval_solve(p1) {
+    return float_1.evalExactly(solve, p1);
+}
+exports.Eval_solve = Eval_solve;
+function solve(p1) {
     // A literal list of equations is converted element-wise before anything is
     // evaluated: Eval of [x+y=3] would treat x+y=3 as a function definition.
     const eqsArg = defs_1.cadr(p1);
     const vars = eval_1.Eval(defs_1.caddr(p1));
+    if (isInequality(eqsArg)) {
+        const x = vars === symbol_1.symbol(defs_1.NIL)
+            ? guess_1.guess(add_1.subtract(eval_1.Eval(defs_1.cadr(eqsArg)), eval_1.Eval(defs_1.caddr(eqsArg))))
+            : vars;
+        return solve_inequality_1.solveInequality(eqsArg, x);
+    }
+    // a list of inequalities in one variable: where all of them hold
+    if (defs_1.istensor(eqsArg) && eqsArg.elem.length > 0 && eqsArg.elem.every(isInequality)) {
+        const first = eqsArg.elem[0];
+        const x = vars === symbol_1.symbol(defs_1.NIL)
+            ? guess_1.guess(add_1.subtract(eval_1.Eval(defs_1.cadr(first)), eval_1.Eval(defs_1.caddr(first))))
+            : vars;
+        return solve_inequality_1.solveInequalities(eqsArg.elem, x);
+    }
     if (defs_1.istensor(eqsArg) || defs_1.istensor(vars)) {
         const eqs = defs_1.istensor(eqsArg)
             ? scan_1.build_tensor(eqsArg.elem.map(roots_1.equationToExpr))
@@ -49,14 +73,24 @@ function Eval_solve(p1) {
             : scan_1.build_tensor(vars === symbol_1.symbol(defs_1.NIL) ? freeSymbols(eqs) : [vars]));
     }
     const [POLY1, X1] = roots_1.normalizeEquation(p1);
-    if (!is_1.ispolyexpandedform(POLY1, X1)) {
-        run_1.stop('solve: 1st argument is not a polynomial in the variable ' +
-            X1 +
-            ' — solve() currently only supports polynomial equations');
+    if (!find_1.Find(POLY1, X1)) {
+        run_1.stop('solve: 1st argument does not contain the variable ' + X1);
     }
-    return roots_1.keepAssumedRoots(roots_1.roots(POLY1, X1), X1, 'solve');
+    if (is_1.ispolyexpandedform(POLY1, X1)) {
+        return roots_1.keepAssumedRoots(roots_1.roots(POLY1, X1), X1, 'solve');
+    }
+    // solve(eq, x, n): n names the integer of a periodic solution family
+    const family = defs_1.cadddr(p1) === symbol_1.symbol(defs_1.NIL) ? undefined : eval_1.Eval(defs_1.cadddr(p1));
+    const sols = solve_transcendental_1.tidySolutions(solve_transcendental_1.solveWithFamily(POLY1, X1, family));
+    if (sols.length === 0) {
+        run_1.stop('solve: no solution');
+    }
+    return roots_1.keepAssumedRoots(sols.length === 1 ? sols[0] : scan_1.build_tensor(sols), X1, 'solve');
 }
-exports.Eval_solve = Eval_solve;
+function isInequality(p) {
+    return (defs_1.iscons(p) &&
+        [defs_1.TESTLT, defs_1.TESTLE, defs_1.TESTGT, defs_1.TESTGE].some((op) => defs_1.car(p) === symbol_1.symbol(op)));
+}
 // Variables in order of first appearance.
 function freeSymbols(p) {
     const acc = [];

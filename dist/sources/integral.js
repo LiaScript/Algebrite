@@ -13,6 +13,7 @@ const log_1 = require("./log");
 const bignum_1 = require("./bignum");
 const derivative_1 = require("./derivative");
 const eval_1 = require("./eval");
+const float_1 = require("./float");
 const guess_1 = require("./guess");
 const denominator_1 = require("./denominator");
 const expand_1 = require("./expand");
@@ -25,6 +26,7 @@ const scan_1 = require("./scan");
 const simplify_1 = require("./simplify");
 const transform_1 = require("./transform");
 const quantity_1 = require("./quantity");
+const integral_heuristic_1 = require("./integral_heuristic");
 /*
  Table of integrals
 
@@ -150,11 +152,11 @@ const itab = [
     //83
     'f(x^3/(a+b*x^4),1/4*1/b*log(a+b*x^4))',
     //124
-    'f(sqrt(a+b*x),2/3*1/b*sqrt((a+b*x)^3))',
+    'f(sqrt(a+b*x),2/3*1/b*(a+b*x)^(3/2))',
     //125
-    'f(x*sqrt(a+b*x),-2*(2*a-3*b*x)*sqrt((a+b*x)^3)/15/b^2)',
+    'f(x*sqrt(a+b*x),-2*(2*a-3*b*x)*(a+b*x)^(3/2)/15/b^2)',
     //126
-    'f(x^2*sqrt(a+b*x),2*(8*a^2-12*a*b*x+15*b^2*x^2)*sqrt((a+b*x)^3)/105/b^3)',
+    'f(x^2*sqrt(a+b*x),2*(8*a^2-12*a*b*x+15*b^2*x^2)*(a+b*x)^(3/2)/105/b^3)',
     //128
     'f(sqrt(a+b*x)/x,2*sqrt(a+b*x)+a*integral(1/x*1/sqrt(a+b*x),x))',
     //129
@@ -186,27 +188,27 @@ const itab = [
     //162
     'f(x/sqrt(x^2+a),sqrt(x^2+a))',
     //163
-    'f(x*sqrt(x^2+a),1/3*sqrt((x^2+a)^3))',
+    'f(x*sqrt(x^2+a),1/3*(x^2+a)^(3/2))',
     //164 need an unexpanded version?
-    'f(sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*sqrt((x^2+a^(1/3))^3)+3/2*a^(1/3)*x*sqrt(x^2+a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2+a^(1/3)))))',
+    'f(sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*(x^2+a^(1/3))^(3/2)+3/2*a^(1/3)*x*sqrt(x^2+a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2+a^(1/3)))))',
     // match doesn't work for the following
-    'f(sqrt(-a+x^6-3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*sqrt((x^2-a^(1/3))^3)-3/2*a^(1/3)*x*sqrt(x^2-a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2-a^(1/3)))))',
+    'f(sqrt(-a+x^6-3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*(x^2-a^(1/3))^(3/2)-3/2*a^(1/3)*x*sqrt(x^2-a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2-a^(1/3)))))',
     //165
     'f(1/sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),x/a^(1/3)/sqrt(x^2+a^(1/3)))',
     //166
     'f(x/sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),-1/sqrt(x^2+a^(1/3)))',
     //167
-    'f(x*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/5*sqrt((x^2+a^(1/3))^5))',
+    'f(x*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/5*(x^2+a^(1/3))^(5/2))',
     //168
-    'f(x^2*sqrt(x^2+a),1/4*x*sqrt((x^2+a)^3)-1/8*a*x*sqrt(x^2+a)-1/8*a^2*log(x+sqrt(x^2+a)))',
+    'f(x^2*sqrt(x^2+a),1/4*x*(x^2+a)^(3/2)-1/8*a*x*sqrt(x^2+a)-1/8*a^2*log(x+sqrt(x^2+a)))',
     //169
-    'f(x^3*sqrt(x^2+a),(1/5*x^2-2/15*a)*sqrt((x^2+a)^3),and(number(a>0),a>0))',
+    'f(x^3*sqrt(x^2+a),(1/5*x^2-2/15*a)*(x^2+a)^(3/2),and(number(a>0),a>0))',
     //170
-    'f(x^3*sqrt(x^2+a),sqrt((x^2+a)^5)/5-a*sqrt((x^2+a)^3)/3,and(number(a<0),a<0))',
+    'f(x^3*sqrt(x^2+a),(x^2+a)^(5/2)/5-a*(x^2+a)^(3/2)/3,and(number(a<0),a<0))',
     //171
     'f(x^2/sqrt(x^2+a),1/2*x*sqrt(x^2+a)-1/2*a*log(x+sqrt(x^2+a)))',
     //172
-    'f(x^3/sqrt(x^2+a),1/3*sqrt((x^2+a)^3)-a*sqrt(x^2+a))',
+    'f(x^3/sqrt(x^2+a),1/3*(x^2+a)^(3/2)-a*sqrt(x^2+a))',
     //173
     'f(1/x^2*1/sqrt(x^2+a),-sqrt(x^2+a)/a/x)',
     //174
@@ -214,13 +216,13 @@ const itab = [
     //175
     'f(1/x^3*1/sqrt(x^2-a),1/2*sqrt(x^2-a)/a/x^2+1/2*1/(a^(3/2))*arcsec(x/(a^(1/2))),a>0)',
     //176+
-    'f(x^2*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/6*x*sqrt((x^2+a^(1/3))^5)-1/24*a^(1/3)*x*sqrt((x^2+a^(1/3))^3)-1/16*a^(2/3)*x*sqrt(x^2+a^(1/3))-1/16*a*log(x+sqrt(x^2+a^(1/3))),a>0)',
+    'f(x^2*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/6*x*(x^2+a^(1/3))^(5/2)-1/24*a^(1/3)*x*(x^2+a^(1/3))^(3/2)-1/16*a^(2/3)*x*sqrt(x^2+a^(1/3))-1/16*a*log(x+sqrt(x^2+a^(1/3))),a>0)',
     //176-
-    'f(x^2*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/6*x*sqrt((x^2-a^(1/3))^5)+1/24*a^(1/3)*x*sqrt((x^2-a^(1/3))^3)-1/16*a^(2/3)*x*sqrt(x^2-a^(1/3))+1/16*a*log(x+sqrt(x^2-a^(1/3))),a>0)',
+    'f(x^2*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/6*x*(x^2-a^(1/3))^(5/2)+1/24*a^(1/3)*x*(x^2-a^(1/3))^(3/2)-1/16*a^(2/3)*x*sqrt(x^2-a^(1/3))+1/16*a*log(x+sqrt(x^2-a^(1/3))),a>0)',
     //177+
-    'f(x^3*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/7*sqrt((x^2+a^(1/3))^7)-1/5*a^(1/3)*sqrt((x^2+a^(1/3))^5),a>0)',
+    'f(x^3*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/7*(x^2+a^(1/3))^(7/2)-1/5*a^(1/3)*(x^2+a^(1/3))^(5/2),a>0)',
     //177-
-    'f(x^3*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/7*sqrt((x^2-a^(1/3))^7)+1/5*a^(1/3)*sqrt((x^2-a^(1/3))^5),a>0)',
+    'f(x^3*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/7*(x^2-a^(1/3))^(7/2)+1/5*a^(1/3)*(x^2-a^(1/3))^(5/2),a>0)',
     //196
     'f(1/(x-a)/sqrt(x^2-a^2),-sqrt(x^2-a^2)/a/(x-a))',
     //197
@@ -235,11 +237,11 @@ const itab = [
     //204
     'f(x/sqrt(a-x^2),-sqrt(a-x^2))',
     //205
-    'f(x*sqrt(a-x^2),-1/3*sqrt((a-x^2)^3))',
+    'f(x*sqrt(a-x^2),-1/3*(a-x^2)^(3/2))',
     //210
-    'f(x^2*sqrt(a-x^2),-x/4*sqrt((a-x^2)^3)+1/8*a*(x*sqrt(a-x^2)+a*arcsin(x/sqrt(a))),a>0)',
+    'f(x^2*sqrt(a-x^2),-x/4*(a-x^2)^(3/2)+1/8*a*(x*sqrt(a-x^2)+a*arcsin(x/sqrt(a))),a>0)',
     //211
-    'f(x^3*sqrt(a-x^2),(-1/5*x^2-2/15*a)*sqrt((a-x^2)^3),a>0)',
+    'f(x^3*sqrt(a-x^2),(-1/5*x^2-2/15*a)*(a-x^2)^(3/2),a>0)',
     //214
     'f(x^2/sqrt(a-x^2),-x/2*sqrt(a-x^2)+a/2*arcsin(x/sqrt(a)),a>0)',
     //215
@@ -249,7 +251,7 @@ const itab = [
     //217
     'f(sqrt(a-x^2)/x^3,-1/2*sqrt(a-x^2)/x^2+1/2*log((sqrt(a)+sqrt(a-x^2))/x)/sqrt(a),a>0)',
     //218
-    'f(sqrt(a-x^2)/x^4,-1/3*sqrt((a-x^2)^3)/a/x^3,a>0)',
+    'f(sqrt(a-x^2)/x^4,-1/3*(a-x^2)^(3/2)/a/x^3,a>0)',
     // 273
     'f(sqrt(a*x^2+b),x*sqrt(a*x^2+b)/2+b*log(x*sqrt(a)+sqrt(a*x^2+b))/2/sqrt(a),and(number(a>0),a>0))',
     // 274
@@ -383,6 +385,10 @@ const itab = [
     'f(x^3*exp(a*x+b),exp(a*x+b)*x^3/a-3/a*integral(x^2*exp(a*x+b),x))',
 ];
 function Eval_integral(p1) {
+    return float_1.evalExactly(evalIntegral, p1);
+}
+exports.Eval_integral = Eval_integral;
+function evalIntegral(p1) {
     misc_1.checkArgCount(p1, 1, Infinity);
     let n = 0;
     // evaluate 1st arg to get function F
@@ -472,7 +478,6 @@ function Eval_integral(p1) {
     }
     return F;
 }
-exports.Eval_integral = Eval_integral;
 // A term c*log(u) with c free of X and u real (not known positive) becomes
 // c*log(abs(u)): d/dX log|u| = u'/u as well, so it is still an
 // antiderivative, and the real one where u < 0. Only such terms: in
@@ -495,14 +500,18 @@ function realLogTerm(t, X) {
     const c = factors.filter((f) => f !== log).reduce(multiply_1.multiply, defs_1.Constants.one);
     return multiply_1.multiply(c, log_1.logarithm(abs_1.abs(u)));
 }
-function integral(F, X) {
-    const q = quantity_1.mapQuantity(F, (magnitude) => integral(magnitude, X));
+function integral(F, X, depth = 0) {
+    const q = quantity_1.mapQuantity(F, (magnitude) => integral(magnitude, X, depth));
     if (q) {
         return q;
     }
+    const real = integral_heuristic_1.realTrigReciprocal(F, X);
+    if (real !== undefined) {
+        return real;
+    }
     let integ;
     if (defs_1.isadd(F)) {
-        integ = integral_of_sum(F, X);
+        integ = integral_of_sum(F, X, depth);
     }
     else if (defs_1.ismultiply(F)) {
         integ = integral_of_product(F, X);
@@ -516,10 +525,14 @@ function integral(F, X) {
         if (isrationalfunction(F, X)) {
             const G = expand_1.apart(F, X);
             if (!misc_1.equal(G, F)) {
-                return integral(G, X);
+                return integral(G, X, depth);
             }
         }
-        run_1.stop('integral: sorry, could not find a solution');
+        const H = integral_heuristic_1.heuristicIntegral(F, X, depth);
+        if (H === undefined) {
+            run_1.stop('integral: sorry, could not find a solution');
+        }
+        integ = H;
     }
     // polish then normalize
     return eval_1.Eval(simplify_1.simplify(integ));
@@ -529,11 +542,11 @@ function isrationalfunction(F, X) {
     const ispoly = (p) => !find_1.Find(p, X) || is_1.ispolyfactoredorexpandedform(p, X);
     return ispoly(numerator_1.numerator(F)) && ispoly(denominator_1.denominator(F));
 }
-function integral_of_sum(F, X) {
+function integral_of_sum(F, X, depth) {
     F = defs_1.cdr(F);
-    let result = integral(defs_1.car(F), X);
+    let result = integral(defs_1.car(F), X, depth);
     if (defs_1.iscons(F)) {
-        result = F.tail().reduce((acc, b) => add_1.add(acc, integral(b, X)), result);
+        result = F.tail().reduce((acc, b) => add_1.add(acc, integral(b, X, depth)), result);
     }
     return result;
 }
@@ -778,10 +791,10 @@ var hashed_itab = {
         'f(x/(a+b*x^4),1/4*sqrt(-b/a)/b*log((x^2-sqrt(-a/b))/(x^2+sqrt(-a/b))),a*b<0)',
     ],
     '0.450070': ['f(x^3/(a+b*x^4),1/4*1/b*log(a+b*x^4))'],
-    '1.448960': ['f(sqrt(a+b*x),2/3*1/b*sqrt((a+b*x)^3))'],
-    '1.384221': ['f(x*sqrt(a+b*x),-2*(2*a-3*b*x)*sqrt((a+b*x)^3)/15/b^2)'],
+    '1.448960': ['f(sqrt(a+b*x),2/3*1/b*(a+b*x)^(3/2))'],
+    '1.384221': ['f(x*sqrt(a+b*x),-2*(2*a-3*b*x)*(a+b*x)^(3/2)/15/b^2)'],
     '1.322374': [
-        'f(x^2*sqrt(a+b*x),2*(8*a^2-12*a*b*x+15*b^2*x^2)*sqrt((a+b*x)^3)/105/b^3)',
+        'f(x^2*sqrt(a+b*x),2*(8*a^2-12*a*b*x+15*b^2*x^2)*(a+b*x)^(3/2)/105/b^3)',
     ],
     '1.516728': [
         'f(sqrt(a+b*x)/x,2*sqrt(a+b*x)+a*integral(1/x*1/sqrt(a+b*x),x))',
@@ -819,12 +832,12 @@ var hashed_itab = {
     ],
     '0.666120': ['f(x/sqrt(x^2+a),sqrt(x^2+a))', 'f(x/sqrt(a-x^2),-sqrt(a-x^2))'],
     '1.370077': [
-        'f(x*sqrt(x^2+a),1/3*sqrt((x^2+a)^3))',
-        'f(x*sqrt(a-x^2),-1/3*sqrt((a-x^2)^3))',
+        'f(x*sqrt(x^2+a),1/3*(x^2+a)^(3/2))',
+        'f(x*sqrt(a-x^2),-1/3*(a-x^2)^(3/2))',
     ],
     '1.730087': [
-        'f(sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*sqrt((x^2+a^(1/3))^3)+3/2*a^(1/3)*x*sqrt(x^2+a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2+a^(1/3)))))',
-        'f(sqrt(-a+x^6-3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*sqrt((x^2-a^(1/3))^3)-3/2*a^(1/3)*x*sqrt(x^2-a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2-a^(1/3)))))',
+        'f(sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*(x^2+a^(1/3))^(3/2)+3/2*a^(1/3)*x*sqrt(x^2+a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2+a^(1/3)))))',
+        'f(sqrt(-a+x^6-3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*(x^2-a^(1/3))^(3/2)-3/2*a^(1/3)*x*sqrt(x^2-a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2-a^(1/3)))))',
     ],
     '0.578006': [
         'f(1/sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),x/a^(1/3)/sqrt(x^2+a^(1/3)))',
@@ -833,25 +846,25 @@ var hashed_itab = {
         'f(x/sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),-1/sqrt(x^2+a^(1/3)))',
     ],
     '1.652787': [
-        'f(x*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/5*sqrt((x^2+a^(1/3))^5))',
+        'f(x*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/5*(x^2+a^(1/3))^(5/2))',
     ],
     '1.308862': [
-        'f(x^2*sqrt(x^2+a),1/4*x*sqrt((x^2+a)^3)-1/8*a*x*sqrt(x^2+a)-1/8*a^2*log(x+sqrt(x^2+a)))',
-        'f(x^2*sqrt(a-x^2),-x/4*sqrt((a-x^2)^3)+1/8*a*(x*sqrt(a-x^2)+a*arcsin(x/sqrt(a))),a>0)',
+        'f(x^2*sqrt(x^2+a),1/4*x*(x^2+a)^(3/2)-1/8*a*x*sqrt(x^2+a)-1/8*a^2*log(x+sqrt(x^2+a)))',
+        'f(x^2*sqrt(a-x^2),-x/4*(a-x^2)^(3/2)+1/8*a*(x*sqrt(a-x^2)+a*arcsin(x/sqrt(a))),a>0)',
     ],
     '1.342944': [
-        'f(x^3*sqrt(x^2+a),(1/5*x^2-2/15*a)*sqrt((x^2+a)^3),and(number(a>0),a>0))',
-        'f(x^3*sqrt(x^2+a),sqrt((x^2+a)^5)/5-a*sqrt((x^2+a)^3)/3,and(number(a<0),a<0))',
-        'f(x^3*sqrt(a-x^2),(-1/5*x^2-2/15*a)*sqrt((a-x^2)^3),a>0)',
+        'f(x^3*sqrt(x^2+a),(1/5*x^2-2/15*a)*(x^2+a)^(3/2),and(number(a>0),a>0))',
+        'f(x^3*sqrt(x^2+a),(x^2+a)^(5/2)/5-a*(x^2+a)^(3/2)/3,and(number(a<0),a<0))',
+        'f(x^3*sqrt(a-x^2),(-1/5*x^2-2/15*a)*(a-x^2)^(3/2),a>0)',
         'f(sqrt(a-x^2)/x^3,-1/2*sqrt(a-x^2)/x^2+1/2*log((sqrt(a)+sqrt(a-x^2))/x)/sqrt(a),a>0)',
-        'f(sqrt(a-x^2)/x^4,-1/3*sqrt((a-x^2)^3)/a/x^3,a>0)',
+        'f(sqrt(a-x^2)/x^4,-1/3*(a-x^2)^(3/2)/a/x^3,a>0)',
     ],
     '0.636358': [
         'f(x^2/sqrt(x^2+a),1/2*x*sqrt(x^2+a)-1/2*a*log(x+sqrt(x^2+a)))',
         'f(x^2/sqrt(a-x^2),-x/2*sqrt(a-x^2)+a/2*arcsin(x/sqrt(a)),a>0)',
     ],
     '0.652928': [
-        'f(x^3/sqrt(x^2+a),1/3*sqrt((x^2+a)^3)-a*sqrt(x^2+a))',
+        'f(x^3/sqrt(x^2+a),1/3*(x^2+a)^(3/2)-a*sqrt(x^2+a))',
         'f(1/x^3*1/sqrt(x^2+a),-1/2*sqrt(x^2+a)/a/x^2+1/2*log((sqrt(a)+sqrt(x^2+a))/x)/a^(3/2),a>0)',
         'f(1/x^3*1/sqrt(x^2-a),1/2*sqrt(x^2-a)/a/x^2+1/2*1/(a^(3/2))*arcsec(x/(a^(1/2))),a>0)',
     ],
@@ -860,12 +873,12 @@ var hashed_itab = {
         'f(1/x^2*1/sqrt(a-x^2),-sqrt(a-x^2)/a/x,a>0)',
     ],
     '1.578940': [
-        'f(x^2*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/6*x*sqrt((x^2+a^(1/3))^5)-1/24*a^(1/3)*x*sqrt((x^2+a^(1/3))^3)-1/16*a^(2/3)*x*sqrt(x^2+a^(1/3))-1/16*a*log(x+sqrt(x^2+a^(1/3))),a>0)',
-        'f(x^2*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/6*x*sqrt((x^2-a^(1/3))^5)+1/24*a^(1/3)*x*sqrt((x^2-a^(1/3))^3)-1/16*a^(2/3)*x*sqrt(x^2-a^(1/3))+1/16*a*log(x+sqrt(x^2-a^(1/3))),a>0)',
+        'f(x^2*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/6*x*(x^2+a^(1/3))^(5/2)-1/24*a^(1/3)*x*(x^2+a^(1/3))^(3/2)-1/16*a^(2/3)*x*sqrt(x^2+a^(1/3))-1/16*a*log(x+sqrt(x^2+a^(1/3))),a>0)',
+        'f(x^2*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/6*x*(x^2-a^(1/3))^(5/2)+1/24*a^(1/3)*x*(x^2-a^(1/3))^(3/2)-1/16*a^(2/3)*x*sqrt(x^2-a^(1/3))+1/16*a*log(x+sqrt(x^2-a^(1/3))),a>0)',
     ],
     '1.620055': [
-        'f(x^3*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/7*sqrt((x^2+a^(1/3))^7)-1/5*a^(1/3)*sqrt((x^2+a^(1/3))^5),a>0)',
-        'f(x^3*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/7*sqrt((x^2-a^(1/3))^7)+1/5*a^(1/3)*sqrt((x^2-a^(1/3))^5),a>0)',
+        'f(x^3*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/7*(x^2+a^(1/3))^(7/2)-1/5*a^(1/3)*(x^2+a^(1/3))^(5/2),a>0)',
+        'f(x^3*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/7*(x^2-a^(1/3))^(7/2)+1/5*a^(1/3)*(x^2-a^(1/3))^(5/2),a>0)',
     ],
     '0.332117': [
         'f(1/(x-a)/sqrt(x^2-a^2),-sqrt(x^2-a^2)/a/(x-a))',

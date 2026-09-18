@@ -29,7 +29,8 @@ Bessel function of second kind.
 */
 function Eval_bessely(p1) {
     misc_1.checkArgCount(p1, 2);
-    return bessely(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+    // bessely(n, x): order first, then the argument
+    return bessely(eval_1.Eval(defs_1.caddr(p1)), eval_1.Eval(defs_1.cadr(p1)));
 }
 exports.Eval_bessely = Eval_bessely;
 function bessely(p1, p2) {
@@ -43,7 +44,7 @@ function yybessely(X, N) {
         return bignum_1.double(d);
     }
     if (is_1.isnegativeterm(N)) {
-        return multiply_1.multiply(power_1.power(defs_1.Constants.negOne, N), list_1.makeList(symbol_1.symbol(defs_1.BESSELY), X, multiply_1.negate(N)));
+        return multiply_1.multiply(power_1.power(defs_1.Constants.negOne, N), list_1.makeList(symbol_1.symbol(defs_1.BESSELY), multiply_1.negate(N), X));
     }
-    return list_1.makeList(symbol_1.symbol(defs_1.BESSELY), X, N);
+    return list_1.makeList(symbol_1.symbol(defs_1.BESSELY), N, X);
 }

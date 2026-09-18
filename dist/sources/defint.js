@@ -14,6 +14,8 @@ const imag_1 = require("./imag");
 const integral_1 = require("./integral");
 const is_1 = require("./is");
 const limit_1 = require("./limit");
+const bignum_1 = require("./bignum");
+const abs_1 = require("./abs");
 const list_1 = require("./list");
 const misc_1 = require("./misc");
 const multiply_1 = require("./multiply");
@@ -40,6 +42,10 @@ example, defint(f,x,a,b,y,c,d).
 
 */
 function Eval_defint(p1) {
+    return float_1.evalExactly(evalDefint, p1);
+}
+exports.Eval_defint = Eval_defint;
+function evalDefint(p1) {
     const n = misc_1.length(p1) - 1;
     if (n < 4 || (n - 1) % 3 !== 0) {
         run_1.stop(`defint: expected f,x,a,b[,y,c,d...], got ${n} arguments`);
@@ -84,7 +90,6 @@ function Eval_defint(p1) {
     }
     return F;
 }
-exports.Eval_defint = Eval_defint;
 // a bound as a JS number: +-Infinity for +-inf, NaN when not numeric
 function toNumber(p) {
     if (p === symbol_1.symbol(defs_1.INF)) {
@@ -115,8 +120,36 @@ function checkNoInteriorPole(f, X, a, b) {
     inside.symbolic = (r) => (lo === -Infinity || assume_1.isPositive(add_1.subtract(r, loU)) === true) &&
         (hi === Infinity || assume_1.isPositive(add_1.subtract(hiU, r)) === true);
     const pole = poleIn(f, X, inside);
-    if (pole !== undefined && poleIn(simplify_1.simplify(f), X, inside) !== undefined) {
+    if (pole !== undefined &&
+        poleIn(simplify_1.simplify(f), X, inside) !== undefined &&
+        !isRemovable(f, X, lastZero)) {
         run_1.stop(`defint: the integrand has a pole at ${X} = ${pole} inside the interval`);
+    }
+}
+// the unrounded position of the zero that zerosIn reported last, NaN for a
+// symbolic one
+let lastZero = NaN;
+// sin(x)/x at 0: the denominator vanishes but f stays bounded. Near a pole
+// abs(f) grows about tenfold when the distance shrinks tenfold, at a
+// removable singularity it does not.
+function isRemovable(f, X, r) {
+    if (Number.isNaN(r)) {
+        return false;
+    }
+    const at = (x) => {
+        const v = float_1.zzfloat(abs_1.absval(eval_1.Eval(subst_1.subst(f, X, bignum_1.double(x)))));
+        return defs_1.isdouble(v) ? v.d : NaN;
+    };
+    const eps = 1e-4 * Math.max(1, Math.abs(r));
+    try {
+        return [-1, 1].every((side) => {
+            const far = at(r + side * eps);
+            const near = at(r + (side * eps) / 100);
+            return Number.isFinite(far) && Number.isFinite(near) && near < 2 * far + 1e-9;
+        });
+    }
+    catch (e) {
+        return false;
     }
 }
 function poleIn(p, X, inside) {
@@ -163,6 +196,7 @@ function zerosIn(g, X, inside) {
         for (let k = -1000; k <= 1000; k++) {
             const r = (offset + k * Math.PI - beta.d) / alpha.d;
             if (inside(r)) {
+                lastZero = r;
                 return `${Number(r.toPrecision(6))}`;
             }
         }
@@ -185,6 +219,7 @@ function zerosIn(g, X, inside) {
             defs_1.isdouble(im) &&
             Math.abs(im.d) < 1e-4 * Math.max(1, Math.abs(re.d)) &&
             inside(re.d)) {
+            lastZero = re.d;
             return `${Number(re.d.toPrecision(6))}`;
         }
     }
@@ -198,5 +233,6 @@ function symbolicLinearZeroIn(g, X, inside) {
         return undefined;
     }
     const r = multiply_1.negate(multiply_1.divide(subst_1.subst(g, X, defs_1.Constants.zero), alpha));
+    lastZero = NaN;
     return ((_a = inside.symbolic) === null || _a === void 0 ? void 0 : _a.call(inside, r)) ? `${r}` : undefined;
 }

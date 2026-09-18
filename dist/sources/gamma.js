@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_gamma = void 0;
+exports.lanczos = exports.Eval_gamma = void 0;
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
@@ -94,3 +94,4 @@ function lanczos(x) {
     }
     return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
 }
+exports.lanczos = lanczos;

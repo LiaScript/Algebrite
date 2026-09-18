@@ -54,7 +54,8 @@ Examples:
 */
 function Eval_besselj(p1) {
     misc_1.checkArgCount(p1, 2);
-    return besselj(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+    // besselj(n, x): order first, then the argument
+    return besselj(eval_1.Eval(defs_1.caddr(p1)), eval_1.Eval(defs_1.cadr(p1)));
 }
 exports.Eval_besselj = Eval_besselj;
 function besselj(p1, p2) {
@@ -98,10 +99,10 @@ function yybesselj(X, N) {
     }
     //if 0 # test cases needed
     if (is_1.isnegativeterm(X)) {
-        return multiply_1.multiply(multiply_1.multiply(power_1.power(multiply_1.negate(X), N), power_1.power(X, multiply_1.negate(N))), list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), multiply_1.negate(X), N));
+        return multiply_1.multiply(multiply_1.multiply(power_1.power(multiply_1.negate(X), N), power_1.power(X, multiply_1.negate(N))), list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), N, multiply_1.negate(X)));
     }
     if (is_1.isnegativeterm(N)) {
-        return multiply_1.multiply(power_1.power(defs_1.Constants.negOne, N), list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), X, multiply_1.negate(N)));
+        return multiply_1.multiply(power_1.power(defs_1.Constants.negOne, N), list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), multiply_1.negate(N), X));
     }
-    return list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), X, N);
+    return list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), N, X);
 }

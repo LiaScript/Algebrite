@@ -119,6 +119,7 @@ function cosine_of_angle(p1) {
         case 180:
             return defs_1.Constants.negOne;
         default:
-            return list_1.makeList(symbol_1.symbol(defs_1.COS), p1);
+            // cos(n) = sin(90-n)
+            return sin_1.specialSine((((90 - n) % 360) + 360) % 360) || list_1.makeList(symbol_1.symbol(defs_1.COS), p1);
     }
 }

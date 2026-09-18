@@ -1431,10 +1431,13 @@
         }
       }
       exports.strcmp = strcmp;
-      function doubleToReasonableString(d) {
+      function doubleToReasonableString(d, bigRepr) {
         let stringRepresentation;
         if (defs_1.defs.codeGen || defs_1.defs.fullDoubleOutput) {
           return "" + d;
+        }
+        if (bigRepr !== void 0) {
+          return defs_1.defs.printMode === defs_1.PRINTMODE_LATEX ? bigRepr.replace(/\*10\^\(?(-?\d+)\)?/, " \\cdot 10^{$1}") : bigRepr;
         }
         if (d === Infinity || d === -Infinity) {
           const name = defs_1.defs.printMode === defs_1.PRINTMODE_LATEX ? "\\infty" : "inf";
@@ -2054,38 +2057,368 @@
     }
   });
 
-  // bazel-out/k8-fastbuild/bin/sources/numerator.js
-  var require_numerator = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/numerator.js"(exports) {
+  // bazel-out/k8-fastbuild/bin/sources/unit.js
+  var require_unit = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/unit.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.numerator = exports.Eval_numerator = void 0;
+      exports.defineUnits = exports.formatDimensionLatex = exports.formatDimension = exports.lookupUnit = exports.ZERO_DIM = exports.DIM_COUNT = exports.DIM_LUMINOUS = exports.DIM_AMOUNT = exports.DIM_TEMPERATURE = exports.DIM_CURRENT = exports.DIM_TIME = exports.DIM_MASS = exports.DIM_LENGTH = void 0;
+      var symbol_1 = require_symbol();
+      var bignum_1 = require_bignum();
+      exports.DIM_LENGTH = 0;
+      exports.DIM_MASS = 1;
+      exports.DIM_TIME = 2;
+      exports.DIM_CURRENT = 3;
+      exports.DIM_TEMPERATURE = 4;
+      exports.DIM_AMOUNT = 5;
+      exports.DIM_LUMINOUS = 6;
+      exports.DIM_COUNT = 7;
+      exports.ZERO_DIM = [0, 0, 0, 0, 0, 0, 0];
+      var BASE_UNITS = {
+        m: [1, 0, 0, 0, 0, 0, 0],
+        g: [0, 1, 0, 0, 0, 0, 0],
+        s: [0, 0, 1, 0, 0, 0, 0],
+        A: [0, 0, 0, 1, 0, 0, 0],
+        K: [0, 0, 0, 0, 1, 0, 0],
+        mol: [0, 0, 0, 0, 0, 1, 0],
+        cd: [0, 0, 0, 0, 0, 0, 1]
+      };
+      var DERIVED_UNITS = {
+        N: [1, 1, -2, 0, 0, 0, 0],
+        J: [2, 1, -2, 0, 0, 0, 0],
+        W: [2, 1, -3, 0, 0, 0, 0],
+        Pa: [-1, 1, -2, 0, 0, 0, 0],
+        Hz: [0, 0, -1, 0, 0, 0, 0],
+        C: [0, 0, 1, 1, 0, 0, 0],
+        V: [2, 1, -3, -1, 0, 0, 0],
+        F: [-2, -1, 4, 2, 0, 0, 0],
+        ohm: [2, 1, -3, -2, 0, 0, 0],
+        H: [2, 1, -2, -2, 0, 0, 0],
+        T: [0, 1, -2, -1, 0, 0, 0],
+        Wb: [2, 1, -2, -1, 0, 0, 0]
+      };
+      var PREFIXES = {
+        Y: 24,
+        Z: 21,
+        E: 18,
+        P: 15,
+        T: 12,
+        G: 9,
+        M: 6,
+        k: 3,
+        h: 2,
+        da: 1,
+        d: -1,
+        c: -2,
+        m: -3,
+        u: -6,
+        n: -9,
+        p: -12,
+        f: -15,
+        a: -18,
+        z: -21,
+        y: -24
+      };
+      function unitScale(name) {
+        return name === "g" ? bignum_1.rational(1, 1e3) : bignum_1.integer(1);
+      }
+      function buildUnitTable() {
+        const table = new Map();
+        const stems = Object.assign(Object.assign({}, BASE_UNITS), DERIVED_UNITS);
+        for (const [name, dim] of Object.entries(stems)) {
+          table.set(name, { dim, scale: unitScale(name) });
+        }
+        for (const [prefix, pow10] of Object.entries(PREFIXES)) {
+          for (const [stem, dim] of Object.entries(stems)) {
+            const key = prefix + stem;
+            if (table.has(key)) {
+              continue;
+            }
+            table.set(key, {
+              dim,
+              scale: bignum_1.multiply_numbers(unitScale(stem), bignum_1.bignum_power_number(bignum_1.integer(10), pow10))
+            });
+          }
+        }
+        return table;
+      }
+      var unitTable = null;
+      var reverseNameTable = null;
+      function getUnitTable() {
+        if (!unitTable) {
+          unitTable = buildUnitTable();
+        }
+        return unitTable;
+      }
+      function getReverseNameTable() {
+        if (!reverseNameTable) {
+          reverseNameTable = new Map();
+          const stems = Object.assign(Object.assign({}, BASE_UNITS), DERIVED_UNITS);
+          for (const [name, dim] of Object.entries(stems)) {
+            reverseNameTable.set(dim.join(","), name);
+          }
+          reverseNameTable.set(BASE_UNITS.g.join(","), "kg");
+        }
+        return reverseNameTable;
+      }
+      function lookupUnit(name) {
+        return getUnitTable().get(name);
+      }
+      exports.lookupUnit = lookupUnit;
+      var DIM_NAMES = ["m", "kg", "s", "A", "K", "mol", "cd"];
+      function formatDimension(dim) {
+        const exact = getReverseNameTable().get(dim.join(","));
+        if (exact) {
+          return exact;
+        }
+        const parts = [];
+        for (let i = 0; i < exports.DIM_COUNT; i++) {
+          if (dim[i] === 0) {
+            continue;
+          }
+          parts.push(dim[i] === 1 ? DIM_NAMES[i] : `${DIM_NAMES[i]}^${dim[i]}`);
+        }
+        return parts.length ? parts.join("*") : "1";
+      }
+      exports.formatDimension = formatDimension;
+      function formatDimensionLatex(dim) {
+        const exact = getReverseNameTable().get(dim.join(","));
+        if (exact) {
+          return `\\text{${exact}}`;
+        }
+        const parts = [];
+        for (let i = 0; i < exports.DIM_COUNT; i++) {
+          if (dim[i] === 0) {
+            continue;
+          }
+          parts.push(dim[i] === 1 ? `\\text{${DIM_NAMES[i]}}` : `\\text{${DIM_NAMES[i]}}^{${dim[i]}}`);
+        }
+        return parts.length ? parts.join("\\cdot ") : "1";
+      }
+      exports.formatDimensionLatex = formatDimensionLatex;
+      function defineUnits() {
+        for (const [name, def] of getUnitTable()) {
+          symbol_1.std_unit_symbol(name, def.dim, def.scale);
+        }
+      }
+      exports.defineUnits = defineUnits;
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/quantity.js
+  var require_quantity = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/quantity.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.Eval_dimensionof = exports.Eval_convert = exports.Eval_units = exports.Eval_quantity = exports.requireDimensionless = exports.mapQuantity = exports.addQuantities = exports.powerUnitAware = exports.multiplyUnitAware = exports.makeQuantity = exports.isQuantity = exports.dimsEqual = exports.scaleDims = exports.subDims = exports.addDims = void 0;
+      var alloc_1 = require_alloc();
       var defs_1 = require_defs();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
       var bignum_1 = require_bignum();
       var eval_1 = require_eval();
       var is_1 = require_is();
+      var list_1 = require_list();
       var multiply_1 = require_multiply();
-      var rationalize_1 = require_rationalize();
-      function Eval_numerator(p1) {
-        return numerator(eval_1.Eval(defs_1.cadr(p1)));
+      var add_1 = require_add();
+      var power_1 = require_power();
+      var unit_1 = require_unit();
+      function addDims(a, b) {
+        return a.map((v, i) => v + b[i]);
       }
-      exports.Eval_numerator = Eval_numerator;
-      function numerator(p1) {
-        if (defs_1.isadd(p1)) {
-          p1 = rationalize_1.rationalize(p1);
-        }
-        if (defs_1.ismultiply(p1) && !is_1.isplusone(defs_1.car(defs_1.cdr(p1)))) {
-          return multiply_1.multiply_all(p1.tail().map(numerator));
-        }
-        if (defs_1.isrational(p1)) {
-          return bignum_1.mp_numerator(p1);
-        }
-        if (defs_1.ispower(p1) && is_1.isnegativeterm(defs_1.caddr(p1))) {
-          return defs_1.Constants.one;
-        }
-        return p1;
+      exports.addDims = addDims;
+      function subDims(a, b) {
+        return a.map((v, i) => v - b[i]);
       }
-      exports.numerator = numerator;
+      exports.subDims = subDims;
+      function scaleDims(a, k) {
+        return a.map((v) => v * k);
+      }
+      exports.scaleDims = scaleDims;
+      function dimsEqual(a, b) {
+        return a.every((v, i) => v === b[i]);
+      }
+      exports.dimsEqual = dimsEqual;
+      function dimToNum(n) {
+        if (Number.isInteger(n)) {
+          return bignum_1.integer(n);
+        }
+        for (let denom = 2; denom <= 12; denom++) {
+          const numer = n * denom;
+          if (Math.abs(numer - Math.round(numer)) < 1e-9) {
+            return bignum_1.rational(Math.round(numer), denom);
+          }
+        }
+        return bignum_1.rational(Math.round(n * 1e6), 1e6);
+      }
+      function dimToTensor(dim) {
+        const t = alloc_1.alloc_tensor(unit_1.DIM_COUNT);
+        t.tensor.ndim = 1;
+        t.tensor.dim[0] = unit_1.DIM_COUNT;
+        for (let i = 0; i < unit_1.DIM_COUNT; i++) {
+          t.tensor.elem[i] = dimToNum(dim[i]);
+        }
+        return t;
+      }
+      function dimArrayOf(dimValue) {
+        const t = dimValue;
+        return t.tensor.elem.map((e) => bignum_1.nativeDouble(e));
+      }
+      function isQuantity(p) {
+        return defs_1.iscons(p) && defs_1.car(p) === symbol_1.symbol(defs_1.QUANTITY) && defs_1.istensor(defs_1.caddr(p));
+      }
+      exports.isQuantity = isQuantity;
+      function makeQuantity(magnitude, dim) {
+        if (dimsEqual(dim, unit_1.ZERO_DIM) || is_1.isZeroAtom(magnitude)) {
+          return magnitude;
+        }
+        return list_1.makeList(symbol_1.symbol(defs_1.QUANTITY), magnitude, dimToTensor(dim));
+      }
+      exports.makeQuantity = makeQuantity;
+      function classify(p, allowSymbolAutoDetect) {
+        if (isQuantity(p)) {
+          return { magnitude: defs_1.cadr(p), dim: dimArrayOf(defs_1.caddr(p)) };
+        }
+        if (allowSymbolAutoDetect && defs_1.issymbol(p) && p.unitDef) {
+          const def = p.unitDef;
+          return { magnitude: def.scale, dim: def.dim };
+        }
+        if (defs_1.isNumericAtom(p)) {
+          return "numeric";
+        }
+        return "other";
+      }
+      function multiplyUnitAware(p1, p2) {
+        const allow = defs_1.defs.unitsAutoDetect;
+        const c1 = classify(p1, allow);
+        const c2 = classify(p2, allow);
+        if (typeof c1 === "string" && typeof c2 === "string") {
+          return void 0;
+        }
+        if (c1 === "other" && defs_1.istensor(p1) || c2 === "other" && defs_1.istensor(p2)) {
+          return void 0;
+        }
+        const mag1 = c1 === "numeric" || c1 === "other" ? p1 : c1.magnitude;
+        const dim1 = c1 === "numeric" || c1 === "other" ? unit_1.ZERO_DIM : c1.dim;
+        const mag2 = c2 === "numeric" || c2 === "other" ? p2 : c2.magnitude;
+        const dim2 = c2 === "numeric" || c2 === "other" ? unit_1.ZERO_DIM : c2.dim;
+        return makeQuantity(multiply_1.multiply(mag1, mag2), addDims(dim1, dim2));
+      }
+      exports.multiplyUnitAware = multiplyUnitAware;
+      function powerUnitAware(base, exponent) {
+        const c = classify(base, defs_1.defs.unitsAutoDetect);
+        if (c === "other" || c === "numeric" || !defs_1.isNumericAtom(exponent)) {
+          return void 0;
+        }
+        const newDim = scaleDims(c.dim, bignum_1.nativeDouble(exponent));
+        const newMag = power_1.power(c.magnitude, exponent);
+        return makeQuantity(newMag, newDim);
+      }
+      exports.powerUnitAware = powerUnitAware;
+      function addQuantities(terms) {
+        const quantityTerms = terms.filter(isQuantity);
+        if (quantityTerms.length === 0) {
+          return void 0;
+        }
+        const dim = dimArrayOf(defs_1.caddr(quantityTerms[0]));
+        for (const t of terms) {
+          if (isQuantity(t)) {
+            const otherDim = dimArrayOf(defs_1.caddr(t));
+            if (!dimsEqual(otherDim, dim)) {
+              run_1.stop(`incompatible units: cannot add ${unit_1.formatDimension(dim)} and ${unit_1.formatDimension(otherDim)}`);
+            }
+          } else if (!is_1.isZeroAtom(t)) {
+            run_1.stop(`incompatible units: cannot add ${unit_1.formatDimension(dim)} and a dimensionless value`);
+          }
+        }
+        let sum = defs_1.Constants.Zero();
+        for (const t of terms) {
+          if (isQuantity(t)) {
+            sum = add_1.add(sum, defs_1.cadr(t));
+          }
+        }
+        return makeQuantity(sum, dim);
+      }
+      exports.addQuantities = addQuantities;
+      function mapQuantity(p, f, keepUnit = true) {
+        if (!isQuantity(p)) {
+          return void 0;
+        }
+        const magnitude = f(defs_1.cadr(p));
+        return keepUnit ? makeQuantity(magnitude, dimArrayOf(defs_1.caddr(p))) : magnitude;
+      }
+      exports.mapQuantity = mapQuantity;
+      function requireDimensionless(p, fnName) {
+        if (isQuantity(p)) {
+          run_1.stop(`${fnName}: argument must be dimensionless, got ${unit_1.formatDimension(dimArrayOf(defs_1.caddr(p)))}`);
+        }
+        return p;
+      }
+      exports.requireDimensionless = requireDimensionless;
+      function Eval_quantity(p1) {
+        const magnitude = eval_1.Eval(defs_1.cadr(p1));
+        const savedAutoDetect = defs_1.defs.unitsAutoDetect;
+        defs_1.defs.unitsAutoDetect = true;
+        let unitArg;
+        try {
+          unitArg = eval_1.Eval(defs_1.caddr(p1));
+        } finally {
+          defs_1.defs.unitsAutoDetect = savedAutoDetect;
+        }
+        if (defs_1.istensor(unitArg)) {
+          return makeQuantity(magnitude, dimArrayOf(unitArg));
+        }
+        if (isQuantity(unitArg)) {
+          const scale = defs_1.cadr(unitArg);
+          return makeQuantity(multiply_1.multiply(magnitude, scale), dimArrayOf(defs_1.caddr(unitArg)));
+        }
+        if (defs_1.issymbol(unitArg) && unitArg.unitDef) {
+          const def = unitArg.unitDef;
+          return makeQuantity(multiply_1.multiply(magnitude, def.scale), def.dim);
+        }
+        run_1.stop("quantity: 2nd argument must be a unit symbol or unit expression, e.g. quantity(5, m) or quantity(3, s/kg)");
+      }
+      exports.Eval_quantity = Eval_quantity;
+      function Eval_units(p1) {
+        const arg = defs_1.cadr(p1);
+        if (arg !== symbol_1.symbol(defs_1.NIL)) {
+          defs_1.defs.unitsAutoDetect = !is_1.isZeroAtom(eval_1.Eval(arg));
+        }
+        return defs_1.defs.unitsAutoDetect ? defs_1.Constants.One() : defs_1.Constants.Zero();
+      }
+      exports.Eval_units = Eval_units;
+      function Eval_convert(p1) {
+        const value = eval_1.Eval(defs_1.cadr(p1));
+        const savedAutoDetect = defs_1.defs.unitsAutoDetect;
+        defs_1.defs.unitsAutoDetect = false;
+        let targetSym;
+        try {
+          targetSym = eval_1.Eval(defs_1.caddr(p1));
+        } finally {
+          defs_1.defs.unitsAutoDetect = savedAutoDetect;
+        }
+        if (!isQuantity(value)) {
+          run_1.stop("convert: 1st argument must be a quantity, e.g. convert(quantity(5,m), cm)");
+        }
+        if (!(defs_1.issymbol(targetSym) && targetSym.unitDef)) {
+          run_1.stop("convert: 2nd argument must be a unit symbol, e.g. convert(quantity(5,m), cm)");
+        }
+        const targetDef = targetSym.unitDef;
+        const dim = dimArrayOf(defs_1.caddr(value));
+        if (!dimsEqual(dim, targetDef.dim)) {
+          run_1.stop(`convert: incompatible units: cannot convert ${unit_1.formatDimension(dim)} to ${unit_1.formatDimension(targetDef.dim)}`);
+        }
+        return bignum_1.divide_numbers(defs_1.cadr(value), targetDef.scale);
+      }
+      exports.Eval_convert = Eval_convert;
+      function Eval_dimensionof(p1) {
+        const value = eval_1.Eval(defs_1.cadr(p1));
+        if (isQuantity(value)) {
+          return defs_1.caddr(value);
+        }
+        return dimToTensor(unit_1.ZERO_DIM);
+      }
+      exports.Eval_dimensionof = Eval_dimensionof;
     }
   });
 
@@ -2094,7 +2427,7 @@
     "bazel-out/k8-fastbuild/bin/sources/sin.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.integerTimesPi = exports.sine = exports.Eval_sin = void 0;
+      exports.specialSineAngle = exports.specialSine = exports.integerTimesPi = exports.sine = exports.Eval_sin = void 0;
       var assume_1 = require_assume();
       var defs_1 = require_defs();
       var symbol_1 = require_symbol();
@@ -2104,6 +2437,7 @@
       var eval_1 = require_eval();
       var is_1 = require_is();
       var list_1 = require_list();
+      var misc_1 = require_misc();
       var multiply_1 = require_multiply();
       var power_1 = require_power();
       var quantity_1 = require_quantity();
@@ -2189,9 +2523,39 @@
           case 270:
             return defs_1.Constants.negOne;
           default:
-            return list_1.makeList(symbol_1.symbol(defs_1.SIN), p1);
+            return specialSine(n % 360) || list_1.makeList(symbol_1.symbol(defs_1.SIN), p1);
         }
       }
+      function specialSine(n) {
+        if (n > 180) {
+          const s = specialSine(n - 180);
+          return s && multiply_1.negate(s);
+        }
+        if (n > 90) {
+          return specialSine(180 - n);
+        }
+        const sqrt = (k) => power_1.power(bignum_1.integer(k), bignum_1.rational(1, 2));
+        if (n === 15) {
+          return multiply_1.multiply(bignum_1.rational(1, 4), add_1.subtract(sqrt(6), sqrt(2)));
+        }
+        if (n === 75) {
+          return multiply_1.multiply(bignum_1.rational(1, 4), add_1.add(sqrt(6), sqrt(2)));
+        }
+        return void 0;
+      }
+      exports.specialSine = specialSine;
+      function specialSineAngle(x) {
+        for (const n of [15, 75]) {
+          if (misc_1.equal(x, specialSine(n))) {
+            return n;
+          }
+          if (misc_1.equal(x, multiply_1.negate(specialSine(n)))) {
+            return -n;
+          }
+        }
+        return void 0;
+      }
+      exports.specialSineAngle = specialSineAngle;
     }
   });
 
@@ -2287,7 +2651,7 @@
           case 180:
             return defs_1.Constants.negOne;
           default:
-            return list_1.makeList(symbol_1.symbol(defs_1.COS), p1);
+            return sin_1.specialSine(((90 - n) % 360 + 360) % 360) || list_1.makeList(symbol_1.symbol(defs_1.COS), p1);
         }
       }
     }
@@ -3162,6 +3526,12 @@
           }
           return result2;
         }
+        if (base === symbol_1.symbol(defs_1.E) && find_1.Find(exponent, symbol_1.symbol(defs_1.LOG))) {
+          const result2 = expOfLogTerms(exponent);
+          if (result2 !== void 0) {
+            return result2;
+          }
+        }
         if (base === symbol_1.symbol(defs_1.E) && find_1.Find(exponent, defs_1.Constants.imaginaryunit) && find_1.Find(exponent, symbol_1.symbol(defs_1.PI)) && !defs_1.defs.evaluatingPolar) {
           let tmp2 = list_1.makeList(symbol_1.symbol(defs_1.POWER), base, exponent);
           if (DEBUG_POWER) {
@@ -3366,371 +3736,62 @@
         }
         return void 0;
       }
+      function expOfLogTerms(s) {
+        const terms = defs_1.isadd(s) ? s.tail() : [s];
+        let product = defs_1.Constants.one;
+        let rest = defs_1.Constants.zero;
+        let found = false;
+        for (const t of terms) {
+          const factors = defs_1.ismultiply(t) ? t.tail() : [t];
+          const logs = factors.filter((f) => defs_1.car(f) === symbol_1.symbol(defs_1.LOG));
+          if (logs.length !== 1) {
+            rest = add_1.add(rest, t);
+            continue;
+          }
+          found = true;
+          const k = factors.filter((f) => f !== logs[0]).reduce((acc, f) => multiply_1.multiply(acc, f), defs_1.Constants.one);
+          product = multiply_1.multiply(product, power(defs_1.cadr(logs[0]), k));
+        }
+        if (!found) {
+          return void 0;
+        }
+        return multiply_1.multiply(product, power(symbol_1.symbol(defs_1.E), rest));
+      }
     }
   });
 
-  // bazel-out/k8-fastbuild/bin/sources/unit.js
-  var require_unit = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/unit.js"(exports) {
+  // bazel-out/k8-fastbuild/bin/sources/numerator.js
+  var require_numerator = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/numerator.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.defineUnits = exports.formatDimensionLatex = exports.formatDimension = exports.lookupUnit = exports.ZERO_DIM = exports.DIM_COUNT = exports.DIM_LUMINOUS = exports.DIM_AMOUNT = exports.DIM_TEMPERATURE = exports.DIM_CURRENT = exports.DIM_TIME = exports.DIM_MASS = exports.DIM_LENGTH = void 0;
-      var symbol_1 = require_symbol();
-      var bignum_1 = require_bignum();
-      exports.DIM_LENGTH = 0;
-      exports.DIM_MASS = 1;
-      exports.DIM_TIME = 2;
-      exports.DIM_CURRENT = 3;
-      exports.DIM_TEMPERATURE = 4;
-      exports.DIM_AMOUNT = 5;
-      exports.DIM_LUMINOUS = 6;
-      exports.DIM_COUNT = 7;
-      exports.ZERO_DIM = [0, 0, 0, 0, 0, 0, 0];
-      var BASE_UNITS = {
-        m: [1, 0, 0, 0, 0, 0, 0],
-        g: [0, 1, 0, 0, 0, 0, 0],
-        s: [0, 0, 1, 0, 0, 0, 0],
-        A: [0, 0, 0, 1, 0, 0, 0],
-        K: [0, 0, 0, 0, 1, 0, 0],
-        mol: [0, 0, 0, 0, 0, 1, 0],
-        cd: [0, 0, 0, 0, 0, 0, 1]
-      };
-      var DERIVED_UNITS = {
-        N: [1, 1, -2, 0, 0, 0, 0],
-        J: [2, 1, -2, 0, 0, 0, 0],
-        W: [2, 1, -3, 0, 0, 0, 0],
-        Pa: [-1, 1, -2, 0, 0, 0, 0],
-        Hz: [0, 0, -1, 0, 0, 0, 0],
-        C: [0, 0, 1, 1, 0, 0, 0],
-        V: [2, 1, -3, -1, 0, 0, 0],
-        F: [-2, -1, 4, 2, 0, 0, 0],
-        ohm: [2, 1, -3, -2, 0, 0, 0],
-        H: [2, 1, -2, -2, 0, 0, 0],
-        T: [0, 1, -2, -1, 0, 0, 0],
-        Wb: [2, 1, -2, -1, 0, 0, 0]
-      };
-      var PREFIXES = {
-        Y: 24,
-        Z: 21,
-        E: 18,
-        P: 15,
-        T: 12,
-        G: 9,
-        M: 6,
-        k: 3,
-        h: 2,
-        da: 1,
-        d: -1,
-        c: -2,
-        m: -3,
-        u: -6,
-        n: -9,
-        p: -12,
-        f: -15,
-        a: -18,
-        z: -21,
-        y: -24
-      };
-      function unitScale(name) {
-        return name === "g" ? bignum_1.rational(1, 1e3) : bignum_1.integer(1);
-      }
-      function buildUnitTable() {
-        const table = new Map();
-        const stems = Object.assign(Object.assign({}, BASE_UNITS), DERIVED_UNITS);
-        for (const [name, dim] of Object.entries(stems)) {
-          table.set(name, { dim, scale: unitScale(name) });
-        }
-        for (const [prefix, pow10] of Object.entries(PREFIXES)) {
-          for (const [stem, dim] of Object.entries(stems)) {
-            const key = prefix + stem;
-            if (table.has(key)) {
-              continue;
-            }
-            table.set(key, {
-              dim,
-              scale: bignum_1.multiply_numbers(unitScale(stem), bignum_1.bignum_power_number(bignum_1.integer(10), pow10))
-            });
-          }
-        }
-        return table;
-      }
-      var unitTable = null;
-      var reverseNameTable = null;
-      function getUnitTable() {
-        if (!unitTable) {
-          unitTable = buildUnitTable();
-        }
-        return unitTable;
-      }
-      function getReverseNameTable() {
-        if (!reverseNameTable) {
-          reverseNameTable = new Map();
-          const stems = Object.assign(Object.assign({}, BASE_UNITS), DERIVED_UNITS);
-          for (const [name, dim] of Object.entries(stems)) {
-            reverseNameTable.set(dim.join(","), name);
-          }
-          reverseNameTable.set(BASE_UNITS.g.join(","), "kg");
-        }
-        return reverseNameTable;
-      }
-      function lookupUnit(name) {
-        return getUnitTable().get(name);
-      }
-      exports.lookupUnit = lookupUnit;
-      var DIM_NAMES = ["m", "kg", "s", "A", "K", "mol", "cd"];
-      function formatDimension(dim) {
-        const exact = getReverseNameTable().get(dim.join(","));
-        if (exact) {
-          return exact;
-        }
-        const parts = [];
-        for (let i = 0; i < exports.DIM_COUNT; i++) {
-          if (dim[i] === 0) {
-            continue;
-          }
-          parts.push(dim[i] === 1 ? DIM_NAMES[i] : `${DIM_NAMES[i]}^${dim[i]}`);
-        }
-        return parts.length ? parts.join("*") : "1";
-      }
-      exports.formatDimension = formatDimension;
-      function formatDimensionLatex(dim) {
-        const exact = getReverseNameTable().get(dim.join(","));
-        if (exact) {
-          return `\\text{${exact}}`;
-        }
-        const parts = [];
-        for (let i = 0; i < exports.DIM_COUNT; i++) {
-          if (dim[i] === 0) {
-            continue;
-          }
-          parts.push(dim[i] === 1 ? `\\text{${DIM_NAMES[i]}}` : `\\text{${DIM_NAMES[i]}}^{${dim[i]}}`);
-        }
-        return parts.length ? parts.join("\\cdot ") : "1";
-      }
-      exports.formatDimensionLatex = formatDimensionLatex;
-      function defineUnits() {
-        for (const [name, def] of getUnitTable()) {
-          symbol_1.std_unit_symbol(name, def.dim, def.scale);
-        }
-      }
-      exports.defineUnits = defineUnits;
-    }
-  });
-
-  // bazel-out/k8-fastbuild/bin/sources/quantity.js
-  var require_quantity = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/quantity.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.Eval_dimensionof = exports.Eval_convert = exports.Eval_units = exports.Eval_quantity = exports.requireDimensionless = exports.mapQuantity = exports.addQuantities = exports.powerUnitAware = exports.multiplyUnitAware = exports.makeQuantity = exports.isQuantity = exports.dimsEqual = exports.scaleDims = exports.subDims = exports.addDims = void 0;
-      var alloc_1 = require_alloc();
+      exports.numerator = exports.Eval_numerator = void 0;
       var defs_1 = require_defs();
-      var run_1 = require_run();
-      var symbol_1 = require_symbol();
       var bignum_1 = require_bignum();
       var eval_1 = require_eval();
       var is_1 = require_is();
-      var list_1 = require_list();
       var multiply_1 = require_multiply();
-      var add_1 = require_add();
-      var power_1 = require_power();
-      var unit_1 = require_unit();
-      function addDims(a, b) {
-        return a.map((v, i) => v + b[i]);
+      var rationalize_1 = require_rationalize();
+      function Eval_numerator(p1) {
+        return numerator(eval_1.Eval(defs_1.cadr(p1)));
       }
-      exports.addDims = addDims;
-      function subDims(a, b) {
-        return a.map((v, i) => v - b[i]);
+      exports.Eval_numerator = Eval_numerator;
+      function numerator(p1) {
+        if (defs_1.isadd(p1)) {
+          p1 = rationalize_1.rationalize(p1);
+        }
+        if (defs_1.ismultiply(p1) && !is_1.isplusone(defs_1.car(defs_1.cdr(p1)))) {
+          return multiply_1.multiply_all(p1.tail().map(numerator));
+        }
+        if (defs_1.isrational(p1)) {
+          return bignum_1.mp_numerator(p1);
+        }
+        if (defs_1.ispower(p1) && is_1.isnegativeterm(defs_1.caddr(p1))) {
+          return defs_1.Constants.one;
+        }
+        return p1;
       }
-      exports.subDims = subDims;
-      function scaleDims(a, k) {
-        return a.map((v) => v * k);
-      }
-      exports.scaleDims = scaleDims;
-      function dimsEqual(a, b) {
-        return a.every((v, i) => v === b[i]);
-      }
-      exports.dimsEqual = dimsEqual;
-      function dimToNum(n) {
-        if (Number.isInteger(n)) {
-          return bignum_1.integer(n);
-        }
-        for (let denom = 2; denom <= 12; denom++) {
-          const numer = n * denom;
-          if (Math.abs(numer - Math.round(numer)) < 1e-9) {
-            return bignum_1.rational(Math.round(numer), denom);
-          }
-        }
-        return bignum_1.rational(Math.round(n * 1e6), 1e6);
-      }
-      function dimToTensor(dim) {
-        const t = alloc_1.alloc_tensor(unit_1.DIM_COUNT);
-        t.tensor.ndim = 1;
-        t.tensor.dim[0] = unit_1.DIM_COUNT;
-        for (let i = 0; i < unit_1.DIM_COUNT; i++) {
-          t.tensor.elem[i] = dimToNum(dim[i]);
-        }
-        return t;
-      }
-      function dimArrayOf(dimValue) {
-        const t = dimValue;
-        return t.tensor.elem.map((e) => bignum_1.nativeDouble(e));
-      }
-      function isQuantity(p) {
-        return defs_1.iscons(p) && defs_1.car(p) === symbol_1.symbol(defs_1.QUANTITY) && defs_1.istensor(defs_1.caddr(p));
-      }
-      exports.isQuantity = isQuantity;
-      function makeQuantity(magnitude, dim) {
-        if (dimsEqual(dim, unit_1.ZERO_DIM) || is_1.isZeroAtom(magnitude)) {
-          return magnitude;
-        }
-        return list_1.makeList(symbol_1.symbol(defs_1.QUANTITY), magnitude, dimToTensor(dim));
-      }
-      exports.makeQuantity = makeQuantity;
-      function classify(p, allowSymbolAutoDetect) {
-        if (isQuantity(p)) {
-          return { magnitude: defs_1.cadr(p), dim: dimArrayOf(defs_1.caddr(p)) };
-        }
-        if (allowSymbolAutoDetect && defs_1.issymbol(p) && p.unitDef) {
-          const def = p.unitDef;
-          return { magnitude: def.scale, dim: def.dim };
-        }
-        if (defs_1.isNumericAtom(p)) {
-          return "numeric";
-        }
-        return "other";
-      }
-      function multiplyUnitAware(p1, p2) {
-        const allow = defs_1.defs.unitsAutoDetect;
-        const c1 = classify(p1, allow);
-        const c2 = classify(p2, allow);
-        if (typeof c1 === "string" && typeof c2 === "string") {
-          return void 0;
-        }
-        if (c1 === "other" && defs_1.istensor(p1) || c2 === "other" && defs_1.istensor(p2)) {
-          return void 0;
-        }
-        const mag1 = c1 === "numeric" || c1 === "other" ? p1 : c1.magnitude;
-        const dim1 = c1 === "numeric" || c1 === "other" ? unit_1.ZERO_DIM : c1.dim;
-        const mag2 = c2 === "numeric" || c2 === "other" ? p2 : c2.magnitude;
-        const dim2 = c2 === "numeric" || c2 === "other" ? unit_1.ZERO_DIM : c2.dim;
-        return makeQuantity(multiply_1.multiply(mag1, mag2), addDims(dim1, dim2));
-      }
-      exports.multiplyUnitAware = multiplyUnitAware;
-      function powerUnitAware(base, exponent) {
-        const c = classify(base, defs_1.defs.unitsAutoDetect);
-        if (c === "other" || c === "numeric" || !defs_1.isNumericAtom(exponent)) {
-          return void 0;
-        }
-        const newDim = scaleDims(c.dim, bignum_1.nativeDouble(exponent));
-        const newMag = power_1.power(c.magnitude, exponent);
-        return makeQuantity(newMag, newDim);
-      }
-      exports.powerUnitAware = powerUnitAware;
-      function addQuantities(terms) {
-        const quantityTerms = terms.filter(isQuantity);
-        if (quantityTerms.length === 0) {
-          return void 0;
-        }
-        const dim = dimArrayOf(defs_1.caddr(quantityTerms[0]));
-        for (const t of terms) {
-          if (isQuantity(t)) {
-            const otherDim = dimArrayOf(defs_1.caddr(t));
-            if (!dimsEqual(otherDim, dim)) {
-              run_1.stop(`incompatible units: cannot add ${unit_1.formatDimension(dim)} and ${unit_1.formatDimension(otherDim)}`);
-            }
-          } else if (!is_1.isZeroAtom(t)) {
-            run_1.stop(`incompatible units: cannot add ${unit_1.formatDimension(dim)} and a dimensionless value`);
-          }
-        }
-        let sum = defs_1.Constants.Zero();
-        for (const t of terms) {
-          if (isQuantity(t)) {
-            sum = add_1.add(sum, defs_1.cadr(t));
-          }
-        }
-        return makeQuantity(sum, dim);
-      }
-      exports.addQuantities = addQuantities;
-      function mapQuantity(p, f, keepUnit = true) {
-        if (!isQuantity(p)) {
-          return void 0;
-        }
-        const magnitude = f(defs_1.cadr(p));
-        return keepUnit ? makeQuantity(magnitude, dimArrayOf(defs_1.caddr(p))) : magnitude;
-      }
-      exports.mapQuantity = mapQuantity;
-      function requireDimensionless(p, fnName) {
-        if (isQuantity(p)) {
-          run_1.stop(`${fnName}: argument must be dimensionless, got ${unit_1.formatDimension(dimArrayOf(defs_1.caddr(p)))}`);
-        }
-        return p;
-      }
-      exports.requireDimensionless = requireDimensionless;
-      function Eval_quantity(p1) {
-        const magnitude = eval_1.Eval(defs_1.cadr(p1));
-        const savedAutoDetect = defs_1.defs.unitsAutoDetect;
-        defs_1.defs.unitsAutoDetect = true;
-        let unitArg;
-        try {
-          unitArg = eval_1.Eval(defs_1.caddr(p1));
-        } finally {
-          defs_1.defs.unitsAutoDetect = savedAutoDetect;
-        }
-        if (defs_1.istensor(unitArg)) {
-          return makeQuantity(magnitude, dimArrayOf(unitArg));
-        }
-        if (isQuantity(unitArg)) {
-          const scale = defs_1.cadr(unitArg);
-          return makeQuantity(multiply_1.multiply(magnitude, scale), dimArrayOf(defs_1.caddr(unitArg)));
-        }
-        if (defs_1.issymbol(unitArg) && unitArg.unitDef) {
-          const def = unitArg.unitDef;
-          return makeQuantity(multiply_1.multiply(magnitude, def.scale), def.dim);
-        }
-        run_1.stop("quantity: 2nd argument must be a unit symbol or unit expression, e.g. quantity(5, m) or quantity(3, s/kg)");
-      }
-      exports.Eval_quantity = Eval_quantity;
-      function Eval_units(p1) {
-        const arg = defs_1.cadr(p1);
-        if (arg !== symbol_1.symbol(defs_1.NIL)) {
-          defs_1.defs.unitsAutoDetect = !is_1.isZeroAtom(eval_1.Eval(arg));
-        }
-        return defs_1.defs.unitsAutoDetect ? defs_1.Constants.One() : defs_1.Constants.Zero();
-      }
-      exports.Eval_units = Eval_units;
-      function Eval_convert(p1) {
-        const value = eval_1.Eval(defs_1.cadr(p1));
-        const savedAutoDetect = defs_1.defs.unitsAutoDetect;
-        defs_1.defs.unitsAutoDetect = false;
-        let targetSym;
-        try {
-          targetSym = eval_1.Eval(defs_1.caddr(p1));
-        } finally {
-          defs_1.defs.unitsAutoDetect = savedAutoDetect;
-        }
-        if (!isQuantity(value)) {
-          run_1.stop("convert: 1st argument must be a quantity, e.g. convert(quantity(5,m), cm)");
-        }
-        if (!(defs_1.issymbol(targetSym) && targetSym.unitDef)) {
-          run_1.stop("convert: 2nd argument must be a unit symbol, e.g. convert(quantity(5,m), cm)");
-        }
-        const targetDef = targetSym.unitDef;
-        const dim = dimArrayOf(defs_1.caddr(value));
-        if (!dimsEqual(dim, targetDef.dim)) {
-          run_1.stop(`convert: incompatible units: cannot convert ${unit_1.formatDimension(dim)} to ${unit_1.formatDimension(targetDef.dim)}`);
-        }
-        return bignum_1.divide_numbers(defs_1.cadr(value), targetDef.scale);
-      }
-      exports.Eval_convert = Eval_convert;
-      function Eval_dimensionof(p1) {
-        const value = eval_1.Eval(defs_1.cadr(p1));
-        if (isQuantity(value)) {
-          return defs_1.caddr(value);
-        }
-        return dimToTensor(unit_1.ZERO_DIM);
-      }
-      exports.Eval_dimensionof = Eval_dimensionof;
+      exports.numerator = numerator;
     }
   });
 
@@ -3749,6 +3810,7 @@
       var eval_1 = require_eval();
       var is_1 = require_is();
       var add_1 = require_add();
+      var power_1 = require_power();
       var list_1 = require_list();
       var multiply_1 = require_multiply();
       var numerator_1 = require_numerator();
@@ -3785,6 +3847,18 @@
         }
         if (defs_1.ispower(x) && is_1.equaln(defs_1.cadr(x), 3) && is_1.equalq(defs_1.caddr(x), 1, 2)) {
           return multiply_1.multiply(bignum_1.rational(1, 3), defs_1.Constants.Pi());
+        }
+        const sqrt3 = power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2));
+        for (const [value, twelfths] of [
+          [add_1.subtract(bignum_1.integer(2), sqrt3), 1],
+          [add_1.add(bignum_1.integer(2), sqrt3), 5]
+        ]) {
+          if (misc_1.equal(x, value)) {
+            return multiply_1.multiply(bignum_1.rational(twelfths, 12), defs_1.Constants.Pi());
+          }
+          if (misc_1.equal(x, multiply_1.negate(value))) {
+            return multiply_1.multiply(bignum_1.rational(-twelfths, 12), defs_1.Constants.Pi());
+          }
         }
         return list_1.makeList(symbol_1.symbol(defs_1.ARCTAN), x);
       }
@@ -4127,26 +4201,593 @@
     }
   });
 
+  // bazel-out/k8-fastbuild/bin/sources/gamma.js
+  var require_gamma = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/gamma.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.lanczos = exports.Eval_gamma = void 0;
+      var defs_1 = require_defs();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var bignum_1 = require_bignum();
+      var eval_1 = require_eval();
+      var factorial_1 = require_factorial();
+      var is_1 = require_is();
+      var list_1 = require_list();
+      var multiply_1 = require_multiply();
+      var power_1 = require_power();
+      var sin_1 = require_sin();
+      var misc_1 = require_misc();
+      function Eval_gamma(p1) {
+        misc_1.checkArgCount(p1, 1);
+        return gamma(eval_1.Eval(defs_1.cadr(p1)));
+      }
+      exports.Eval_gamma = Eval_gamma;
+      function gamma(p1) {
+        return gammaf(p1);
+      }
+      function gammaf(p1) {
+        if (defs_1.isrational(p1) && defs_1.MEQUAL(p1.q.a, 1) && defs_1.MEQUAL(p1.q.b, 2)) {
+          return power_1.power(defs_1.Constants.Pi(), bignum_1.rational(1, 2));
+        }
+        if (is_1.isposint(p1)) {
+          return factorial_1.factorial(add_1.subtract(p1, defs_1.Constants.one));
+        }
+        if (defs_1.isrational(p1) && defs_1.MEQUAL(p1.q.b, 2) && is_1.ispositivenumber(p1)) {
+          const p = add_1.subtract(p1, defs_1.Constants.one);
+          return multiply_1.multiply(p, gamma(p));
+        }
+        if (defs_1.isdouble(p1)) {
+          if (p1.d <= 0 && Number.isInteger(p1.d)) {
+            run_1.stop("divide by zero");
+          }
+          return bignum_1.double(lanczos(p1.d));
+        }
+        if (is_1.isnegativeterm(p1)) {
+          return multiply_1.divide(multiply_1.multiply(defs_1.Constants.Pi(), defs_1.Constants.negOne), multiply_1.multiply(multiply_1.multiply(sin_1.sine(multiply_1.multiply(defs_1.Constants.Pi(), p1)), p1), gamma(multiply_1.negate(p1))));
+        }
+        if (defs_1.isadd(p1)) {
+          return gamma_of_sum(p1);
+        }
+        return list_1.makeList(symbol_1.symbol(defs_1.GAMMA), p1);
+      }
+      function gamma_of_sum(p1) {
+        const p3 = defs_1.cdr(p1);
+        if (defs_1.isrational(defs_1.car(p3)) && defs_1.MEQUAL(defs_1.car(p3).q.a, 1) && defs_1.MEQUAL(defs_1.car(p3).q.b, 1)) {
+          return multiply_1.multiply(defs_1.cadr(p3), gamma(defs_1.cadr(p3)));
+        }
+        if (defs_1.isrational(defs_1.car(p3)) && defs_1.MEQUAL(defs_1.car(p3).q.a, -1) && defs_1.MEQUAL(defs_1.car(p3).q.b, 1)) {
+          return multiply_1.divide(gamma(defs_1.cadr(p3)), add_1.add(defs_1.cadr(p3), defs_1.Constants.negOne));
+        }
+        return list_1.makeList(symbol_1.symbol(defs_1.GAMMA), p1);
+      }
+      var LANCZOS = [
+        0.9999999999998099,
+        676.5203681218851,
+        -1259.1392167224028,
+        771.3234287776531,
+        -176.6150291621406,
+        12.507343278686905,
+        -0.13857109526572012,
+        9984369578019572e-21,
+        15056327351493116e-23
+      ];
+      function lanczos(x) {
+        if (Number.isInteger(x) && x > 0 && x < 172) {
+          let f = 1;
+          for (let i = 2; i < x; i++) {
+            f *= i;
+          }
+          return f;
+        }
+        if (x < 0.5) {
+          return Math.PI / (Math.sin(Math.PI * x) * lanczos(1 - x));
+        }
+        x -= 1;
+        let a = LANCZOS[0];
+        const t = x + 7.5;
+        for (let i = 1; i < 9; i++) {
+          a += LANCZOS[i] / (x + i);
+        }
+        return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
+      }
+      exports.lanczos = lanczos;
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/zeta.js
+  var require_zeta = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/zeta.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.zeta = exports.Eval_zeta = exports.Eval_bernoulli = exports.bernoulliNumber = void 0;
+      var defs_1 = require_defs();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var bignum_1 = require_bignum();
+      var eval_1 = require_eval();
+      var factorial_1 = require_factorial();
+      var float_1 = require_float();
+      var gamma_1 = require_gamma();
+      var is_1 = require_is();
+      var list_1 = require_list();
+      var misc_1 = require_misc();
+      var multiply_1 = require_multiply();
+      var power_1 = require_power();
+      var bernoulliCache = [];
+      function bernoulliNumber(n) {
+        if (bernoulliCache.length === 0) {
+          bernoulliCache.push(defs_1.Constants.one);
+        }
+        for (let m = bernoulliCache.length; m <= n; m++) {
+          let acc = defs_1.Constants.zero;
+          let binom = defs_1.Constants.one;
+          for (let j = 0; j < m; j++) {
+            acc = add_1.add(acc, multiply_1.multiply(binom, bernoulliCache[j]));
+            binom = multiply_1.divide(multiply_1.multiply(binom, bignum_1.integer(m + 1 - j)), bignum_1.integer(j + 1));
+          }
+          bernoulliCache.push(multiply_1.negate(multiply_1.divide(acc, bignum_1.integer(m + 1))));
+        }
+        return bernoulliCache[n];
+      }
+      exports.bernoulliNumber = bernoulliNumber;
+      function Eval_bernoulli(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const arg = eval_1.Eval(defs_1.cadr(p1));
+        const n = bignum_1.nativeInt(arg);
+        if (isNaN(n) || n < 0) {
+          return list_1.makeList(symbol_1.usr_symbol(defs_1.BERNOULLI), arg);
+        }
+        return bernoulliNumber(n);
+      }
+      exports.Eval_bernoulli = Eval_bernoulli;
+      function Eval_zeta(p1) {
+        misc_1.checkArgCount(p1, 1);
+        return zeta(eval_1.Eval(defs_1.cadr(p1)));
+      }
+      exports.Eval_zeta = Eval_zeta;
+      function zeta(s) {
+        if (defs_1.isdouble(s)) {
+          if (Number.isInteger(s.d) && (s.d <= 0 || s.d % 2 === 0) && Math.abs(s.d) < 100) {
+            return float_1.zzfloat(zeta(bignum_1.integer(s.d)));
+          }
+          return bignum_1.double(zetaFloat(s.d));
+        }
+        if (!is_1.isinteger(s)) {
+          return list_1.makeList(symbol_1.usr_symbol(defs_1.ZETA), s);
+        }
+        const n = bignum_1.nativeInt(s);
+        if (n === 1) {
+          run_1.stop("zeta: pole at 1");
+        }
+        if (n === 0) {
+          return bignum_1.rational(-1, 2);
+        }
+        if (n < 0) {
+          return multiply_1.negate(multiply_1.divide(bernoulliNumber(1 - n), bignum_1.integer(1 - n)));
+        }
+        if (n % 2 === 1 || isNaN(n)) {
+          return list_1.makeList(symbol_1.usr_symbol(defs_1.ZETA), s);
+        }
+        const sign = n / 2 % 2 === 1 ? defs_1.Constants.one : defs_1.Constants.negOne;
+        return multiply_1.divide(multiply_1.multiply(multiply_1.multiply(sign, bernoulliNumber(n)), power_1.power(multiply_1.multiply(bignum_1.integer(2), defs_1.Constants.Pi()), s)), multiply_1.multiply(bignum_1.integer(2), factorial_1.factorial(s)));
+      }
+      exports.zeta = zeta;
+      function zetaFloat(s) {
+        if (s === 1) {
+          run_1.stop("zeta: pole at 1");
+        }
+        if (s < 0) {
+          return Math.pow(2, s) * Math.pow(Math.PI, s - 1) * Math.sin(Math.PI * s / 2) * gamma_1.lanczos(1 - s) * zetaFloat(1 - s);
+        }
+        const N = 20;
+        let sum = 0;
+        for (let k = 1; k < N; k++) {
+          sum += Math.pow(k, -s);
+        }
+        sum += Math.pow(N, 1 - s) / (s - 1) + Math.pow(N, -s) / 2;
+        const B2 = [1 / 6, -1 / 30, 1 / 42, -1 / 30, 5 / 66, -691 / 2730, 7 / 6, -3617 / 510];
+        let rising = s;
+        let fact = 2;
+        for (let j = 1; j <= B2.length; j++) {
+          sum += B2[j - 1] / fact * rising * Math.pow(N, -s - 2 * j + 1);
+          rising *= (s + 2 * j - 1) * (s + 2 * j);
+          fact *= (2 * j + 1) * (2 * j + 2);
+        }
+        return sum;
+      }
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/bigfloat.js
+  var require_bigfloat = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/bigfloat.js"(exports) {
+      "use strict";
+      var __importDefault = exports && exports.__importDefault || function(mod) {
+        return mod && mod.__esModule ? mod : { "default": mod };
+      };
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.bigFloat = exports.MAX_DIGITS = void 0;
+      var big_integer_1 = __importDefault(require_BigInteger());
+      var defs_1 = require_defs();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var is_1 = require_is();
+      var tensor_1 = require_tensor();
+      var zeta_1 = require_zeta();
+      var GUARD = 25;
+      exports.MAX_DIGITS = 1e3;
+      var Fixed = class {
+        constructor(P) {
+          this.P = P;
+          this.S = big_integer_1.default(10).pow(P);
+        }
+        fromRatio(a, b) {
+          return a.multiply(this.S).divide(b);
+        }
+        fromNumber(d) {
+          const [mant, exp] = d.toExponential(16).split("e");
+          const digits = big_integer_1.default(mant.replace(".", ""));
+          const e = parseInt(exp, 10) - 16 + this.P;
+          return e >= 0 ? digits.multiply(big_integer_1.default(10).pow(e)) : digits.divide(big_integer_1.default(10).pow(-e));
+        }
+        toNumber(a) {
+          const s = a.abs().toString();
+          const mant = Number(s.slice(0, 17));
+          const e = s.length - Math.min(s.length, 17) - this.P;
+          return (a.isNegative() ? -1 : 1) * mant * Math.pow(10, e);
+        }
+        mul(a, b) {
+          return a.multiply(b).divide(this.S);
+        }
+        div(a, b) {
+          if (b.isZero()) {
+            throw new Error("division by zero");
+          }
+          return a.multiply(this.S).divide(b);
+        }
+        powInt(a, n) {
+          if (n < 0) {
+            return this.div(this.S, this.powInt(a, -n));
+          }
+          let result = this.S;
+          for (let base = a; n > 0; n = Math.floor(n / 2)) {
+            if (n % 2 === 1) {
+              result = this.mul(result, base);
+            }
+            base = this.mul(base, base);
+          }
+          return result;
+        }
+        root(a, q) {
+          if (a.isZero()) {
+            return a;
+          }
+          if (a.isNegative()) {
+            throw new Error("root of a negative number");
+          }
+          let y = this.fromNumber(Math.pow(this.toNumber(a), 1 / q));
+          for (let i = 0; i < 200; i++) {
+            const next = y.multiply(q - 1).add(this.div(a, this.powInt(y, q - 1))).divide(q);
+            const done = next.subtract(y).abs().leq(1);
+            y = next;
+            if (done) {
+              break;
+            }
+          }
+          return y;
+        }
+        arctanInverse(k) {
+          let term = this.S.divide(k);
+          let sum = term;
+          for (let i = 1; !term.isZero(); i++) {
+            term = term.divide(k * k);
+            const t = term.divide(2 * i + 1);
+            sum = i % 2 ? sum.subtract(t) : sum.add(t);
+          }
+          return sum;
+        }
+        pi() {
+          if (!this.piCache) {
+            this.piCache = this.arctanInverse(5).multiply(16).subtract(this.arctanInverse(239).multiply(4));
+          }
+          return this.piCache;
+        }
+        exp(x) {
+          const k = Math.max(0, Math.ceil(Math.log2(Math.abs(this.toNumber(x)) + 1)) + 8);
+          const r = x.divide(big_integer_1.default(2).pow(k));
+          let term = this.S;
+          let sum = this.S;
+          for (let i = 1; !term.isZero(); i++) {
+            term = this.mul(term, r).divide(i);
+            sum = sum.add(term);
+          }
+          for (let i = 0; i < k; i++) {
+            sum = this.mul(sum, sum);
+          }
+          return sum;
+        }
+        log(x) {
+          if (!x.isPositive()) {
+            throw new Error("log of a non-positive number");
+          }
+          const s = x.toString();
+          const approx = Math.log(Number(s.slice(0, 17))) + (s.length - Math.min(s.length, 17) - this.P) * Math.LN10;
+          let y = this.fromNumber(approx);
+          for (let i = 0; i < 100; i++) {
+            const e = this.exp(y);
+            const delta = this.div(x.subtract(e).multiply(2), x.add(e));
+            y = y.add(delta);
+            if (delta.abs().leq(1)) {
+              break;
+            }
+          }
+          return y;
+        }
+        sin(x) {
+          const twoPi = this.pi().multiply(2);
+          let r = x.mod(twoPi);
+          if (r.gt(this.pi())) {
+            r = r.subtract(twoPi);
+          } else if (r.lt(this.pi().negate())) {
+            r = r.add(twoPi);
+          }
+          const r2 = this.mul(r, r);
+          let term = r;
+          let sum = r;
+          for (let i = 1; !term.isZero(); i++) {
+            term = this.mul(term, r2).divide(2 * i * (2 * i + 1));
+            sum = i % 2 ? sum.subtract(term) : sum.add(term);
+          }
+          return sum;
+        }
+        cos(x) {
+          return this.sin(x.add(this.pi().divide(2)));
+        }
+        arctan(x) {
+          if (x.abs().gt(this.S)) {
+            const half = this.pi().divide(2);
+            return (x.isNegative() ? half.negate() : half).subtract(this.arctan(this.div(this.S, x)));
+          }
+          let r = x;
+          for (let i = 0; i < 3; i++) {
+            r = this.div(r, this.S.add(this.root(this.S.add(this.mul(r, r)), 2)));
+          }
+          const r2 = this.mul(r, r);
+          let term = r;
+          let sum = r;
+          for (let i = 1; !term.isZero(); i++) {
+            term = this.mul(term, r2);
+            const t = term.divide(2 * i + 1);
+            sum = i % 2 ? sum.subtract(t) : sum.add(t);
+          }
+          return sum.multiply(8);
+        }
+        erf(x) {
+          const x2 = this.mul(x, x);
+          let term = x;
+          let sum = x;
+          for (let k = 1; !term.isZero(); k++) {
+            term = this.mul(term, x2).divide(k);
+            const t = term.divide(2 * k + 1);
+            sum = k % 2 ? sum.subtract(t) : sum.add(t);
+          }
+          return this.div(sum.multiply(2), this.root(this.pi(), 2));
+        }
+        gamma(z) {
+          if (z.mod(this.S).isZero() && !z.isPositive()) {
+            throw new Error("Gamma pole");
+          }
+          if (z.isNegative()) {
+            const s = this.sin(this.mul(this.pi(), z));
+            return this.div(this.pi(), this.mul(s, this.gamma(this.S.subtract(z))));
+          }
+          let w = z;
+          let shift = this.S;
+          const target = this.S.multiply(Math.max(10, this.P));
+          while (w.lt(target)) {
+            shift = this.mul(shift, w);
+            w = w.add(this.S);
+          }
+          let logGamma = this.mul(w.subtract(this.S.divide(2)), this.log(w)).subtract(w).add(this.log(this.pi().multiply(2)).divide(2));
+          const w2 = this.mul(w, w);
+          let wPow = w;
+          for (let k = 1; k < 2e3; k++) {
+            const B = zeta_1.bernoulliNumber(2 * k);
+            const term = this.div(this.fromRatio(B.a, B.b), wPow).divide(2 * k * (2 * k - 1));
+            if (term.isZero()) {
+              break;
+            }
+            logGamma = logGamma.add(term);
+            wPow = this.mul(wPow, w2);
+          }
+          return this.div(this.exp(logGamma), shift);
+        }
+        arcsin(x) {
+          if (x.abs().gt(this.S)) {
+            throw new Error("arcsin outside [-1,1]");
+          }
+          if (x.abs().eq(this.S)) {
+            const half = this.pi().divide(2);
+            return x.isNegative() ? half.negate() : half;
+          }
+          return this.arctan(this.div(x, this.root(this.S.subtract(this.mul(x, x)), 2)));
+        }
+      };
+      function evaluate(p, f) {
+        if (defs_1.isrational(p)) {
+          return f.fromRatio(p.a, p.b);
+        }
+        if (defs_1.isdouble(p)) {
+          return f.fromNumber(p.d);
+        }
+        if (p === symbol_1.symbol(defs_1.PI)) {
+          return f.pi();
+        }
+        if (p === symbol_1.symbol(defs_1.E)) {
+          return f.exp(f.S);
+        }
+        if (defs_1.isadd(p)) {
+          return p.tail().reduce((acc, t) => acc.add(evaluate(t, f)), big_integer_1.default.zero);
+        }
+        if (defs_1.ismultiply(p)) {
+          return p.tail().reduce((acc, t) => f.mul(acc, evaluate(t, f)), f.S);
+        }
+        if (defs_1.ispower(p)) {
+          const base = defs_1.cadr(p);
+          const e = defs_1.caddr(p);
+          if (base === symbol_1.symbol(defs_1.E)) {
+            return f.exp(evaluate(e, f));
+          }
+          if (is_1.isinteger(e) && e.a.abs().lt(1e6)) {
+            return f.powInt(evaluate(base, f), e.a.toJSNumber());
+          }
+          if (defs_1.isrational(e) && e.a.abs().lt(1e6) && e.b.lt(1e4)) {
+            return f.powInt(f.root(evaluate(base, f), e.b.toJSNumber()), e.a.toJSNumber());
+          }
+          return f.exp(f.mul(evaluate(e, f), f.log(evaluate(base, f))));
+        }
+        if (defs_1.iscons(p) && defs_1.issymbol(defs_1.car(p))) {
+          const name = defs_1.car(p).printname;
+          const x = () => evaluate(defs_1.cadr(p), f);
+          const expPair = () => {
+            const ex = f.exp(x());
+            return [ex, f.div(f.S, ex)];
+          };
+          switch (name) {
+            case defs_1.SIN:
+              return f.sin(x());
+            case defs_1.COS:
+              return f.cos(x());
+            case defs_1.TAN:
+              return f.div(f.sin(x()), f.cos(x()));
+            case defs_1.ARCTAN:
+              return f.arctan(x());
+            case defs_1.ARCSIN:
+              return f.arcsin(x());
+            case defs_1.ARCCOS:
+              return f.pi().divide(2).subtract(f.arcsin(x()));
+            case defs_1.LOG:
+              return f.log(x());
+            case defs_1.GAMMA:
+              return f.gamma(x());
+            case defs_1.ERF:
+              return f.erf(x());
+            case defs_1.ERFC:
+              return f.S.subtract(f.erf(x()));
+            case defs_1.ABS:
+              return x().abs();
+            case defs_1.SINH: {
+              const [a, b] = expPair();
+              return a.subtract(b).divide(2);
+            }
+            case defs_1.COSH: {
+              const [a, b] = expPair();
+              return a.add(b).divide(2);
+            }
+            case defs_1.TANH: {
+              const [a, b] = expPair();
+              return f.div(a.subtract(b), a.add(b));
+            }
+          }
+        }
+        throw new Error("unsupported");
+      }
+      function format(a, P, n) {
+        if (a.isZero()) {
+          return "0.0";
+        }
+        const sign = a.isNegative() ? "-" : "";
+        let digits = a.abs().toString();
+        let exp10 = digits.length - 1 - P;
+        if (digits.length > n) {
+          const rounded = big_integer_1.default(digits.slice(0, n)).add(digits[n] >= "5" ? 1 : 0).toString();
+          if (rounded.length > n) {
+            exp10++;
+          }
+          digits = rounded.slice(0, n);
+        } else {
+          digits = digits.padEnd(n, "0");
+        }
+        if (exp10 < -6 || exp10 >= n) {
+          const mantissa = digits[0] + "." + (digits.slice(1) || "0");
+          return `${sign}${mantissa}*10^${exp10 < 0 ? `(${exp10})` : exp10}`;
+        }
+        if (exp10 < 0) {
+          return `${sign}0.${"0".repeat(-exp10 - 1)}${digits}`;
+        }
+        const frac = digits.slice(exp10 + 1);
+        return `${sign}${digits.slice(0, exp10 + 1)}.${frac || "0"}`;
+      }
+      function bigFloat(p, n) {
+        if (defs_1.istensor(p)) {
+          const t = tensor_1.copy_tensor(p);
+          t.tensor.elem = t.tensor.elem.map((el) => bigFloat(el, n));
+          return t;
+        }
+        let P = n + GUARD;
+        for (let attempt = 0; ; attempt++) {
+          let low;
+          let high;
+          const fine = new Fixed(P + GUARD);
+          try {
+            low = evaluate(p, new Fixed(P));
+            high = evaluate(p, fine);
+          } catch (e) {
+            return run_1.stop(`float: cannot evaluate ${p} to ${n} digits`);
+          }
+          const text = format(high, P + GUARD, n);
+          if (format(low, P, n) === text || attempt === 6) {
+            const d = new defs_1.Double(fine.toNumber(high));
+            d.bigRepr = text;
+            return d;
+          }
+          P *= 2;
+        }
+      }
+      exports.bigFloat = bigFloat;
+    }
+  });
+
   // bazel-out/k8-fastbuild/bin/sources/float.js
   var require_float = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/float.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.yyfloat = exports.zzfloat = exports.Eval_float = void 0;
+      exports.yyfloat = exports.zzfloat = exports.evalExactly = exports.Eval_float = void 0;
       var count_1 = require_count();
       var defs_1 = require_defs();
       var run_1 = require_run();
       var symbol_1 = require_symbol();
+      var bigfloat_1 = require_bigfloat();
       var bignum_1 = require_bignum();
       var eval_1 = require_eval();
       var list_1 = require_list();
       var tensor_1 = require_tensor();
       function Eval_float(p1) {
-        return defs_1.evalFloats(() => {
-          return eval_1.Eval(yyfloat(eval_1.Eval(defs_1.cadr(p1))));
-        });
+        if (defs_1.caddr(p1) !== symbol_1.symbol(defs_1.NIL)) {
+          const n = bignum_1.nativeInt(eval_1.Eval(defs_1.caddr(p1)));
+          if (isNaN(n) || n < 1 || n > bigfloat_1.MAX_DIGITS) {
+            run_1.stop(`float: 2nd argument must be a number of digits from 1 to ${bigfloat_1.MAX_DIGITS}`);
+          }
+          return bigfloat_1.bigFloat(defs_1.noFloats(eval_1.Eval, defs_1.cadr(p1)), n);
+        }
+        const exact = defs_1.noFloats(eval_1.Eval, defs_1.cadr(p1));
+        return defs_1.evalFloats(() => eval_1.Eval(yyfloat(exact)));
       }
       exports.Eval_float = Eval_float;
+      function evalExactly(f, p1) {
+        const asFloats = defs_1.defs.evaluatingAsFloats;
+        const result = defs_1.noFloats(f, p1);
+        if (!asFloats || defs_1.iscons(result) && defs_1.car(result) === defs_1.car(p1)) {
+          return result;
+        }
+        return zzfloat(result);
+      }
+      exports.evalExactly = evalExactly;
       function zzfloat(p1) {
         defs_1.evalFloats(() => {
           p1 = eval_1.Eval(p1);
@@ -5179,6 +5820,11 @@
           }
           scan_str++;
         }
+        if (scanned[scan_str] === ";") {
+          token = T_NEWLINE;
+          scan_str++;
+          return;
+        }
         token_str = scan_str;
         if (scan_str === scanned.length) {
           token = "";
@@ -5300,6 +5946,7 @@
       var bignum_1 = require_bignum();
       var coeff_1 = require_coeff();
       var eval_1 = require_eval();
+      var float_1 = require_float();
       var factorpoly_1 = require_factorpoly();
       var guess_1 = require_guess();
       var is_1 = require_is();
@@ -5332,14 +5979,17 @@
         return [POLY1, X1];
       }
       exports.normalizeEquation = normalizeEquation;
-      function Eval_roots(POLY) {
+      function Eval_roots(p1) {
+        return float_1.evalExactly(evalRoots, p1);
+      }
+      exports.Eval_roots = Eval_roots;
+      function evalRoots(POLY) {
         const [POLY1, X1] = normalizeEquation(POLY);
         if (!is_1.ispolyexpandedform(POLY1, X1)) {
           run_1.stop("roots: 1st argument is not a polynomial in the variable " + X1);
         }
         return keepAssumedRoots(roots(POLY1, X1), X1, "roots");
       }
-      exports.Eval_roots = Eval_roots;
       function keepAssumedRoots(result, x, fn) {
         const all = defs_1.istensor(result) ? result.tensor.elem : [result];
         const kept = all.filter((r) => !assume_1.violatesAssumptions(r, x));
@@ -5769,6 +6419,119 @@
           }
         }
         return false;
+      }
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/simplify_rewrites.js
+  var require_simplify_rewrites = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/simplify_rewrites.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.simplify_quotients = exports.simplify_hyperbolic = exports.simplify_logs = void 0;
+      var count_1 = require_count();
+      var defs_1 = require_defs();
+      var find_1 = require_find();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var bignum_1 = require_bignum();
+      var denominator_1 = require_denominator();
+      var eval_1 = require_eval();
+      var is_1 = require_is();
+      var list_1 = require_list();
+      var misc_1 = require_misc();
+      var multiply_1 = require_multiply();
+      var numerator_1 = require_numerator();
+      var pollard_1 = require_pollard();
+      var power_1 = require_power();
+      var rationalize_1 = require_rationalize();
+      var simplify_1 = require_simplify();
+      function mapTree(p, f) {
+        const r = f(p);
+        if (r !== void 0) {
+          return r;
+        }
+        return defs_1.iscons(p) ? list_1.makeList(...p.map((el) => mapTree(el, f))) : p;
+      }
+      function shorter(candidate, p) {
+        return count_1.count(candidate) < count_1.count(p) ? candidate : p;
+      }
+      function simplify_logs(p1) {
+        if (!find_1.Find(p1, symbol_1.symbol(defs_1.LOG))) {
+          return p1;
+        }
+        const split = mapTree(p1, (q) => defs_1.car(q) === symbol_1.symbol(defs_1.LOG) && defs_1.isrational(defs_1.cadr(q)) && is_1.ispositivenumber(defs_1.cadr(q)) ? logOfRational(defs_1.cadr(q)) : void 0);
+        return shorter(eval_1.Eval(split), p1);
+      }
+      exports.simplify_logs = simplify_logs;
+      function logOfRational(q) {
+        const part = (n) => {
+          if (is_1.isone(n)) {
+            return defs_1.Constants.zero;
+          }
+          const f = pollard_1.factor_number(n);
+          const factors = defs_1.ismultiply(f) ? f.tail() : [f];
+          return factors.reduce((acc, t) => add_1.add(acc, defs_1.ispower(t) ? list_1.makeList(symbol_1.symbol("multiply"), defs_1.caddr(t), list_1.makeList(symbol_1.symbol(defs_1.LOG), defs_1.cadr(t))) : list_1.makeList(symbol_1.symbol(defs_1.LOG), t)), defs_1.Constants.zero);
+        };
+        return add_1.subtract(part(numerator_1.numerator(q)), part(denominator_1.denominator(q)));
+      }
+      function simplify_hyperbolic(p1) {
+        if (!find_1.Find(p1, symbol_1.symbol(defs_1.SINH)) && !find_1.Find(p1, symbol_1.symbol(defs_1.COSH))) {
+          return p1;
+        }
+        const evenPower = (fn, to) => (q) => defs_1.ispower(q) && defs_1.car(defs_1.cadr(q)) === symbol_1.symbol(fn) && is_1.isinteger(defs_1.caddr(q)) && !is_1.isnegativenumber(defs_1.caddr(q)) && defs_1.caddr(q).a.isEven() ? power_1.power(to(defs_1.cadr(defs_1.cadr(q))), multiply_1.divide(defs_1.caddr(q), bignum_1.integer(2))) : void 0;
+        const sq = (fn, u) => power_1.power(list_1.makeList(symbol_1.symbol(fn), u), bignum_1.integer(2));
+        const viaSinh = eval_1.Eval(mapTree(p1, evenPower(defs_1.COSH, (u) => add_1.add(defs_1.Constants.one, sq(defs_1.SINH, u)))));
+        const viaCosh = eval_1.Eval(mapTree(p1, evenPower(defs_1.SINH, (u) => add_1.subtract(sq(defs_1.COSH, u), defs_1.Constants.one))));
+        return shorter(viaCosh, shorter(viaSinh, p1));
+      }
+      exports.simplify_hyperbolic = simplify_hyperbolic;
+      function simplify_quotients(p1) {
+        if (find_1.Find(p1, symbol_1.symbol(defs_1.TAN))) {
+          const expanded = mapTree(p1, (q) => defs_1.car(q) === symbol_1.symbol(defs_1.TAN) ? multiply_1.divide(list_1.makeList(symbol_1.symbol(defs_1.SIN), defs_1.cadr(q)), list_1.makeList(symbol_1.symbol(defs_1.COS), defs_1.cadr(q))) : void 0);
+          p1 = shorter(simplify_1.simplify_trig(rationalize_1.rationalize(eval_1.Eval(expanded))), p1);
+        }
+        p1 = collectQuotient(p1, defs_1.SIN, defs_1.COS, defs_1.TAN);
+        return collectQuotient(p1, defs_1.SINH, defs_1.COSH, defs_1.TANH);
+      }
+      exports.simplify_quotients = simplify_quotients;
+      function collectQuotient(p1, s, c, t) {
+        if (!find_1.Find(p1, symbol_1.symbol(s)) || !find_1.Find(p1, symbol_1.symbol(c))) {
+          return p1;
+        }
+        const collected = mapTree(p1, (q) => {
+          if (!defs_1.ismultiply(q)) {
+            return void 0;
+          }
+          const factors = q.tail();
+          const split = (f, fn) => {
+            const base = defs_1.ispower(f) ? defs_1.cadr(f) : f;
+            const e = defs_1.ispower(f) ? defs_1.caddr(f) : defs_1.Constants.one;
+            return defs_1.car(base) === symbol_1.symbol(fn) && is_1.isinteger(e) ? [base, e.a.toJSNumber()] : void 0;
+          };
+          for (const fs of factors) {
+            const num = split(fs, s);
+            if (!num || num[1] <= 0) {
+              continue;
+            }
+            for (const fc of factors) {
+              const den = split(fc, c);
+              if (!den || den[1] >= 0 || !misc_1.equal(defs_1.cadr(den[0]), defs_1.cadr(num[0]))) {
+                continue;
+              }
+              const k = Math.min(num[1], -den[1]);
+              const rest = factors.filter((f) => f !== fs && f !== fc);
+              return [
+                ...rest,
+                power_1.power(list_1.makeList(symbol_1.symbol(t), defs_1.cadr(num[0])), bignum_1.integer(k)),
+                power_1.power(num[0], bignum_1.integer(num[1] - k)),
+                power_1.power(den[0], bignum_1.integer(den[1] + k))
+              ].reduce(multiply_1.multiply, defs_1.Constants.one);
+            }
+          }
+          return void 0;
+        });
+        return shorter(eval_1.Eval(collected), p1);
       }
     }
   });
@@ -6311,10 +7074,13 @@
       var power_1 = require_power();
       var rationalize_1 = require_rationalize();
       var real_1 = require_real();
+      var coeff_1 = require_coeff();
+      var imag_1 = require_imag();
       var rect_1 = require_rect();
       var roots_1 = require_roots();
       var subst_1 = require_subst();
       var simfac_1 = require_simfac();
+      var simplify_rewrites_1 = require_simplify_rewrites();
       var tensor_1 = require_tensor();
       var transform_1 = require_transform();
       var trigexpand_1 = require_trigexpand();
@@ -6427,6 +7193,9 @@
         p1 = simplify_rectToClock(p1);
         p1 = simplify_rational_expressions(p1);
         p1 = rationalize_sqrt_denominator(p1);
+        p1 = simplify_rewrites_1.simplify_logs(p1);
+        p1 = simplify_rewrites_1.simplify_hyperbolic(p1);
+        p1 = simplify_rewrites_1.simplify_quotients(p1);
         return p1;
       }
       exports.simplify = simplify;
@@ -6679,6 +7448,58 @@
         }
         return [p1, false];
       }
+      function hasRationalLookingRoot(poly) {
+        const nearRational = (x) => {
+          for (let q = 1; q <= 100; q++) {
+            if (Math.abs(x * q - Math.round(x * q)) < 1e-11 * q * Math.max(1, Math.abs(x))) {
+              return true;
+            }
+          }
+          return false;
+        };
+        try {
+          const k = coeff_1.coeff(poly, symbol_1.symbol(defs_1.SECRETX)).map((c) => {
+            const re = float_1.yyfloat(real_1.real(c));
+            const im = float_1.yyfloat(imag_1.imag(c));
+            if (!defs_1.isdouble(re) || !defs_1.isdouble(im)) {
+              throw new Error("symbolic coefficient");
+            }
+            return [re.d, im.d];
+          });
+          const n = k.length - 1;
+          const mul = (x, y) => [x[0] * y[0] - x[1] * y[1], x[0] * y[1] + x[1] * y[0]];
+          const div = (x, y) => {
+            const m = y[0] * y[0] + y[1] * y[1];
+            return [(x[0] * y[0] + x[1] * y[1]) / m, (x[1] * y[0] - x[0] * y[1]) / m];
+          };
+          const monic = k.map((c) => div(c, k[n]));
+          const bound = 1 + Math.max(...monic.slice(0, n).map((c) => Math.hypot(c[0], c[1])));
+          let z = monic.slice(0, n).map((_, i) => {
+            const angle = 2 * Math.PI * i / n + 0.4;
+            return [bound * Math.cos(angle), bound * Math.sin(angle)];
+          });
+          for (let iter = 0; iter < 500; iter++) {
+            z = z.map((zi, i) => {
+              let value = [1, 0];
+              for (let j = n - 1; j >= 0; j--) {
+                value = mul(value, zi);
+                value = [value[0] + monic[j][0], value[1] + monic[j][1]];
+              }
+              let denom = [1, 0];
+              z.forEach((zj, j) => {
+                if (j !== i) {
+                  denom = mul(denom, [zi[0] - zj[0], zi[1] - zj[1]]);
+                }
+              });
+              const step = div(value, denom);
+              return [zi[0] - step[0], zi[1] - step[1]];
+            });
+          }
+          return z.some((zi) => nearRational(zi[0]) && nearRational(zi[1]));
+        } catch (e) {
+          return true;
+        }
+      }
       function _nestedPowerSymbol(p1) {
         const base = defs_1.cadr(p1);
         const exponent = defs_1.caddr(p1);
@@ -6741,6 +7562,9 @@
             return [p1, false];
           }
           temp = add_1.add(C, add_1.add(multiply_1.multiply(checkSize, symbol_1.symbol(defs_1.SECRETX)), multiply_1.multiply(defs_1.Constants.one, power_1.power(symbol_1.symbol(defs_1.SECRETX), bignum_1.integer(2)))));
+        }
+        if (!hasRationalLookingRoot(temp)) {
+          return [p1, false];
         }
         defs_1.defs.recursionLevelNestedRadicalsRemoval++;
         const r = roots_1.roots(temp, symbol_1.symbol(defs_1.SECRETX));
@@ -7886,7 +8710,7 @@ FACTOR=${p8}`);
       var misc_1 = require_misc();
       function Eval_besselj(p1) {
         misc_1.checkArgCount(p1, 2);
-        return besselj(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+        return besselj(eval_1.Eval(defs_1.caddr(p1)), eval_1.Eval(defs_1.cadr(p1)));
       }
       exports.Eval_besselj = Eval_besselj;
       function besselj(p1, p2) {
@@ -7918,13 +8742,410 @@ FACTOR=${p8}`);
           return add_1.subtract(multiply_1.multiply(multiply_1.multiply(multiply_1.divide(bignum_1.integer(2), X), add_1.subtract(N, SGN)), besselj(X, add_1.subtract(N, SGN))), besselj(X, add_1.subtract(N, multiply_1.multiply(bignum_1.integer(2), SGN))));
         }
         if (is_1.isnegativeterm(X)) {
-          return multiply_1.multiply(multiply_1.multiply(power_1.power(multiply_1.negate(X), N), power_1.power(X, multiply_1.negate(N))), list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), multiply_1.negate(X), N));
+          return multiply_1.multiply(multiply_1.multiply(power_1.power(multiply_1.negate(X), N), power_1.power(X, multiply_1.negate(N))), list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), N, multiply_1.negate(X)));
         }
         if (is_1.isnegativeterm(N)) {
-          return multiply_1.multiply(power_1.power(defs_1.Constants.negOne, N), list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), X, multiply_1.negate(N)));
+          return multiply_1.multiply(power_1.power(defs_1.Constants.negOne, N), list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), multiply_1.negate(N), X));
         }
-        return list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), X, N);
+        return list_1.makeList(symbol_1.symbol(defs_1.BESSELJ), N, X);
       }
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/special.js
+  var require_special = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/special.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.Eval_cfrac = exports.evalChebyshev = exports.Eval_beta = exports.specialDerivative = exports.evalSpecial = exports.SPECIAL = void 0;
+      var defs_1 = require_defs();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var bignum_1 = require_bignum();
+      var eval_1 = require_eval();
+      var float_1 = require_float();
+      var is_1 = require_is();
+      var list_1 = require_list();
+      var misc_1 = require_misc();
+      var multiply_1 = require_multiply();
+      var power_1 = require_power();
+      var scan_1 = require_scan();
+      var call = (name, ...args) => list_1.makeList(symbol_1.usr_symbol(name), ...args);
+      var sq = (x) => power_1.power(x, bignum_1.integer(2));
+      var halfPi = () => multiply_1.divide(defs_1.Constants.Pi(), bignum_1.integer(2));
+      exports.SPECIAL = {
+        lambertw: {
+          exact: lambertExact,
+          numeric: lambertW,
+          derivative: (x) => multiply_1.divide(call("lambertw", x), multiply_1.multiply(x, add_1.add(defs_1.Constants.one, call("lambertw", x))))
+        },
+        Si: {
+          odd: true,
+          exact: (x) => is_1.isZeroAtomOrTensor(x) ? defs_1.Constants.zero : void 0,
+          numeric: (x) => cisi(x)[1],
+          derivative: (x) => multiply_1.divide(call("sin", x), x)
+        },
+        Ci: {
+          numeric: (x) => x > 0 ? cisi(x)[0] : void 0,
+          derivative: (x) => multiply_1.divide(call("cos", x), x)
+        },
+        Ei: {
+          numeric: expIntegralEi,
+          derivative: (x) => multiply_1.divide(misc_1.exponential(x), x)
+        },
+        fresnels: {
+          odd: true,
+          exact: (x) => is_1.isZeroAtomOrTensor(x) ? defs_1.Constants.zero : void 0,
+          numeric: (x) => fresnel(x)[0],
+          derivative: (x) => call("sin", multiply_1.multiply(halfPi(), sq(x)))
+        },
+        fresnelc: {
+          odd: true,
+          exact: (x) => is_1.isZeroAtomOrTensor(x) ? defs_1.Constants.zero : void 0,
+          numeric: (x) => fresnel(x)[1],
+          derivative: (x) => call("cos", multiply_1.multiply(halfPi(), sq(x)))
+        },
+        digamma: {
+          numeric: digamma
+        }
+      };
+      function evalSpecial(name) {
+        return (p1) => {
+          misc_1.checkArgCount(p1, 1);
+          return special(name, eval_1.Eval(defs_1.cadr(p1)));
+        };
+      }
+      exports.evalSpecial = evalSpecial;
+      function special(name, x) {
+        const f = exports.SPECIAL[name];
+        if (defs_1.isdouble(x)) {
+          const v = f.numeric(x.d);
+          return v === void 0 || Number.isNaN(v) ? call(name, x) : bignum_1.double(v);
+        }
+        const exact = f.exact && f.exact(x);
+        if (exact !== void 0) {
+          return exact;
+        }
+        if (f.odd && is_1.isnegativeterm(x)) {
+          return multiply_1.negate(special(name, multiply_1.negate(x)));
+        }
+        return call(name, x);
+      }
+      function specialDerivative(p, dx) {
+        const head = defs_1.car(p);
+        if (!defs_1.iscons(p) || !("printname" in head)) {
+          return void 0;
+        }
+        const name = head.printname;
+        if (name === defs_1.GAMMA) {
+          return multiply_1.multiply(multiply_1.multiply(p, call("digamma", defs_1.cadr(p))), dx(defs_1.cadr(p)));
+        }
+        const f = exports.SPECIAL[name];
+        if (!f || !f.derivative) {
+          return void 0;
+        }
+        return multiply_1.multiply(eval_1.Eval(f.derivative(defs_1.cadr(p))), dx(defs_1.cadr(p)));
+      }
+      exports.specialDerivative = specialDerivative;
+      function lambertExact(x) {
+        if (is_1.isZeroAtomOrTensor(x)) {
+          return defs_1.Constants.zero;
+        }
+        if (x === symbol_1.symbol(defs_1.E)) {
+          return defs_1.Constants.one;
+        }
+        if (misc_1.equal(x, multiply_1.negate(misc_1.exponential(defs_1.Constants.negOne)))) {
+          return defs_1.Constants.negOne;
+        }
+        if (defs_1.ismultiply(x)) {
+          const log = x.tail().find((f) => defs_1.car(f) === symbol_1.symbol(defs_1.LOG));
+          if (log && defs_1.isrational(defs_1.cadr(log)) && misc_1.equal(x, multiply_1.multiply(defs_1.cadr(log), log))) {
+            const k = float_1.zzfloat(defs_1.cadr(log));
+            if (defs_1.isdouble(k) && k.d >= 1) {
+              return log;
+            }
+          }
+        }
+        if (defs_1.car(x) === symbol_1.symbol(defs_1.LOG) && is_1.isinteger(defs_1.cadr(x))) {
+          for (let k = 2; k < 40; k++) {
+            if (misc_1.equal(power_1.power(bignum_1.integer(k), bignum_1.integer(k)), defs_1.cadr(x))) {
+              return call(defs_1.LOG, bignum_1.integer(k));
+            }
+          }
+        }
+        return void 0;
+      }
+      function lambertW(x) {
+        if (x < -1 / Math.E) {
+          return void 0;
+        }
+        if (x === 0) {
+          return 0;
+        }
+        let w = x < 1 ? Math.sqrt(2 * (Math.E * x + 1)) - 1 : Math.log(x) - Math.log(Math.log(x) + 1);
+        for (let i = 0; i < 50; i++) {
+          const ew = Math.exp(w);
+          const f = w * ew - x;
+          const step = f / (ew * (w + 1) - (w + 2) * f / (2 * w + 2));
+          w -= step;
+          if (Math.abs(step) < 1e-15 * (1 + Math.abs(w))) {
+            break;
+          }
+        }
+        return w;
+      }
+      var cmul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+      var cinv = (a) => {
+        const n = a[0] * a[0] + a[1] * a[1];
+        return [a[0] / n, -a[1] / n];
+      };
+      var EULER = 0.5772156649015329;
+      var FPMIN = 1e-300;
+      function cisi(x) {
+        const t = Math.abs(x);
+        if (t === 0) {
+          return [-Infinity, 0];
+        }
+        let ci;
+        let si;
+        if (t > 2) {
+          let b = [1, t];
+          let c = [1 / FPMIN, 0];
+          let d = cinv(b);
+          let h = d;
+          for (let i = 1; i < 1e3; i++) {
+            const a = -i * i;
+            b = [b[0] + 2, b[1]];
+            d = cinv([a * d[0] + b[0], a * d[1] + b[1]]);
+            const ac = cinv(c);
+            c = [b[0] + a * ac[0], b[1] + a * ac[1]];
+            const del = cmul(c, d);
+            h = cmul(h, del);
+            if (Math.abs(del[0] - 1) + Math.abs(del[1]) < 1e-16) {
+              break;
+            }
+          }
+          h = cmul([Math.cos(t), -Math.sin(t)], h);
+          ci = -h[0];
+          si = Math.PI / 2 + h[1];
+        } else {
+          let sums = 0;
+          let sumc = 0;
+          let term = 1;
+          for (let k = 1; k < 100; k++) {
+            term *= t / k;
+            const contribution = term / k;
+            if (k % 2 === 1) {
+              sums += (k - 1) / 2 % 2 === 0 ? contribution : -contribution;
+            } else {
+              sumc += k / 2 % 2 === 1 ? -contribution : contribution;
+            }
+            if (contribution < 1e-18) {
+              break;
+            }
+          }
+          si = sums;
+          ci = sumc + Math.log(t) + EULER;
+        }
+        return [ci, x < 0 ? -si : si];
+      }
+      function expIntegralEi(x) {
+        if (x === 0) {
+          return void 0;
+        }
+        if (x > 0) {
+          if (x > 40) {
+            let sum2 = 1;
+            let term2 = 1;
+            for (let k = 1; k < 60; k++) {
+              const next = term2 * k / x;
+              if (next > term2) {
+                break;
+              }
+              term2 = next;
+              sum2 += term2;
+            }
+            return Math.exp(x) / x * sum2;
+          }
+          let sum = 0;
+          let term = 1;
+          for (let k = 1; k < 500; k++) {
+            term *= x / k;
+            sum += term / k;
+            if (term / k < 1e-17 * sum) {
+              break;
+            }
+          }
+          return EULER + Math.log(x) + sum;
+        }
+        const y = -x;
+        if (y <= 1) {
+          let sum = 0;
+          let term = 1;
+          for (let k = 1; k < 100; k++) {
+            term *= -y / k;
+            sum -= term / k;
+          }
+          return -(-EULER - Math.log(y) + sum);
+        }
+        let b = y + 1;
+        let c = 1 / FPMIN;
+        let d = 1 / b;
+        let h = d;
+        for (let i = 1; i < 1e3; i++) {
+          const a = -i * i;
+          b += 2;
+          d = 1 / (a * d + b);
+          c = b + a / c;
+          const del = c * d;
+          h *= del;
+          if (Math.abs(del - 1) < 1e-16) {
+            break;
+          }
+        }
+        return -h * Math.exp(-y);
+      }
+      function fresnel(x) {
+        const ax = Math.abs(x);
+        let s;
+        let c;
+        if (ax < 1.5) {
+          let sum = 0;
+          let sums = 0;
+          let sumc = ax;
+          let sign = 1;
+          const fact = Math.PI / 2 * ax * ax;
+          let odd = true;
+          let term = ax;
+          let n = 3;
+          for (let k = 1; k <= 100; k++) {
+            term *= fact / k;
+            sum += sign * term / n;
+            const test = Math.abs(sum) * 1e-16;
+            if (odd) {
+              sign = -sign;
+              sums = sum;
+              sum = sumc;
+            } else {
+              sumc = sum;
+              sum = sums;
+            }
+            if (term < test) {
+              break;
+            }
+            odd = !odd;
+            n += 2;
+          }
+          s = sums;
+          c = sumc;
+        } else {
+          const pix2 = Math.PI * ax * ax;
+          let b = [1, -pix2];
+          let cc = [1 / FPMIN, 0];
+          let d = cinv(b);
+          let h = d;
+          let n = -1;
+          for (let k = 2; k <= 1e3; k++) {
+            n += 2;
+            const a = -n * (n + 1);
+            b = [b[0] + 4, b[1]];
+            d = cinv([a * d[0] + b[0], a * d[1] + b[1]]);
+            const ic = cinv(cc);
+            cc = [b[0] + a * ic[0], b[1] + a * ic[1]];
+            const del = cmul(cc, d);
+            h = cmul(h, del);
+            if (Math.abs(del[0] - 1) + Math.abs(del[1]) < 1e-16) {
+              break;
+            }
+          }
+          h = cmul([ax, -ax], h);
+          const e = [Math.cos(0.5 * pix2), Math.sin(0.5 * pix2)];
+          const eh = cmul(e, h);
+          const cs = cmul([0.5, 0.5], [1 - eh[0], -eh[1]]);
+          c = cs[0];
+          s = cs[1];
+        }
+        return x < 0 ? [-s, -c] : [s, c];
+      }
+      function digamma(x) {
+        if (x <= 0 && Number.isInteger(x)) {
+          return void 0;
+        }
+        if (x < 0.5) {
+          return digamma(1 - x) - Math.PI / Math.tan(Math.PI * x);
+        }
+        let shift = 0;
+        while (x < 6) {
+          shift -= 1 / x;
+          x += 1;
+        }
+        const i2 = 1 / (x * x);
+        return shift + Math.log(x) - 0.5 / x - i2 * (1 / 12 - i2 * (1 / 120 - i2 * (1 / 252 - i2 * (1 / 240 - i2 / 132))));
+      }
+      function Eval_beta(p1) {
+        misc_1.checkArgCount(p1, 2);
+        const a = eval_1.Eval(defs_1.cadr(p1));
+        const b = eval_1.Eval(defs_1.caddr(p1));
+        const g = (x) => eval_1.Eval(call(defs_1.GAMMA, x));
+        return multiply_1.divide(multiply_1.multiply(g(a), g(b)), g(add_1.add(a, b)));
+      }
+      exports.Eval_beta = Eval_beta;
+      function evalChebyshev(name) {
+        return (p1) => {
+          misc_1.checkArgCount(p1, 2);
+          const x = eval_1.Eval(defs_1.cadr(p1));
+          const N = eval_1.Eval(defs_1.caddr(p1));
+          const n = bignum_1.nativeInt(N);
+          if (isNaN(n) || n < 0) {
+            return call(name, x, N);
+          }
+          let prev = defs_1.Constants.one;
+          let cur = name === "chebyshevt" ? x : multiply_1.multiply(bignum_1.integer(2), x);
+          if (n === 0) {
+            return prev;
+          }
+          for (let i = 1; i < n; i++) {
+            [prev, cur] = [cur, add_1.subtract(multiply_1.multiply(multiply_1.multiply(bignum_1.integer(2), x), cur), prev)];
+          }
+          return misc_1.yyexpand(cur);
+        };
+      }
+      exports.evalChebyshev = evalChebyshev;
+      function Eval_cfrac(p1) {
+        misc_1.checkArgCount(p1, 1, 2);
+        const x = eval_1.Eval(defs_1.cadr(p1));
+        const limit = defs_1.caddr(p1) === symbol_1.symbol("nil") ? NaN : bignum_1.nativeInt(eval_1.Eval(defs_1.caddr(p1)));
+        const terms = [];
+        if (defs_1.isrational(x)) {
+          let a = x.a;
+          let b = x.b;
+          while (!b.isZero() && !(terms.length >= limit)) {
+            let q = a.divide(b);
+            if (a.mod(b).isNegative()) {
+              q = q.subtract(1);
+            }
+            terms.push(new defs_1.Num(q));
+            [a, b] = [b, a.subtract(q.multiply(b))];
+          }
+          return scan_1.build_tensor(terms);
+        }
+        const f = float_1.zzfloat(x);
+        if (!defs_1.isdouble(f)) {
+          return call("cfrac", x);
+        }
+        let v = f.d;
+        const n = Number.isNaN(limit) ? 10 : limit;
+        for (let i = 0; i < n; i++) {
+          const q = Math.floor(v);
+          terms.push(bignum_1.integer(q));
+          if (Math.abs(v - q) < 1e-10) {
+            break;
+          }
+          v = 1 / (v - q);
+        }
+        return scan_1.build_tensor(terms);
+      }
+      exports.Eval_cfrac = Eval_cfrac;
     }
   });
 
@@ -7946,7 +9167,7 @@ FACTOR=${p8}`);
       var misc_1 = require_misc();
       function Eval_bessely(p1) {
         misc_1.checkArgCount(p1, 2);
-        return bessely(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+        return bessely(eval_1.Eval(defs_1.caddr(p1)), eval_1.Eval(defs_1.cadr(p1)));
       }
       exports.Eval_bessely = Eval_bessely;
       function bessely(p1, p2) {
@@ -7960,9 +9181,9 @@ FACTOR=${p8}`);
           return bignum_1.double(d);
         }
         if (is_1.isnegativeterm(N)) {
-          return multiply_1.multiply(power_1.power(defs_1.Constants.negOne, N), list_1.makeList(symbol_1.symbol(defs_1.BESSELY), X, multiply_1.negate(N)));
+          return multiply_1.multiply(power_1.power(defs_1.Constants.negOne, N), list_1.makeList(symbol_1.symbol(defs_1.BESSELY), multiply_1.negate(N), X));
         }
-        return list_1.makeList(symbol_1.symbol(defs_1.BESSELY), X, N);
+        return list_1.makeList(symbol_1.symbol(defs_1.BESSELY), N, X);
       }
     }
   });
@@ -8542,6 +9763,316 @@ FACTOR=${p8}`);
     }
   });
 
+  // bazel-out/k8-fastbuild/bin/sources/integral_heuristic.js
+  var require_integral_heuristic = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/integral_heuristic.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.realTrigReciprocal = exports.heuristicIntegral = void 0;
+      var defs_1 = require_defs();
+      var find_1 = require_find();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var bignum_1 = require_bignum();
+      var coeff_1 = require_coeff();
+      var derivative_1 = require_derivative();
+      var eval_1 = require_eval();
+      var float_1 = require_float();
+      var integral_1 = require_integral();
+      var misc_1 = require_misc();
+      var assume_1 = require_assume();
+      var is_1 = require_is();
+      var list_1 = require_list();
+      var multiply_1 = require_multiply();
+      var partition_1 = require_partition();
+      var power_1 = require_power();
+      var subst_1 = require_subst();
+      var MAX_DEPTH = 5;
+      function heuristicIntegral(F, X, depth) {
+        if (depth > MAX_DEPTH) {
+          return void 0;
+        }
+        const [c, G] = defs_1.ismultiply(F) ? partition_1.partition(F, X) : [defs_1.Constants.one, F];
+        const r = expTrig(G, X) || absLinear(G, X) || quadraticLog(G, X) || specialIntegral(G, X) || quarticReciprocal(G, X) || hyperbolicToExp(G, X, depth) || tanSquared(G, X, depth) || bySubstitution(G, X, depth) || byParts(G, X, depth);
+        return r === void 0 ? void 0 : multiply_1.multiply(c, r);
+      }
+      exports.heuristicIntegral = heuristicIntegral;
+      function tryIntegral(F, X, depth) {
+        try {
+          return integral_1.integral(F, X, depth + 1);
+        } catch (e) {
+          return void 0;
+        }
+      }
+      function factorsOf(F) {
+        return defs_1.ismultiply(F) ? F.tail() : [F];
+      }
+      function isFn(p, name) {
+        return defs_1.iscons(p) && defs_1.car(p) === symbol_1.symbol(name);
+      }
+      function slope(p, X) {
+        const a = derivative_1.derivative(p, X);
+        return find_1.Find(a, X) || is_1.isZeroAtomOrTensor(a) ? void 0 : a;
+      }
+      function expTrig(F, X) {
+        const fs = factorsOf(F);
+        if (fs.length !== 2) {
+          return void 0;
+        }
+        const ex = fs.find((f) => defs_1.ispower(f) && defs_1.cadr(f) === symbol_1.symbol(defs_1.E));
+        const tr = fs.find((f) => isFn(f, defs_1.SIN) || isFn(f, defs_1.COS));
+        if (!ex || !tr) {
+          return void 0;
+        }
+        const a = slope(defs_1.caddr(ex), X);
+        const b = slope(defs_1.cadr(tr), X);
+        if (!a || !b) {
+          return void 0;
+        }
+        const q = defs_1.cadr(tr);
+        const other = list_1.makeList(symbol_1.symbol(isFn(tr, defs_1.SIN) ? defs_1.COS : defs_1.SIN), q);
+        const num = isFn(tr, defs_1.SIN) ? add_1.subtract(multiply_1.multiply(a, tr), multiply_1.multiply(b, other)) : add_1.add(multiply_1.multiply(a, tr), multiply_1.multiply(b, other));
+        return eval_1.Eval(multiply_1.divide(multiply_1.multiply(ex, num), add_1.add(power_1.power(a, bignum_1.integer(2)), power_1.power(b, bignum_1.integer(2)))));
+      }
+      function absLinear(F, X) {
+        if (!isFn(F, defs_1.ABS)) {
+          return void 0;
+        }
+        const g = defs_1.cadr(F);
+        const a = slope(g, X);
+        return a && multiply_1.divide(multiply_1.multiply(g, F), multiply_1.multiply(bignum_1.integer(2), a));
+      }
+      function quadraticLog(F, X) {
+        if (!defs_1.ispower(F) || !misc_1.equal(defs_1.caddr(F), defs_1.Constants.negOne) || !is_1.ispolyexpandedform(defs_1.cadr(F), X)) {
+          return void 0;
+        }
+        const k = coeff_1.coeff(defs_1.cadr(F), X);
+        if (k.length !== 3) {
+          return void 0;
+        }
+        const [c0, c1, c2] = k;
+        const D = add_1.subtract(power_1.power(c1, bignum_1.integer(2)), multiply_1.multiply(bignum_1.integer(4), multiply_1.multiply(c0, c2)));
+        if (is_1.isZeroAtomOrTensor(D) || is_1.isnegativenumber(D) || assume_1.isPositive(D) !== true) {
+          return void 0;
+        }
+        const s = power_1.power(D, bignum_1.rational(1, 2));
+        const lin = add_1.add(multiply_1.multiply(bignum_1.integer(2), multiply_1.multiply(c2, X)), c1);
+        const q = multiply_1.divide(list_1.makeList(symbol_1.symbol(defs_1.ABS), add_1.subtract(lin, s)), list_1.makeList(symbol_1.symbol(defs_1.ABS), add_1.add(lin, s)));
+        return multiply_1.divide(list_1.makeList(symbol_1.symbol(defs_1.LOG), q), s);
+      }
+      function specialIntegral(F, X) {
+        const fn = (name, arg) => eval_1.Eval(list_1.makeList(symbol_1.usr_symbol(name), arg));
+        const isInverseOf = (f, g) => defs_1.ispower(f) && misc_1.equal(defs_1.caddr(f), defs_1.Constants.negOne) && g(defs_1.cadr(f));
+        if (isInverseOf(F, (b) => isFn(b, defs_1.LOG) && misc_1.equal(defs_1.cadr(b), X))) {
+          return fn("Ei", defs_1.cadr(F));
+        }
+        const fs = factorsOf(F);
+        const overX = fs.find((f) => isInverseOf(f, (b) => misc_1.equal(b, X)));
+        if (fs.length === 2 && overX) {
+          const g = fs.find((f) => f !== overX);
+          const isExp = defs_1.ispower(g) && defs_1.cadr(g) === symbol_1.symbol(defs_1.E);
+          if (isFn(g, defs_1.SIN) || isFn(g, defs_1.COS) || isExp) {
+            const arg = isExp ? defs_1.caddr(g) : defs_1.cadr(g);
+            if (!find_1.Find(multiply_1.divide(arg, X), X)) {
+              return fn(isFn(g, defs_1.SIN) ? "Si" : isFn(g, defs_1.COS) ? "Ci" : "Ei", arg);
+            }
+          }
+        }
+        if (isFn(F, defs_1.SIN) || isFn(F, defs_1.COS)) {
+          const a = multiply_1.divide(defs_1.cadr(F), power_1.power(X, bignum_1.integer(2)));
+          if (!find_1.Find(a, X) && assume_1.isPositive(a) === true) {
+            const k = power_1.power(multiply_1.divide(multiply_1.multiply(bignum_1.integer(2), a), defs_1.Constants.Pi()), bignum_1.rational(1, 2));
+            return multiply_1.divide(fn(isFn(F, defs_1.SIN) ? "fresnels" : "fresnelc", multiply_1.multiply(k, X)), k);
+          }
+        }
+        return void 0;
+      }
+      function quarticReciprocal(F, X) {
+        if (!defs_1.ispower(F) || !misc_1.equal(defs_1.caddr(F), defs_1.Constants.negOne) || !is_1.ispolyexpandedform(defs_1.cadr(F), X)) {
+          return void 0;
+        }
+        const k = coeff_1.coeff(defs_1.cadr(F), X);
+        if (k.length !== 5 || !k.slice(1, 4).every((c2) => is_1.isZeroAtomOrTensor(c2))) {
+          return void 0;
+        }
+        const c = multiply_1.divide(k[0], k[4]);
+        if (assume_1.isPositive(c) !== true) {
+          return void 0;
+        }
+        const a = power_1.power(c, bignum_1.rational(1, 4));
+        const r2 = power_1.power(bignum_1.integer(2), bignum_1.rational(1, 2));
+        const a2 = power_1.power(a, bignum_1.integer(2));
+        const mid = multiply_1.multiply(multiply_1.multiply(r2, a), X);
+        const x2 = power_1.power(X, bignum_1.integer(2));
+        const log = list_1.makeList(symbol_1.symbol(defs_1.LOG), multiply_1.divide(add_1.add(add_1.add(x2, mid), a2), add_1.add(add_1.subtract(x2, mid), a2)));
+        const u = multiply_1.divide(multiply_1.multiply(r2, X), a);
+        const atan = add_1.add(list_1.makeList(symbol_1.symbol(defs_1.ARCTAN), add_1.add(u, defs_1.Constants.one)), list_1.makeList(symbol_1.symbol(defs_1.ARCTAN), add_1.subtract(u, defs_1.Constants.one)));
+        const a3 = power_1.power(a, bignum_1.integer(3));
+        return eval_1.Eval(multiply_1.divide(add_1.add(multiply_1.divide(log, multiply_1.multiply(multiply_1.multiply(bignum_1.integer(4), r2), a3)), multiply_1.divide(atan, multiply_1.multiply(multiply_1.multiply(bignum_1.integer(2), r2), a3))), k[4]));
+      }
+      function hyperbolicToExp(F, X, depth) {
+        const hasExp = findWhere(F, (p) => defs_1.ispower(p) && defs_1.cadr(p) === symbol_1.symbol(defs_1.E) && find_1.Find(defs_1.caddr(p), X));
+        const hyp = findWhere(F, (p) => (isFn(p, defs_1.SINH) || isFn(p, defs_1.COSH)) && find_1.Find(defs_1.cadr(p), X));
+        if (!hasExp || !hyp) {
+          return void 0;
+        }
+        const u = defs_1.cadr(hyp);
+        const plus = power_1.power(symbol_1.symbol(defs_1.E), u);
+        const minus = power_1.power(symbol_1.symbol(defs_1.E), multiply_1.negate(u));
+        const asExp = multiply_1.divide(isFn(hyp, defs_1.SINH) ? add_1.subtract(plus, minus) : add_1.add(plus, minus), bignum_1.integer(2));
+        return tryIntegral(defs_1.doexpand(eval_1.Eval, subst_1.subst(F, hyp, asExp)), X, depth);
+      }
+      function realTrigReciprocal(F, X) {
+        if (!defs_1.ispower(F) || !misc_1.equal(defs_1.caddr(F), defs_1.Constants.negOne)) {
+          return void 0;
+        }
+        const S = defs_1.cadr(F);
+        const t = findWhere(S, (p) => (isFn(p, defs_1.SIN) || isFn(p, defs_1.COS)) && find_1.Find(defs_1.cadr(p), X));
+        if (!t) {
+          return void 0;
+        }
+        const q = defs_1.cadr(t);
+        const slopeQ = slope(q, X);
+        const u = symbol_1.usr_symbol("integral_u");
+        const Su = subst_1.subst(S, t, u);
+        const b = derivative_1.derivative(Su, u);
+        const a = eval_1.Eval(add_1.subtract(Su, multiply_1.multiply(b, u)));
+        const [an, bn] = [float_1.zzfloat(a), float_1.zzfloat(b)];
+        if (!slopeQ || !defs_1.isdouble(an) || !defs_1.isdouble(bn) || an.d * an.d <= bn.d * bn.d) {
+          return void 0;
+        }
+        if (an.d < 0) {
+          const flipped = realTrigReciprocal(power_1.power(multiply_1.negate(S), defs_1.Constants.negOne), X);
+          return flipped && multiply_1.negate(flipped);
+        }
+        const s = power_1.power(add_1.subtract(power_1.power(a, bignum_1.integer(2)), power_1.power(b, bignum_1.integer(2))), bignum_1.rational(1, 2));
+        const tanHalf = list_1.makeList(symbol_1.symbol(defs_1.TAN), multiply_1.divide(q, bignum_1.integer(2)));
+        const inner = isFn(t, defs_1.COS) ? multiply_1.multiply(power_1.power(multiply_1.divide(add_1.subtract(a, b), add_1.add(a, b)), bignum_1.rational(1, 2)), tanHalf) : multiply_1.divide(add_1.add(multiply_1.multiply(a, tanHalf), b), s);
+        return eval_1.Eval(multiply_1.divide(multiply_1.multiply(bignum_1.integer(2), list_1.makeList(symbol_1.symbol(defs_1.ARCTAN), inner)), multiply_1.multiply(s, slopeQ)));
+      }
+      exports.realTrigReciprocal = realTrigReciprocal;
+      function tanSquared(F, X, depth) {
+        const t = findWhere(F, (p) => defs_1.ispower(p) && isFn(defs_1.cadr(p), defs_1.TAN) && misc_1.equal(defs_1.caddr(p), bignum_1.integer(2)));
+        if (!t) {
+          return void 0;
+        }
+        const u = defs_1.cadr(defs_1.cadr(t));
+        const G = eval_1.Eval(subst_1.subst(F, t, add_1.subtract(power_1.power(list_1.makeList(symbol_1.symbol(defs_1.COS), u), bignum_1.integer(-2)), defs_1.Constants.one)));
+        return tryIntegral(G, X, depth);
+      }
+      function findWhere(p, pred) {
+        if (!defs_1.iscons(p)) {
+          return void 0;
+        }
+        if (pred(p)) {
+          return p;
+        }
+        for (const el of p.tail()) {
+          const found = findWhere(el, pred);
+          if (found) {
+            return found;
+          }
+        }
+        return void 0;
+      }
+      function bySubstitution(F, X, depth) {
+        const u = symbol_1.usr_symbol("integral_u");
+        for (const g of candidates(F, X)) {
+          const dg = derivative_1.derivative(g, X);
+          if (is_1.isZeroAtomOrTensor(dg)) {
+            continue;
+          }
+          const ratio = eval_1.Eval(multiply_1.divide(F, dg));
+          let h = subst_1.subst(ratio, g, u);
+          if (defs_1.ispower(g) && defs_1.cadr(g) === symbol_1.symbol(defs_1.E)) {
+            h = subst_1.subst(h, power_1.power(symbol_1.symbol(defs_1.E), multiply_1.negate(defs_1.caddr(g))), power_1.power(u, defs_1.Constants.negOne));
+          }
+          if (find_1.Find(h, X) && isFn(g, defs_1.SIN)) {
+            h = evenPowersToU(h, list_1.makeList(symbol_1.symbol(defs_1.COS), X), u);
+          } else if (find_1.Find(h, X) && isFn(g, defs_1.COS)) {
+            h = evenPowersToU(h, list_1.makeList(symbol_1.symbol(defs_1.SIN), X), u);
+          }
+          if (find_1.Find(h, X)) {
+            continue;
+          }
+          const I = tryIntegral(eval_1.Eval(h), u, depth);
+          if (I !== void 0) {
+            return subst_1.subst(I, u, g);
+          }
+        }
+        return void 0;
+      }
+      function candidates(F, X) {
+        const acc = [];
+        const walk = (p, root) => {
+          if (!defs_1.iscons(p) || !find_1.Find(p, X)) {
+            return;
+          }
+          if (!root && !acc.some((q) => misc_1.equal(q, p))) {
+            acc.push(p);
+          }
+          p.tail().forEach((el) => walk(el, false));
+        };
+        walk(F, true);
+        if (find_1.Find(F, symbol_1.symbol(defs_1.SIN)) || find_1.Find(F, symbol_1.symbol(defs_1.COS))) {
+          for (const fn of [defs_1.SIN, defs_1.COS]) {
+            const t = list_1.makeList(symbol_1.symbol(fn), X);
+            if (!acc.some((q) => misc_1.equal(q, t))) {
+              acc.push(t);
+            }
+          }
+        }
+        return acc;
+      }
+      function evenPowersToU(p, fn, u) {
+        if (!defs_1.iscons(p)) {
+          return p;
+        }
+        if (defs_1.ispower(p) && misc_1.equal(defs_1.cadr(p), fn) && is_1.iseveninteger(defs_1.caddr(p))) {
+          const k = multiply_1.divide(defs_1.caddr(p), bignum_1.integer(2));
+          return power_1.power(add_1.subtract(defs_1.Constants.one, power_1.power(u, bignum_1.integer(2))), k);
+        }
+        return list_1.makeList(...p.map((el) => evenPowersToU(el, fn, u)));
+      }
+      function byParts(F, X, depth) {
+        const fs = factorsOf(F).filter((f) => find_1.Find(f, X));
+        const isL = (f) => [defs_1.LOG, defs_1.ARCSIN, defs_1.ARCCOS, defs_1.ARCTAN, defs_1.ERF].some((n2) => isFn(f, n2)) || defs_1.ispower(f) && isL(defs_1.cadr(f)) && is_1.isposint(defs_1.caddr(f));
+        const L = fs.filter(isL);
+        const rest = fs.filter((f) => !isL(f));
+        if (L.length === 1) {
+          return parts(L[0], product(rest), X, depth);
+        }
+        if (L.length > 0) {
+          return void 0;
+        }
+        const P = fs.filter((f) => is_1.ispolyexpandedform(f, X));
+        const others = fs.filter((f) => !is_1.ispolyexpandedform(f, X));
+        if (P.length === 0 || others.length === 0) {
+          return void 0;
+        }
+        const n = coeff_1.coeff(product(P), X).length - 1;
+        for (let k = 1; k <= n; k++) {
+          const r = parts(power_1.power(X, bignum_1.integer(k)), multiply_1.multiply(multiply_1.divide(product(P), power_1.power(X, bignum_1.integer(k))), product(others)), X, depth);
+          if (r !== void 0) {
+            return r;
+          }
+        }
+        return void 0;
+      }
+      function product(fs) {
+        return fs.reduce(multiply_1.multiply, defs_1.Constants.one);
+      }
+      function parts(u, dv, X, depth) {
+        const v = tryIntegral(dv, X, depth);
+        if (v === void 0) {
+          return void 0;
+        }
+        const J = tryIntegral(eval_1.Eval(multiply_1.multiply(v, derivative_1.derivative(u, X))), X, depth);
+        return J === void 0 ? void 0 : add_1.subtract(multiply_1.multiply(u, v), J);
+      }
+    }
+  });
+
   // bazel-out/k8-fastbuild/bin/sources/integral.js
   var require_integral = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/integral.js"(exports) {
@@ -8560,6 +10091,7 @@ FACTOR=${p8}`);
       var bignum_1 = require_bignum();
       var derivative_1 = require_derivative();
       var eval_1 = require_eval();
+      var float_1 = require_float();
       var guess_1 = require_guess();
       var denominator_1 = require_denominator();
       var expand_1 = require_expand();
@@ -8572,6 +10104,7 @@ FACTOR=${p8}`);
       var simplify_1 = require_simplify();
       var transform_1 = require_transform();
       var quantity_1 = require_quantity();
+      var integral_heuristic_1 = require_integral_heuristic();
       var itab = [
         "f(a,a*x)",
         "f(1/x,log(-x),and(number(x<0),x<0))",
@@ -8623,9 +10156,9 @@ FACTOR=${p8}`);
         "f(x/(a+b*x^4),1/2*sqrt(b/a)/b*arctan(x^2*sqrt(b/a)),a*b>0)",
         "f(x/(a+b*x^4),1/4*sqrt(-b/a)/b*log((x^2-sqrt(-a/b))/(x^2+sqrt(-a/b))),a*b<0)",
         "f(x^3/(a+b*x^4),1/4*1/b*log(a+b*x^4))",
-        "f(sqrt(a+b*x),2/3*1/b*sqrt((a+b*x)^3))",
-        "f(x*sqrt(a+b*x),-2*(2*a-3*b*x)*sqrt((a+b*x)^3)/15/b^2)",
-        "f(x^2*sqrt(a+b*x),2*(8*a^2-12*a*b*x+15*b^2*x^2)*sqrt((a+b*x)^3)/105/b^3)",
+        "f(sqrt(a+b*x),2/3*1/b*(a+b*x)^(3/2))",
+        "f(x*sqrt(a+b*x),-2*(2*a-3*b*x)*(a+b*x)^(3/2)/15/b^2)",
+        "f(x^2*sqrt(a+b*x),2*(8*a^2-12*a*b*x+15*b^2*x^2)*(a+b*x)^(3/2)/105/b^3)",
         "f(sqrt(a+b*x)/x,2*sqrt(a+b*x)+a*integral(1/x*1/sqrt(a+b*x),x))",
         "f(sqrt(a+b*x)/x^2,-sqrt(a+b*x)/x+b/2*integral(1/x*1/sqrt(a+b*x),x))",
         "f(1/sqrt(a+b*x),2*sqrt(a+b*x)/b)",
@@ -8641,38 +10174,38 @@ FACTOR=${p8}`);
         "f(sqrt(x^2+a)/x,sqrt(x^2+a)-sqrt(a)*log((sqrt(a)+sqrt(x^2+a))/x),a>0)",
         "f(sqrt(x^2+a)/x,sqrt(x^2+a)-sqrt(-a)*arcsec(x/sqrt(-a)),a<0)",
         "f(x/sqrt(x^2+a),sqrt(x^2+a))",
-        "f(x*sqrt(x^2+a),1/3*sqrt((x^2+a)^3))",
-        "f(sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*sqrt((x^2+a^(1/3))^3)+3/2*a^(1/3)*x*sqrt(x^2+a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2+a^(1/3)))))",
-        "f(sqrt(-a+x^6-3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*sqrt((x^2-a^(1/3))^3)-3/2*a^(1/3)*x*sqrt(x^2-a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2-a^(1/3)))))",
+        "f(x*sqrt(x^2+a),1/3*(x^2+a)^(3/2))",
+        "f(sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*(x^2+a^(1/3))^(3/2)+3/2*a^(1/3)*x*sqrt(x^2+a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2+a^(1/3)))))",
+        "f(sqrt(-a+x^6-3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*(x^2-a^(1/3))^(3/2)-3/2*a^(1/3)*x*sqrt(x^2-a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2-a^(1/3)))))",
         "f(1/sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),x/a^(1/3)/sqrt(x^2+a^(1/3)))",
         "f(x/sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),-1/sqrt(x^2+a^(1/3)))",
-        "f(x*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/5*sqrt((x^2+a^(1/3))^5))",
-        "f(x^2*sqrt(x^2+a),1/4*x*sqrt((x^2+a)^3)-1/8*a*x*sqrt(x^2+a)-1/8*a^2*log(x+sqrt(x^2+a)))",
-        "f(x^3*sqrt(x^2+a),(1/5*x^2-2/15*a)*sqrt((x^2+a)^3),and(number(a>0),a>0))",
-        "f(x^3*sqrt(x^2+a),sqrt((x^2+a)^5)/5-a*sqrt((x^2+a)^3)/3,and(number(a<0),a<0))",
+        "f(x*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/5*(x^2+a^(1/3))^(5/2))",
+        "f(x^2*sqrt(x^2+a),1/4*x*(x^2+a)^(3/2)-1/8*a*x*sqrt(x^2+a)-1/8*a^2*log(x+sqrt(x^2+a)))",
+        "f(x^3*sqrt(x^2+a),(1/5*x^2-2/15*a)*(x^2+a)^(3/2),and(number(a>0),a>0))",
+        "f(x^3*sqrt(x^2+a),(x^2+a)^(5/2)/5-a*(x^2+a)^(3/2)/3,and(number(a<0),a<0))",
         "f(x^2/sqrt(x^2+a),1/2*x*sqrt(x^2+a)-1/2*a*log(x+sqrt(x^2+a)))",
-        "f(x^3/sqrt(x^2+a),1/3*sqrt((x^2+a)^3)-a*sqrt(x^2+a))",
+        "f(x^3/sqrt(x^2+a),1/3*(x^2+a)^(3/2)-a*sqrt(x^2+a))",
         "f(1/x^2*1/sqrt(x^2+a),-sqrt(x^2+a)/a/x)",
         "f(1/x^3*1/sqrt(x^2+a),-1/2*sqrt(x^2+a)/a/x^2+1/2*log((sqrt(a)+sqrt(x^2+a))/x)/a^(3/2),a>0)",
         "f(1/x^3*1/sqrt(x^2-a),1/2*sqrt(x^2-a)/a/x^2+1/2*1/(a^(3/2))*arcsec(x/(a^(1/2))),a>0)",
-        "f(x^2*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/6*x*sqrt((x^2+a^(1/3))^5)-1/24*a^(1/3)*x*sqrt((x^2+a^(1/3))^3)-1/16*a^(2/3)*x*sqrt(x^2+a^(1/3))-1/16*a*log(x+sqrt(x^2+a^(1/3))),a>0)",
-        "f(x^2*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/6*x*sqrt((x^2-a^(1/3))^5)+1/24*a^(1/3)*x*sqrt((x^2-a^(1/3))^3)-1/16*a^(2/3)*x*sqrt(x^2-a^(1/3))+1/16*a*log(x+sqrt(x^2-a^(1/3))),a>0)",
-        "f(x^3*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/7*sqrt((x^2+a^(1/3))^7)-1/5*a^(1/3)*sqrt((x^2+a^(1/3))^5),a>0)",
-        "f(x^3*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/7*sqrt((x^2-a^(1/3))^7)+1/5*a^(1/3)*sqrt((x^2-a^(1/3))^5),a>0)",
+        "f(x^2*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/6*x*(x^2+a^(1/3))^(5/2)-1/24*a^(1/3)*x*(x^2+a^(1/3))^(3/2)-1/16*a^(2/3)*x*sqrt(x^2+a^(1/3))-1/16*a*log(x+sqrt(x^2+a^(1/3))),a>0)",
+        "f(x^2*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/6*x*(x^2-a^(1/3))^(5/2)+1/24*a^(1/3)*x*(x^2-a^(1/3))^(3/2)-1/16*a^(2/3)*x*sqrt(x^2-a^(1/3))+1/16*a*log(x+sqrt(x^2-a^(1/3))),a>0)",
+        "f(x^3*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/7*(x^2+a^(1/3))^(7/2)-1/5*a^(1/3)*(x^2+a^(1/3))^(5/2),a>0)",
+        "f(x^3*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/7*(x^2-a^(1/3))^(7/2)+1/5*a^(1/3)*(x^2-a^(1/3))^(5/2),a>0)",
         "f(1/(x-a)/sqrt(x^2-a^2),-sqrt(x^2-a^2)/a/(x-a))",
         "f(1/(x+a)/sqrt(x^2-a^2),sqrt(x^2-a^2)/a/(x+a))",
         "f(sqrt(a-x^2),1/2*(x*sqrt(a-x^2)+a*arcsin(x/sqrt(abs(a)))))",
         "f(1/x*1/sqrt(a-x^2),-1/sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/x),a>0)",
         "f(sqrt(a-x^2)/x,sqrt(a-x^2)-sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/x),a>0)",
         "f(x/sqrt(a-x^2),-sqrt(a-x^2))",
-        "f(x*sqrt(a-x^2),-1/3*sqrt((a-x^2)^3))",
-        "f(x^2*sqrt(a-x^2),-x/4*sqrt((a-x^2)^3)+1/8*a*(x*sqrt(a-x^2)+a*arcsin(x/sqrt(a))),a>0)",
-        "f(x^3*sqrt(a-x^2),(-1/5*x^2-2/15*a)*sqrt((a-x^2)^3),a>0)",
+        "f(x*sqrt(a-x^2),-1/3*(a-x^2)^(3/2))",
+        "f(x^2*sqrt(a-x^2),-x/4*(a-x^2)^(3/2)+1/8*a*(x*sqrt(a-x^2)+a*arcsin(x/sqrt(a))),a>0)",
+        "f(x^3*sqrt(a-x^2),(-1/5*x^2-2/15*a)*(a-x^2)^(3/2),a>0)",
         "f(x^2/sqrt(a-x^2),-x/2*sqrt(a-x^2)+a/2*arcsin(x/sqrt(a)),a>0)",
         "f(1/x^2*1/sqrt(a-x^2),-sqrt(a-x^2)/a/x,a>0)",
         "f(sqrt(a-x^2)/x^2,-sqrt(a-x^2)/x-arcsin(x/sqrt(a)),a>0)",
         "f(sqrt(a-x^2)/x^3,-1/2*sqrt(a-x^2)/x^2+1/2*log((sqrt(a)+sqrt(a-x^2))/x)/sqrt(a),a>0)",
-        "f(sqrt(a-x^2)/x^4,-1/3*sqrt((a-x^2)^3)/a/x^3,a>0)",
+        "f(sqrt(a-x^2)/x^4,-1/3*(a-x^2)^(3/2)/a/x^3,a>0)",
         "f(sqrt(a*x^2+b),x*sqrt(a*x^2+b)/2+b*log(x*sqrt(a)+sqrt(a*x^2+b))/2/sqrt(a),and(number(a>0),a>0))",
         "f(sqrt(a*x^2+b),x*sqrt(a*x^2+b)/2+b*arcsin(x*sqrt(-a/b))/2/sqrt(-a),and(number(a<0),a<0))",
         "f(sin(a*x),-cos(a*x)/a)",
@@ -8743,6 +10276,10 @@ FACTOR=${p8}`);
         "f(x^3*exp(a*x+b),exp(a*x+b)*x^3/a-3/a*integral(x^2*exp(a*x+b),x))"
       ];
       function Eval_integral(p1) {
+        return float_1.evalExactly(evalIntegral, p1);
+      }
+      exports.Eval_integral = Eval_integral;
+      function evalIntegral(p1) {
         misc_1.checkArgCount(p1, 1, Infinity);
         let n = 0;
         p1 = defs_1.cdr(p1);
@@ -8805,7 +10342,6 @@ FACTOR=${p8}`);
         }
         return F;
       }
-      exports.Eval_integral = Eval_integral;
       function realLogs(F, X) {
         const terms = defs_1.isadd(F) ? F.tail() : [F];
         return terms.reduce((acc, t) => add_1.add(acc, realLogTerm(t, X)), defs_1.Constants.zero);
@@ -8824,14 +10360,18 @@ FACTOR=${p8}`);
         const c = factors.filter((f) => f !== log).reduce(multiply_1.multiply, defs_1.Constants.one);
         return multiply_1.multiply(c, log_1.logarithm(abs_1.abs(u)));
       }
-      function integral(F, X) {
-        const q = quantity_1.mapQuantity(F, (magnitude) => integral(magnitude, X));
+      function integral(F, X, depth = 0) {
+        const q = quantity_1.mapQuantity(F, (magnitude) => integral(magnitude, X, depth));
         if (q) {
           return q;
         }
+        const real = integral_heuristic_1.realTrigReciprocal(F, X);
+        if (real !== void 0) {
+          return real;
+        }
         let integ;
         if (defs_1.isadd(F)) {
-          integ = integral_of_sum(F, X);
+          integ = integral_of_sum(F, X, depth);
         } else if (defs_1.ismultiply(F)) {
           integ = integral_of_product(F, X);
         } else {
@@ -8841,10 +10381,14 @@ FACTOR=${p8}`);
           if (isrationalfunction(F, X)) {
             const G = expand_1.apart(F, X);
             if (!misc_1.equal(G, F)) {
-              return integral(G, X);
+              return integral(G, X, depth);
             }
           }
-          run_1.stop("integral: sorry, could not find a solution");
+          const H = integral_heuristic_1.heuristicIntegral(F, X, depth);
+          if (H === void 0) {
+            run_1.stop("integral: sorry, could not find a solution");
+          }
+          integ = H;
         }
         return eval_1.Eval(simplify_1.simplify(integ));
       }
@@ -8853,11 +10397,11 @@ FACTOR=${p8}`);
         const ispoly = (p) => !find_1.Find(p, X) || is_1.ispolyfactoredorexpandedform(p, X);
         return ispoly(numerator_1.numerator(F)) && ispoly(denominator_1.denominator(F));
       }
-      function integral_of_sum(F, X) {
+      function integral_of_sum(F, X, depth) {
         F = defs_1.cdr(F);
-        let result = integral(defs_1.car(F), X);
+        let result = integral(defs_1.car(F), X, depth);
         if (defs_1.iscons(F)) {
-          result = F.tail().reduce((acc, b) => add_1.add(acc, integral(b, X)), result);
+          result = F.tail().reduce((acc, b) => add_1.add(acc, integral(b, X, depth)), result);
         }
         return result;
       }
@@ -9078,10 +10622,10 @@ FACTOR=${p8}`);
           "f(x/(a+b*x^4),1/4*sqrt(-b/a)/b*log((x^2-sqrt(-a/b))/(x^2+sqrt(-a/b))),a*b<0)"
         ],
         "0.450070": ["f(x^3/(a+b*x^4),1/4*1/b*log(a+b*x^4))"],
-        "1.448960": ["f(sqrt(a+b*x),2/3*1/b*sqrt((a+b*x)^3))"],
-        "1.384221": ["f(x*sqrt(a+b*x),-2*(2*a-3*b*x)*sqrt((a+b*x)^3)/15/b^2)"],
+        "1.448960": ["f(sqrt(a+b*x),2/3*1/b*(a+b*x)^(3/2))"],
+        "1.384221": ["f(x*sqrt(a+b*x),-2*(2*a-3*b*x)*(a+b*x)^(3/2)/15/b^2)"],
         "1.322374": [
-          "f(x^2*sqrt(a+b*x),2*(8*a^2-12*a*b*x+15*b^2*x^2)*sqrt((a+b*x)^3)/105/b^3)"
+          "f(x^2*sqrt(a+b*x),2*(8*a^2-12*a*b*x+15*b^2*x^2)*(a+b*x)^(3/2)/105/b^3)"
         ],
         "1.516728": [
           "f(sqrt(a+b*x)/x,2*sqrt(a+b*x)+a*integral(1/x*1/sqrt(a+b*x),x))"
@@ -9119,12 +10663,12 @@ FACTOR=${p8}`);
         ],
         "0.666120": ["f(x/sqrt(x^2+a),sqrt(x^2+a))", "f(x/sqrt(a-x^2),-sqrt(a-x^2))"],
         "1.370077": [
-          "f(x*sqrt(x^2+a),1/3*sqrt((x^2+a)^3))",
-          "f(x*sqrt(a-x^2),-1/3*sqrt((a-x^2)^3))"
+          "f(x*sqrt(x^2+a),1/3*(x^2+a)^(3/2))",
+          "f(x*sqrt(a-x^2),-1/3*(a-x^2)^(3/2))"
         ],
         "1.730087": [
-          "f(sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*sqrt((x^2+a^(1/3))^3)+3/2*a^(1/3)*x*sqrt(x^2+a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2+a^(1/3)))))",
-          "f(sqrt(-a+x^6-3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*sqrt((x^2-a^(1/3))^3)-3/2*a^(1/3)*x*sqrt(x^2-a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2-a^(1/3)))))"
+          "f(sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*(x^2+a^(1/3))^(3/2)+3/2*a^(1/3)*x*sqrt(x^2+a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2+a^(1/3)))))",
+          "f(sqrt(-a+x^6-3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*(x^2-a^(1/3))^(3/2)-3/2*a^(1/3)*x*sqrt(x^2-a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2-a^(1/3)))))"
         ],
         "0.578006": [
           "f(1/sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),x/a^(1/3)/sqrt(x^2+a^(1/3)))"
@@ -9133,25 +10677,25 @@ FACTOR=${p8}`);
           "f(x/sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),-1/sqrt(x^2+a^(1/3)))"
         ],
         "1.652787": [
-          "f(x*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/5*sqrt((x^2+a^(1/3))^5))"
+          "f(x*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/5*(x^2+a^(1/3))^(5/2))"
         ],
         "1.308862": [
-          "f(x^2*sqrt(x^2+a),1/4*x*sqrt((x^2+a)^3)-1/8*a*x*sqrt(x^2+a)-1/8*a^2*log(x+sqrt(x^2+a)))",
-          "f(x^2*sqrt(a-x^2),-x/4*sqrt((a-x^2)^3)+1/8*a*(x*sqrt(a-x^2)+a*arcsin(x/sqrt(a))),a>0)"
+          "f(x^2*sqrt(x^2+a),1/4*x*(x^2+a)^(3/2)-1/8*a*x*sqrt(x^2+a)-1/8*a^2*log(x+sqrt(x^2+a)))",
+          "f(x^2*sqrt(a-x^2),-x/4*(a-x^2)^(3/2)+1/8*a*(x*sqrt(a-x^2)+a*arcsin(x/sqrt(a))),a>0)"
         ],
         "1.342944": [
-          "f(x^3*sqrt(x^2+a),(1/5*x^2-2/15*a)*sqrt((x^2+a)^3),and(number(a>0),a>0))",
-          "f(x^3*sqrt(x^2+a),sqrt((x^2+a)^5)/5-a*sqrt((x^2+a)^3)/3,and(number(a<0),a<0))",
-          "f(x^3*sqrt(a-x^2),(-1/5*x^2-2/15*a)*sqrt((a-x^2)^3),a>0)",
+          "f(x^3*sqrt(x^2+a),(1/5*x^2-2/15*a)*(x^2+a)^(3/2),and(number(a>0),a>0))",
+          "f(x^3*sqrt(x^2+a),(x^2+a)^(5/2)/5-a*(x^2+a)^(3/2)/3,and(number(a<0),a<0))",
+          "f(x^3*sqrt(a-x^2),(-1/5*x^2-2/15*a)*(a-x^2)^(3/2),a>0)",
           "f(sqrt(a-x^2)/x^3,-1/2*sqrt(a-x^2)/x^2+1/2*log((sqrt(a)+sqrt(a-x^2))/x)/sqrt(a),a>0)",
-          "f(sqrt(a-x^2)/x^4,-1/3*sqrt((a-x^2)^3)/a/x^3,a>0)"
+          "f(sqrt(a-x^2)/x^4,-1/3*(a-x^2)^(3/2)/a/x^3,a>0)"
         ],
         "0.636358": [
           "f(x^2/sqrt(x^2+a),1/2*x*sqrt(x^2+a)-1/2*a*log(x+sqrt(x^2+a)))",
           "f(x^2/sqrt(a-x^2),-x/2*sqrt(a-x^2)+a/2*arcsin(x/sqrt(a)),a>0)"
         ],
         "0.652928": [
-          "f(x^3/sqrt(x^2+a),1/3*sqrt((x^2+a)^3)-a*sqrt(x^2+a))",
+          "f(x^3/sqrt(x^2+a),1/3*(x^2+a)^(3/2)-a*sqrt(x^2+a))",
           "f(1/x^3*1/sqrt(x^2+a),-1/2*sqrt(x^2+a)/a/x^2+1/2*log((sqrt(a)+sqrt(x^2+a))/x)/a^(3/2),a>0)",
           "f(1/x^3*1/sqrt(x^2-a),1/2*sqrt(x^2-a)/a/x^2+1/2*1/(a^(3/2))*arcsec(x/(a^(1/2))),a>0)"
         ],
@@ -9160,12 +10704,12 @@ FACTOR=${p8}`);
           "f(1/x^2*1/sqrt(a-x^2),-sqrt(a-x^2)/a/x,a>0)"
         ],
         "1.578940": [
-          "f(x^2*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/6*x*sqrt((x^2+a^(1/3))^5)-1/24*a^(1/3)*x*sqrt((x^2+a^(1/3))^3)-1/16*a^(2/3)*x*sqrt(x^2+a^(1/3))-1/16*a*log(x+sqrt(x^2+a^(1/3))),a>0)",
-          "f(x^2*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/6*x*sqrt((x^2-a^(1/3))^5)+1/24*a^(1/3)*x*sqrt((x^2-a^(1/3))^3)-1/16*a^(2/3)*x*sqrt(x^2-a^(1/3))+1/16*a*log(x+sqrt(x^2-a^(1/3))),a>0)"
+          "f(x^2*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/6*x*(x^2+a^(1/3))^(5/2)-1/24*a^(1/3)*x*(x^2+a^(1/3))^(3/2)-1/16*a^(2/3)*x*sqrt(x^2+a^(1/3))-1/16*a*log(x+sqrt(x^2+a^(1/3))),a>0)",
+          "f(x^2*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/6*x*(x^2-a^(1/3))^(5/2)+1/24*a^(1/3)*x*(x^2-a^(1/3))^(3/2)-1/16*a^(2/3)*x*sqrt(x^2-a^(1/3))+1/16*a*log(x+sqrt(x^2-a^(1/3))),a>0)"
         ],
         "1.620055": [
-          "f(x^3*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/7*sqrt((x^2+a^(1/3))^7)-1/5*a^(1/3)*sqrt((x^2+a^(1/3))^5),a>0)",
-          "f(x^3*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/7*sqrt((x^2-a^(1/3))^7)+1/5*a^(1/3)*sqrt((x^2-a^(1/3))^5),a>0)"
+          "f(x^3*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/7*(x^2+a^(1/3))^(7/2)-1/5*a^(1/3)*(x^2+a^(1/3))^(5/2),a>0)",
+          "f(x^3*sqrt(-a-3*a^(1/3)*x^4+3*a^(2/3)*x^2+x^6),1/7*(x^2-a^(1/3))^(7/2)+1/5*a^(1/3)*(x^2-a^(1/3))^(5/2),a>0)"
         ],
         "0.332117": [
           "f(1/(x-a)/sqrt(x^2-a^2),-sqrt(x^2-a^2)/a/(x-a))",
@@ -9374,6 +10918,7 @@ FACTOR=${p8}`);
       var misc_1 = require_misc();
       var add_1 = require_add();
       var besselj_1 = require_besselj();
+      var special_1 = require_special();
       var bessely_1 = require_bessely();
       var bignum_1 = require_bignum();
       var cos_1 = require_cos();
@@ -9550,6 +11095,10 @@ FACTOR=${p8}`);
         if (defs_1.car(p1) === symbol_1.symbol(defs_1.INTEGRAL) && defs_1.caddr(p1) === p2) {
           return derivative_of_integral(p1);
         }
+        const viaSpecial = special_1.specialDerivative(p1, (q) => derivative(q, p2));
+        if (viaSpecial !== void 0) {
+          return viaSpecial;
+        }
         return dfunction(p1, p2);
       }
       function dsum(p1, p2) {
@@ -9672,36 +11221,856 @@ FACTOR=${p8}`);
         return multiply_1.multiply(multiply_1.multiply(multiply_1.multiply(misc_1.exponential(multiply_1.multiply(power_1.power(defs_1.cadr(p1), bignum_1.integer(2)), defs_1.Constants.negOne)), power_1.power(defs_1.Constants.Pi(), bignum_1.rational(-1, 2))), bignum_1.integer(-2)), deriv);
       }
       function dbesselj(p1, p2) {
-        if (is_1.isZeroAtomOrTensor(defs_1.caddr(p1))) {
-          return dbesselj0(p1, p2);
-        }
-        return dbesseljn(p1, p2);
-      }
-      function dbesselj0(p1, p2) {
-        const deriv = derivative(defs_1.cadr(p1), p2);
-        return multiply_1.multiply(multiply_1.multiply(deriv, besselj_1.besselj(defs_1.cadr(p1), defs_1.Constants.one)), defs_1.Constants.negOne);
-      }
-      function dbesseljn(p1, p2) {
-        const deriv = derivative(defs_1.cadr(p1), p2);
-        return multiply_1.multiply(deriv, add_1.add(besselj_1.besselj(defs_1.cadr(p1), add_1.add(defs_1.caddr(p1), defs_1.Constants.negOne)), multiply_1.multiply(multiply_1.divide(multiply_1.multiply(defs_1.caddr(p1), defs_1.Constants.negOne), defs_1.cadr(p1)), besselj_1.besselj(defs_1.cadr(p1), defs_1.caddr(p1)))));
+        return dbessel(besselj_1.besselj, defs_1.cadr(p1), defs_1.caddr(p1), p2);
       }
       function dbessely(p1, p2) {
-        if (is_1.isZeroAtomOrTensor(defs_1.caddr(p1))) {
-          return dbessely0(p1, p2);
+        return dbessel(bessely_1.bessely, defs_1.cadr(p1), defs_1.caddr(p1), p2);
+      }
+      function dbessel(f, n, x, p2) {
+        const deriv = derivative(x, p2);
+        if (is_1.isZeroAtomOrTensor(n)) {
+          return multiply_1.negate(multiply_1.multiply(deriv, f(x, defs_1.Constants.one)));
         }
-        return dbesselyn(p1, p2);
-      }
-      function dbessely0(p1, p2) {
-        const deriv = derivative(defs_1.cadr(p1), p2);
-        return multiply_1.multiply(multiply_1.multiply(deriv, besselj_1.besselj(defs_1.cadr(p1), defs_1.Constants.one)), defs_1.Constants.negOne);
-      }
-      function dbesselyn(p1, p2) {
-        const deriv = derivative(defs_1.cadr(p1), p2);
-        return multiply_1.multiply(deriv, add_1.add(bessely_1.bessely(defs_1.cadr(p1), add_1.add(defs_1.caddr(p1), defs_1.Constants.negOne)), multiply_1.multiply(multiply_1.divide(multiply_1.multiply(defs_1.caddr(p1), defs_1.Constants.negOne), defs_1.cadr(p1)), bessely_1.bessely(defs_1.cadr(p1), defs_1.caddr(p1)))));
+        return multiply_1.multiply(deriv, add_1.subtract(f(x, add_1.subtract(n, defs_1.Constants.one)), multiply_1.multiply(multiply_1.divide(n, x), f(x, n))));
       }
       function derivative_of_integral(p1) {
         return defs_1.cadr(p1);
       }
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/rref.js
+  var require_rref = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/rref.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.matrix = exports.Eval_eigenvectors = exports.Eval_eigenvalues = exports.Eval_nullspace = exports.Eval_matrixrank = exports.Eval_rref = void 0;
+      var defs_1 = require_defs();
+      var alloc_1 = require_alloc();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var bignum_1 = require_bignum();
+      var det_1 = require_det();
+      var eval_1 = require_eval();
+      var is_1 = require_is();
+      var multiply_1 = require_multiply();
+      var roots_1 = require_roots();
+      var simplify_1 = require_simplify();
+      var tensor_1 = require_tensor();
+      function Eval_rref(p1) {
+        const [rows] = rowReduce(matrixArg(p1, "rref"));
+        return matrix(rows);
+      }
+      exports.Eval_rref = Eval_rref;
+      function Eval_matrixrank(p1) {
+        const [, pivots] = rowReduce(matrixArg(p1, "matrixrank"));
+        return bignum_1.integer(pivots.length);
+      }
+      exports.Eval_matrixrank = Eval_matrixrank;
+      function Eval_nullspace(p1) {
+        const M = matrixArg(p1, "nullspace");
+        const basis = nullBasis(M);
+        return matrix(basis.length ? basis : [new Array(M.dim[1]).fill(defs_1.Constants.zero)]);
+      }
+      exports.Eval_nullspace = Eval_nullspace;
+      function nullBasis(M) {
+        const n = M.dim[1];
+        const [rows, pivots] = rowReduce(M);
+        const basis = [];
+        for (let free = 0; free < n; free++) {
+          if (pivots.includes(free)) {
+            continue;
+          }
+          const v = new Array(n).fill(defs_1.Constants.zero);
+          v[free] = defs_1.Constants.one;
+          pivots.forEach((col, i) => v[col] = multiply_1.negate(rows[i][free]));
+          basis.push(v);
+        }
+        return basis;
+      }
+      function Eval_eigenvalues(p1) {
+        return list(eigenvalues(squareArg(p1, "eigenvalues")));
+      }
+      exports.Eval_eigenvalues = Eval_eigenvalues;
+      function Eval_eigenvectors(p1) {
+        const M = squareArg(p1, "eigenvectors");
+        return matrix([].concat(...eigenvalues(M).map((lambda) => nullBasis(shift(M, lambda)))));
+      }
+      exports.Eval_eigenvectors = Eval_eigenvectors;
+      function eigenvalues(M) {
+        const x = symbol_1.symbol(defs_1.SECRETX);
+        const r = roots_1.roots(det_1.det(shift(M, x)), x);
+        return defs_1.istensor(r) ? r.tensor.elem : [r];
+      }
+      function shift(M, lambda) {
+        const n = M.dim[0];
+        return matrix(Array.from({ length: n }, (_, i) => M.elem.slice(i * n, (i + 1) * n).map((e, j) => i === j ? add_1.subtract(e, lambda) : e)));
+      }
+      function squareArg(p1, name) {
+        const M = eval_1.Eval(defs_1.cadr(p1));
+        if (!defs_1.istensor(M) || M.ndim !== 2 || M.dim[0] !== M.dim[1]) {
+          run_1.stop(name + ": square matrix expected");
+        }
+        return M;
+      }
+      function list(elems) {
+        const T = alloc_1.alloc_tensor(elems.length);
+        T.ndim = 1;
+        T.dim = [elems.length];
+        T.elem = elems;
+        return T;
+      }
+      function matrixArg(p1, name) {
+        const M = eval_1.Eval(defs_1.cadr(p1));
+        if (!defs_1.istensor(M) || M.ndim !== 2) {
+          run_1.stop(name + ": matrix expected");
+        }
+        return M;
+      }
+      function matrix(rows) {
+        const n = rows[0].length;
+        const T = alloc_1.alloc_tensor(rows.length * n);
+        T.ndim = 2;
+        T.dim = [rows.length, n];
+        T.elem = [].concat(...rows);
+        tensor_1.check_tensor_dimensions(T);
+        return T;
+      }
+      exports.matrix = matrix;
+      function rowReduce(M) {
+        const tidy = (e) => defs_1.isNumericAtom(e) ? e : simplify_1.simplify(e);
+        const [m, n] = M.dim;
+        const R = [];
+        for (let i = 0; i < m; i++) {
+          R.push(M.elem.slice(i * n, (i + 1) * n));
+        }
+        const pivots = [];
+        for (let c = 0, r = 0; c < n && r < m; c++) {
+          const p = R.findIndex((row, i) => i >= r && !is_1.isZeroAtomOrTensor(row[c]));
+          if (p < 0) {
+            continue;
+          }
+          [R[r], R[p]] = [R[p], R[r]];
+          const pivot = R[r][c];
+          R[r] = R[r].map((e) => tidy(multiply_1.divide(e, pivot)));
+          for (let i = 0; i < m; i++) {
+            const f = R[i][c];
+            if (i !== r && !is_1.isZeroAtomOrTensor(f)) {
+              R[i] = R[i].map((e, j) => tidy(add_1.subtract(e, multiply_1.multiply(f, R[r][j]))));
+            }
+          }
+          pivots.push(c);
+          r++;
+        }
+        return [R, pivots];
+      }
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/linalg.js
+  var require_linalg = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/linalg.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.matrixExponential = exports.Eval_cholesky = exports.Eval_qr = exports.Eval_lu = exports.Eval_laplacian = exports.Eval_hessian = exports.Eval_jacobian = exports.Eval_norm = void 0;
+      var alloc_1 = require_alloc();
+      var defs_1 = require_defs();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var assume_1 = require_assume();
+      var bignum_1 = require_bignum();
+      var conj_1 = require_conj();
+      var det_1 = require_det();
+      var eval_1 = require_eval();
+      var factorial_1 = require_factorial();
+      var float_1 = require_float();
+      var inner_1 = require_inner();
+      var inv_1 = require_inv();
+      var is_1 = require_is();
+      var list_1 = require_list();
+      var misc_1 = require_misc();
+      var multiply_1 = require_multiply();
+      var power_1 = require_power();
+      var rref_1 = require_rref();
+      var simplify_1 = require_simplify();
+      function rowsOf(A) {
+        const [n, m] = A.dim;
+        return Array.from({ length: n }, (_, i) => A.elem.slice(i * m, (i + 1) * m));
+      }
+      function squareArg(p1, fn) {
+        const A = eval_1.Eval(defs_1.cadr(p1));
+        if (!defs_1.istensor(A) || A.ndim !== 2 || A.dim[0] !== A.dim[1]) {
+          run_1.stop(`${fn}: square matrix expected`);
+        }
+        return A;
+      }
+      function identity(n) {
+        return Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_2, j) => i === j ? defs_1.Constants.one : defs_1.Constants.zero));
+      }
+      function stack(mats) {
+        const T = alloc_1.alloc_tensor(mats.length * mats[0].nelem);
+        T.ndim = 3;
+        T.dim = [mats.length, ...mats[0].dim];
+        T.elem = [].concat(...mats.map((m) => m.elem));
+        return T;
+      }
+      var sum = (terms) => terms.reduce(add_1.add, defs_1.Constants.zero);
+      function Eval_norm(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const A = eval_1.Eval(defs_1.cadr(p1));
+        const elems = defs_1.istensor(A) ? A.elem : [A];
+        return simplify_1.simplify(power_1.power(sum(elems.map((el) => multiply_1.multiply(el, conj_1.conjugate(el)))), bignum_1.rational(1, 2)));
+      }
+      exports.Eval_norm = Eval_norm;
+      var d = (f, x) => eval_1.Eval(list_1.makeList(symbol_1.symbol(defs_1.DERIVATIVE), f, x));
+      function Eval_jacobian(p1) {
+        misc_1.checkArgCount(p1, 2);
+        return d(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+      }
+      exports.Eval_jacobian = Eval_jacobian;
+      function Eval_hessian(p1) {
+        misc_1.checkArgCount(p1, 2);
+        const vars = eval_1.Eval(defs_1.caddr(p1));
+        return d(d(eval_1.Eval(defs_1.cadr(p1)), vars), vars);
+      }
+      exports.Eval_hessian = Eval_hessian;
+      function Eval_laplacian(p1) {
+        misc_1.checkArgCount(p1, 2);
+        const f = eval_1.Eval(defs_1.cadr(p1));
+        const vars = eval_1.Eval(defs_1.caddr(p1));
+        return sum((defs_1.istensor(vars) ? vars.elem : [vars]).map((v) => d(d(f, v), v)));
+      }
+      exports.Eval_laplacian = Eval_laplacian;
+      function Eval_lu(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const A = squareArg(p1, "lu");
+        const n = A.dim[0];
+        const Um = rowsOf(A);
+        const L = identity(n);
+        const P = identity(n);
+        for (let k = 0; k < n; k++) {
+          const pivot = Um.findIndex((row, i) => i >= k && !is_1.isZeroAtomOrTensor(simplify_1.simplify(row[k])));
+          if (pivot < 0) {
+            run_1.stop("lu: the matrix is singular");
+          }
+          if (pivot !== k) {
+            [Um[k], Um[pivot]] = [Um[pivot], Um[k]];
+            [P[k], P[pivot]] = [P[pivot], P[k]];
+            for (let j = 0; j < k; j++) {
+              [L[k][j], L[pivot][j]] = [L[pivot][j], L[k][j]];
+            }
+          }
+          for (let i = k + 1; i < n; i++) {
+            const factor = simplify_1.simplify(multiply_1.divide(Um[i][k], Um[k][k]));
+            L[i][k] = factor;
+            Um[i] = Um[i].map((v, j) => simplify_1.simplify(add_1.subtract(v, multiply_1.multiply(factor, Um[k][j]))));
+          }
+        }
+        return stack([rref_1.matrix(L), rref_1.matrix(Um), rref_1.matrix(P)]);
+      }
+      exports.Eval_lu = Eval_lu;
+      function Eval_qr(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const A = squareArg(p1, "qr");
+        const n = A.dim[0];
+        const rows = rowsOf(A);
+        const column = (j) => rows.map((r) => r[j]);
+        const dot = (u, v) => sum(u.map((x, i) => multiply_1.multiply(conj_1.conjugate(x), v[i])));
+        const Q = [];
+        for (let j = 0; j < n; j++) {
+          let u = column(j);
+          for (const q of Q) {
+            const c = dot(q, column(j));
+            u = u.map((x, i) => add_1.subtract(x, multiply_1.multiply(c, q[i])));
+          }
+          const len = simplify_1.simplify(power_1.power(dot(u, u), bignum_1.rational(1, 2)));
+          if (is_1.isZeroAtomOrTensor(len)) {
+            run_1.stop("qr: the columns are linearly dependent");
+          }
+          Q.push(u.map((x) => simplify_1.simplify(multiply_1.divide(x, len))));
+        }
+        const Qm = rref_1.matrix(rows.map((_, i) => Q.map((q) => q[i])));
+        const R = rref_1.matrix(Q.map((q) => rows[0].map((_, j) => simplify_1.simplify(dot(q, column(j))))));
+        return stack([Qm, R]);
+      }
+      exports.Eval_qr = Eval_qr;
+      function Eval_cholesky(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const A = squareArg(p1, "cholesky");
+        const n = A.dim[0];
+        const a = rowsOf(A);
+        const L = identity(n).map((r) => r.map(() => defs_1.Constants.zero));
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j <= i; j++) {
+            if (!misc_1.equal(a[i][j], a[j][i])) {
+              run_1.stop("cholesky: the matrix is not symmetric");
+            }
+            const s = sum(Array.from({ length: j }, (_, k) => multiply_1.multiply(L[i][k], L[j][k])));
+            const rest = simplify_1.simplify(add_1.subtract(a[i][j], s));
+            if (i === j) {
+              const f = float_1.zzfloat(rest);
+              if (defs_1.isdouble(f) ? f.d <= 0 : assume_1.isPositive(rest) !== true) {
+                run_1.stop("cholesky: the matrix is not positive definite");
+              }
+              L[i][j] = simplify_1.simplify(power_1.power(rest, bignum_1.rational(1, 2)));
+            } else {
+              L[i][j] = simplify_1.simplify(multiply_1.divide(rest, L[j][j]));
+            }
+          }
+        }
+        return rref_1.matrix(L);
+      }
+      exports.Eval_cholesky = Eval_cholesky;
+      function matrixExponential(A) {
+        if (A.ndim !== 2 || A.dim[0] !== A.dim[1]) {
+          run_1.stop("exp: square matrix expected");
+        }
+        const n = A.dim[0];
+        let term = rref_1.matrix(identity(n));
+        let series = term;
+        for (let k = 1; k <= n; k++) {
+          term = inner_1.inner(term, A);
+          if (is_1.isZeroAtomOrTensor(term)) {
+            return series;
+          }
+          series = add_1.add(series, multiply_1.divide(term, factorial_1.factorial(bignum_1.integer(k))));
+        }
+        const values = eval_1.Eval(list_1.makeList(symbol_1.symbol("eigenvalues"), A));
+        const vectors = eval_1.Eval(list_1.makeList(symbol_1.symbol("eigenvectors"), A));
+        if (!defs_1.istensor(values) || !defs_1.istensor(vectors) || vectors.dim[0] !== n) {
+          run_1.stop("exp: the matrix is not diagonalizable");
+        }
+        const vrows = rowsOf(vectors);
+        const P = rref_1.matrix(vrows[0].map((_, i) => vrows.map((v) => v[i])));
+        if (is_1.isZeroAtomOrTensor(simplify_1.simplify(det_1.det(P)))) {
+          run_1.stop("exp: the matrix is not diagonalizable");
+        }
+        const D = rref_1.matrix(identity(n).map((r, i) => r.map((_, j) => i === j ? power_1.power(symbol_1.symbol(defs_1.E), values.elem[i]) : defs_1.Constants.zero)));
+        return simplify_1.simplify(inner_1.inner(inner_1.inner(P, D), inv_1.inv(P)));
+      }
+      exports.matrixExponential = matrixExponential;
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/lists.js
+  var require_lists = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/lists.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.Eval_map = exports.Eval_table = exports.Eval_range = exports.Eval_sort = exports.Eval_append = exports.Eval_length = void 0;
+      var defs_1 = require_defs();
+      var alloc_1 = require_alloc();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var bignum_1 = require_bignum();
+      var eval_1 = require_eval();
+      var float_1 = require_float();
+      var list_1 = require_list();
+      var misc_1 = require_misc();
+      var scan_1 = require_scan();
+      function items(p) {
+        if (!defs_1.istensor(p)) {
+          return [p];
+        }
+        if (p.ndim === 1) {
+          return p.elem;
+        }
+        const size = p.nelem / p.dim[0];
+        return Array.from({ length: p.dim[0] }, (_, i) => {
+          const row = alloc_1.alloc_tensor(size);
+          row.ndim = p.ndim - 1;
+          row.dim = p.dim.slice(1);
+          row.elem = p.elem.slice(i * size, (i + 1) * size);
+          return row;
+        });
+      }
+      function Eval_length(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const p = eval_1.Eval(defs_1.cadr(p1));
+        return bignum_1.integer(defs_1.istensor(p) ? p.dim[0] : 1);
+      }
+      exports.Eval_length = Eval_length;
+      function Eval_append(p1) {
+        const all = [];
+        for (let p = defs_1.cdr(p1); defs_1.iscons(p); p = defs_1.cdr(p)) {
+          all.push(...items(eval_1.Eval(defs_1.car(p))));
+        }
+        return scan_1.build_tensor(all);
+      }
+      exports.Eval_append = Eval_append;
+      function Eval_sort(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const list = items(eval_1.Eval(defs_1.cadr(p1)));
+        const values = list.map((p) => {
+          const f = float_1.zzfloat(p);
+          return defs_1.isdouble(f) ? f.d : NaN;
+        });
+        const numeric = values.every((v) => !Number.isNaN(v));
+        const order = list.map((_, i) => i);
+        order.sort((i, j) => numeric ? values[i] - values[j] : misc_1.cmp_expr(list[i], list[j]));
+        return scan_1.build_tensor(order.map((i) => list[i]));
+      }
+      exports.Eval_sort = Eval_sort;
+      function Eval_range(p1) {
+        misc_1.checkArgCount(p1, 1, 3);
+        const args = [defs_1.cadr(p1), defs_1.caddr(p1), defs_1.cadddr(p1)].filter((p) => p !== symbol_1.symbol(defs_1.NIL)).map(eval_1.Eval);
+        const [a, b, step] = args.length === 1 ? [defs_1.Constants.one, args[0], defs_1.Constants.one] : [args[0], args[1], args[2] || defs_1.Constants.one];
+        const num = (p) => {
+          const f = float_1.zzfloat(p);
+          return defs_1.isdouble(f) ? f.d : NaN;
+        };
+        const s = num(step);
+        if ([num(a), num(b), s].some(Number.isNaN) || s === 0) {
+          return list_1.makeList(symbol_1.usr_symbol("range"), ...args);
+        }
+        const result = [];
+        for (let v = a; s > 0 ? num(v) <= num(b) + 1e-12 : num(v) >= num(b) - 1e-12; v = add_1.add(v, step)) {
+          result.push(v);
+          if (result.length > 1e6) {
+            run_1.stop("range: too many elements");
+          }
+        }
+        return scan_1.build_tensor(result);
+      }
+      exports.Eval_range = Eval_range;
+      function Eval_table(p1) {
+        misc_1.checkArgCount(p1, 4);
+        const body = defs_1.cadr(p1);
+        const index = defs_1.caddr(p1);
+        if (!defs_1.issymbol(index)) {
+          run_1.stop("table: 2nd argument must be the index variable");
+        }
+        const a = eval_1.evaluate_integer(defs_1.cadddr(p1));
+        const b = eval_1.evaluate_integer(defs_1.cadr(defs_1.cdr(defs_1.cdr(defs_1.cdr(p1)))));
+        if (isNaN(a) || isNaN(b)) {
+          return p1;
+        }
+        const saved = symbol_1.get_binding(index);
+        const result = [];
+        try {
+          for (let i = a; i <= b; i++) {
+            symbol_1.set_binding(index, bignum_1.integer(i));
+            result.push(eval_1.Eval(body));
+          }
+        } finally {
+          symbol_1.set_binding(index, saved);
+        }
+        return scan_1.build_tensor(result);
+      }
+      exports.Eval_table = Eval_table;
+      function Eval_map(p1) {
+        misc_1.checkArgCount(p1, 2);
+        const f = defs_1.cadr(p1);
+        const list = eval_1.Eval(defs_1.caddr(p1));
+        return scan_1.build_tensor(items(list).map((el) => eval_1.Eval(list_1.makeList(f, el))));
+      }
+      exports.Eval_map = Eval_map;
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/numbers.js
+  var require_numbers = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/numbers.js"(exports) {
+      "use strict";
+      var __importDefault = exports && exports.__importDefault || function(mod) {
+        return mod && mod.__esModule ? mod : { "default": mod };
+      };
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.Eval_primes = exports.Eval_nextprime = exports.Eval_powermod = exports.Eval_totient = exports.Eval_harmonic = exports.Eval_fibonacci = void 0;
+      var big_integer_1 = __importDefault(require_BigInteger());
+      var defs_1 = require_defs();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var bignum_1 = require_bignum();
+      var eval_1 = require_eval();
+      var is_1 = require_is();
+      var list_1 = require_list();
+      var misc_1 = require_misc();
+      var mprime_1 = require_mprime();
+      var multiply_1 = require_multiply();
+      var pollard_1 = require_pollard();
+      var scan_1 = require_scan();
+      function integerArg(p) {
+        return is_1.isinteger(p) ? p.a : void 0;
+      }
+      function Eval_fibonacci(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const arg = eval_1.Eval(defs_1.cadr(p1));
+        const n = bignum_1.nativeInt(arg);
+        if (isNaN(n) || n < 0) {
+          return list_1.makeList(symbol_1.usr_symbol("fibonacci"), arg);
+        }
+        const fib = (k) => {
+          if (k === 0) {
+            return [big_integer_1.default.zero, big_integer_1.default.one];
+          }
+          const [a, b] = fib(Math.floor(k / 2));
+          const c = a.multiply(b.multiply(2).subtract(a));
+          const d = a.multiply(a).add(b.multiply(b));
+          return k % 2 === 0 ? [c, d] : [d, c.add(d)];
+        };
+        return new defs_1.Num(fib(n)[0]);
+      }
+      exports.Eval_fibonacci = Eval_fibonacci;
+      function Eval_harmonic(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const arg = eval_1.Eval(defs_1.cadr(p1));
+        const n = bignum_1.nativeInt(arg);
+        if (isNaN(n) || n < 0) {
+          return list_1.makeList(symbol_1.usr_symbol("harmonic"), arg);
+        }
+        let sum = defs_1.Constants.zero;
+        for (let k = 1; k <= n; k++) {
+          sum = add_1.add(sum, bignum_1.rational(1, k));
+        }
+        return sum;
+      }
+      exports.Eval_harmonic = Eval_harmonic;
+      function Eval_totient(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const arg = eval_1.Eval(defs_1.cadr(p1));
+        const n = integerArg(arg);
+        if (n === void 0 || !n.isPositive()) {
+          return list_1.makeList(symbol_1.usr_symbol("totient"), arg);
+        }
+        if (n.equals(1)) {
+          return defs_1.Constants.one;
+        }
+        const f = pollard_1.factor_number(arg);
+        const factors = defs_1.ismultiply(f) ? f.tail() : [f];
+        return factors.reduce((acc, t) => {
+          const p = defs_1.ispower(t) ? defs_1.cadr(t) : t;
+          return multiply_1.divide(multiply_1.multiply(acc, add_1.add(p, defs_1.Constants.negOne)), p);
+        }, arg);
+      }
+      exports.Eval_totient = Eval_totient;
+      function Eval_powermod(p1) {
+        misc_1.checkArgCount(p1, 3);
+        const args = [defs_1.cadr(p1), defs_1.caddr(p1), defs_1.cadddr(p1)].map(eval_1.Eval);
+        const [a, b, m] = args.map(integerArg);
+        if (a === void 0 || b === void 0 || m === void 0 || !m.isPositive()) {
+          return list_1.makeList(symbol_1.usr_symbol("powermod"), ...args);
+        }
+        let base = a;
+        if (b.isNegative()) {
+          if (!big_integer_1.default.gcd(a, m).equals(1)) {
+            run_1.stop(`powermod: ${a} has no inverse modulo ${m}`);
+          }
+          base = a.modInv(m);
+        }
+        const r = base.modPow(b.abs(), m);
+        return new defs_1.Num(r.isNegative() ? r.add(m) : r);
+      }
+      exports.Eval_powermod = Eval_powermod;
+      function Eval_nextprime(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const arg = eval_1.Eval(defs_1.cadr(p1));
+        let n = integerArg(arg);
+        if (n === void 0) {
+          return list_1.makeList(symbol_1.usr_symbol("nextprime"), arg);
+        }
+        n = n.lesser(1) ? big_integer_1.default(2) : n.add(1);
+        while (!mprime_1.mprime(n)) {
+          n = n.add(1);
+        }
+        return new defs_1.Num(n);
+      }
+      exports.Eval_nextprime = Eval_nextprime;
+      function Eval_primes(p1) {
+        misc_1.checkArgCount(p1, 1);
+        const arg = eval_1.Eval(defs_1.cadr(p1));
+        const n = bignum_1.nativeInt(arg);
+        if (isNaN(n)) {
+          return list_1.makeList(symbol_1.usr_symbol("primes"), arg);
+        }
+        if (n > 1e7) {
+          run_1.stop("primes: at most up to 10^7");
+        }
+        const composite = new Uint8Array(Math.max(n + 1, 2));
+        const result = [];
+        for (let i = 2; i <= n; i++) {
+          if (!composite[i]) {
+            result.push(bignum_1.integer(i));
+            for (let j = i * i; j <= n; j += i) {
+              composite[j] = 1;
+            }
+          }
+        }
+        return scan_1.build_tensor(result);
+      }
+      exports.Eval_primes = Eval_primes;
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/test.js
+  var require_test = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/test.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.cmp_values = exports.Eval_or = exports.Eval_and = exports.Eval_not = exports.Eval_testlt = exports.Eval_testle = exports.Eval_testgt = exports.Eval_testge = exports.Eval_testeq = exports.Eval_test = void 0;
+      var assume_1 = require_assume();
+      var defs_1 = require_defs();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var eval_1 = require_eval();
+      var float_1 = require_float();
+      var is_1 = require_is();
+      var misc_1 = require_misc();
+      var quantity_1 = require_quantity();
+      var simplify_1 = require_simplify();
+      function Eval_test(p1) {
+        const orig = p1;
+        p1 = defs_1.cdr(p1);
+        while (defs_1.iscons(p1)) {
+          if (defs_1.cdr(p1) === symbol_1.symbol(defs_1.NIL)) {
+            return eval_1.Eval(defs_1.car(p1));
+          }
+          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(p1));
+          if (checkResult == null) {
+            return orig;
+          } else if (checkResult) {
+            return eval_1.Eval(defs_1.cadr(p1));
+          } else {
+            p1 = defs_1.cddr(p1);
+          }
+        }
+        return defs_1.Constants.zero;
+      }
+      exports.Eval_test = Eval_test;
+      function Eval_testeq(p1) {
+        const orig = p1;
+        const lhs = eval_1.Eval(defs_1.cadr(p1));
+        const rhs = eval_1.Eval(defs_1.caddr(p1));
+        if (misc_1.equal(lhs, rhs)) {
+          return defs_1.Constants.one;
+        }
+        let subtractionResult = add_1.subtract(lhs, rhs);
+        let checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(subtractionResult);
+        if (checkResult) {
+          return defs_1.Constants.zero;
+        } else if (checkResult != null && !checkResult) {
+          return defs_1.Constants.one;
+        }
+        const arg1 = simplify_1.simplify(eval_1.Eval(defs_1.cadr(p1)));
+        const arg2 = simplify_1.simplify(eval_1.Eval(defs_1.caddr(p1)));
+        subtractionResult = add_1.subtract(arg1, arg2);
+        checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(subtractionResult);
+        if (checkResult) {
+          return defs_1.Constants.zero;
+        } else if (checkResult != null && !checkResult) {
+          return defs_1.Constants.one;
+        }
+        return orig;
+      }
+      exports.Eval_testeq = Eval_testeq;
+      function Eval_testge(p1) {
+        const orig = p1;
+        const comparison = cmp_args(p1);
+        if (comparison == null) {
+          return orig;
+        }
+        if (comparison >= 0) {
+          return defs_1.Constants.one;
+        } else {
+          return defs_1.Constants.zero;
+        }
+      }
+      exports.Eval_testge = Eval_testge;
+      function Eval_testgt(p1) {
+        const orig = p1;
+        const comparison = cmp_args(p1);
+        if (comparison == null) {
+          return orig;
+        }
+        if (comparison > 0) {
+          return defs_1.Constants.one;
+        } else {
+          return defs_1.Constants.zero;
+        }
+      }
+      exports.Eval_testgt = Eval_testgt;
+      function Eval_testle(p1) {
+        const orig = p1;
+        const comparison = cmp_args(p1);
+        if (comparison == null) {
+          return orig;
+        }
+        if (comparison <= 0) {
+          return defs_1.Constants.one;
+        } else {
+          return defs_1.Constants.zero;
+        }
+      }
+      exports.Eval_testle = Eval_testle;
+      function Eval_testlt(p1) {
+        const orig = p1;
+        const comparison = cmp_args(p1);
+        if (comparison == null) {
+          return orig;
+        }
+        if (comparison < 0) {
+          return defs_1.Constants.one;
+        } else {
+          return defs_1.Constants.zero;
+        }
+      }
+      exports.Eval_testlt = Eval_testlt;
+      function Eval_not(p1) {
+        const wholeAndExpression = p1;
+        const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.cadr(p1));
+        if (checkResult == null) {
+          return wholeAndExpression;
+        } else if (checkResult) {
+          return defs_1.Constants.zero;
+        } else {
+          return defs_1.Constants.one;
+        }
+      }
+      exports.Eval_not = Eval_not;
+      function Eval_and(p1) {
+        const wholeAndExpression = p1;
+        let andPredicates = defs_1.cdr(wholeAndExpression);
+        let somePredicateUnknown = false;
+        while (defs_1.iscons(andPredicates)) {
+          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(andPredicates));
+          if (checkResult == null) {
+            somePredicateUnknown = true;
+            andPredicates = defs_1.cdr(andPredicates);
+          } else if (checkResult) {
+            andPredicates = defs_1.cdr(andPredicates);
+          } else if (!checkResult) {
+            return defs_1.Constants.zero;
+          }
+        }
+        if (somePredicateUnknown) {
+          return wholeAndExpression;
+        } else {
+          return defs_1.Constants.one;
+        }
+      }
+      exports.Eval_and = Eval_and;
+      function Eval_or(p1) {
+        const wholeOrExpression = p1;
+        let orPredicates = defs_1.cdr(wholeOrExpression);
+        let somePredicateUnknown = false;
+        while (defs_1.iscons(orPredicates)) {
+          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(orPredicates));
+          if (checkResult == null) {
+            somePredicateUnknown = true;
+            orPredicates = defs_1.cdr(orPredicates);
+          } else if (checkResult) {
+            return defs_1.Constants.one;
+          } else if (!checkResult) {
+            orPredicates = defs_1.cdr(orPredicates);
+          }
+        }
+        if (somePredicateUnknown) {
+          return wholeOrExpression;
+        } else {
+          return defs_1.Constants.zero;
+        }
+      }
+      exports.Eval_or = Eval_or;
+      function cmp_args(p1) {
+        return cmp_values(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
+      }
+      function cmp_values(arg1, arg2) {
+        if (misc_1.equal(arg1, arg2)) {
+          return 0;
+        }
+        let t = 0;
+        let p1 = add_1.subtract(simplify_1.simplify(arg1), simplify_1.simplify(arg2));
+        if (quantity_1.isQuantity(p1)) {
+          p1 = defs_1.cadr(p1);
+        }
+        const difference = p1;
+        if (p1.k !== defs_1.NUM && p1.k !== defs_1.DOUBLE) {
+          p1 = eval_1.Eval(float_1.yyfloat(p1));
+        }
+        if (is_1.isZeroAtomOrTensor(p1)) {
+          return 0;
+        }
+        switch (p1.k) {
+          case defs_1.NUM:
+            if (defs_1.MSIGN(p1.q.a) === -1) {
+              t = -1;
+            } else {
+              t = 1;
+            }
+            break;
+          case defs_1.DOUBLE:
+            if (p1.d < 0) {
+              t = -1;
+            } else {
+              t = 1;
+            }
+            break;
+          default: {
+            const known = assume_1.facts(difference);
+            t = known.positive ? 1 : known.negative ? -1 : known.zero ? 0 : null;
+          }
+        }
+        return t;
+      }
+      exports.cmp_values = cmp_values;
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/soft_builtins.js
+  var require_soft_builtins = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/soft_builtins.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.softBuiltin = void 0;
+      var gamma_1 = require_gamma();
+      var linalg_1 = require_linalg();
+      var lists_1 = require_lists();
+      var numbers_1 = require_numbers();
+      var special_1 = require_special();
+      var test_1 = require_test();
+      var zeta_1 = require_zeta();
+      var table;
+      function softBuiltin(name) {
+        if (!table) {
+          table = {
+            gamma: gamma_1.Eval_gamma,
+            zeta: zeta_1.Eval_zeta,
+            bernoulli: zeta_1.Eval_bernoulli,
+            beta: special_1.Eval_beta,
+            chebyshevt: special_1.evalChebyshev("chebyshevt"),
+            chebyshevu: special_1.evalChebyshev("chebyshevu"),
+            cfrac: special_1.Eval_cfrac,
+            fibonacci: numbers_1.Eval_fibonacci,
+            harmonic: numbers_1.Eval_harmonic,
+            totient: numbers_1.Eval_totient,
+            powermod: numbers_1.Eval_powermod,
+            nextprime: numbers_1.Eval_nextprime,
+            primes: numbers_1.Eval_primes,
+            norm: linalg_1.Eval_norm,
+            jacobian: linalg_1.Eval_jacobian,
+            gradient: linalg_1.Eval_jacobian,
+            hessian: linalg_1.Eval_hessian,
+            laplacian: linalg_1.Eval_laplacian,
+            lu: linalg_1.Eval_lu,
+            qr: linalg_1.Eval_qr,
+            cholesky: linalg_1.Eval_cholesky,
+            length: lists_1.Eval_length,
+            append: lists_1.Eval_append,
+            sort: lists_1.Eval_sort,
+            range: lists_1.Eval_range,
+            table: lists_1.Eval_table,
+            map: lists_1.Eval_map,
+            if: test_1.Eval_test
+          };
+          Object.keys(special_1.SPECIAL).forEach((name2) => table[name2] = special_1.evalSpecial(name2));
+        }
+        return Object.prototype.hasOwnProperty.call(table, name) ? table[name] : void 0;
+      }
+      exports.softBuiltin = softBuiltin;
     }
   });
 
@@ -9715,6 +12084,7 @@ FACTOR=${p8}`);
       var run_1 = require_run();
       var symbol_1 = require_symbol();
       var derivative_1 = require_derivative();
+      var soft_builtins_1 = require_soft_builtins();
       var eval_1 = require_eval();
       var list_1 = require_list();
       var tensor_1 = require_tensor();
@@ -9724,6 +12094,13 @@ FACTOR=${p8}`);
         }
         if (defs_1.car(p1) === symbol_1.symbol(defs_1.SYMBOL_D) && symbol_1.get_binding(symbol_1.symbol(defs_1.SYMBOL_D)) === symbol_1.symbol(defs_1.SYMBOL_D)) {
           return derivative_1.Eval_derivative(p1);
+        }
+        const fn = defs_1.car(p1);
+        if (defs_1.issymbol(fn) && symbol_1.get_binding(fn) === fn) {
+          const soft = soft_builtins_1.softBuiltin(fn.printname);
+          if (soft) {
+            return soft(p1);
+          }
         }
         const bodyAndFormalArguments = eval_1.Eval(defs_1.car(p1));
         if (defs_1.isNumericAtom(bodyAndFormalArguments)) {
@@ -9826,6 +12203,7 @@ FACTOR=${p8}`);
       var subst_1 = require_subst();
       var tensor_1 = require_tensor();
       var userfunc_1 = require_userfunc();
+      var linalg_1 = require_linalg();
       function evaluate_integer(p) {
         return bignum_1.nativeInt(Eval(p));
       }
@@ -9963,7 +12341,11 @@ FACTOR=${p8}`);
       }
       exports.Eval_Eval = Eval_Eval;
       function Eval_exp(p1) {
-        return misc_1.exponential(quantity_1.requireDimensionless(Eval(defs_1.cadr(p1)), "exp"));
+        const arg = Eval(defs_1.cadr(p1));
+        if (defs_1.istensor(arg) && arg.ndim === 2) {
+          return linalg_1.matrixExponential(arg);
+        }
+        return misc_1.exponential(quantity_1.requireDimensionless(arg, "exp"));
       }
       exports.Eval_exp = Eval_exp;
       function Eval_factorial(p1) {
@@ -11500,7 +13882,7 @@ FACTOR=${p8}`);
             }
             break;
           case defs_1.DOUBLE:
-            aAsString = otherCFunctions_1.doubleToReasonableString(p.d);
+            aAsString = otherCFunctions_1.doubleToReasonableString(p.d, p.bigRepr);
             if (!signed) {
               if (aAsString[0] === "-") {
                 aAsString = aAsString.substring(1);
@@ -12792,6 +15174,7 @@ FACTOR=${p8}`);
       var eval_1 = require_eval();
       var is_1 = require_is();
       var list_1 = require_list();
+      var sin_1 = require_sin();
       var multiply_1 = require_multiply();
       var add_1 = require_add();
       var quantity_1 = require_quantity();
@@ -12826,6 +15209,10 @@ FACTOR=${p8}`);
         }
         if (is_1.isMinusSqrtThreeOverTwo(x)) {
           return defs_1.defs.evaluatingAsFloats ? bignum_1.double(5 * Math.PI / 6) : multiply_1.multiply(bignum_1.rational(5, 6), symbol_1.symbol(defs_1.PI));
+        }
+        const degrees = sin_1.specialSineAngle(x);
+        if (degrees !== void 0) {
+          return multiply_1.multiply(multiply_1.divide(bignum_1.integer(90 - degrees), bignum_1.integer(180)), symbol_1.symbol(defs_1.PI));
         }
         if (!defs_1.isrational(x)) {
           return list_1.makeList(symbol_1.symbol(defs_1.ARCCOS), x);
@@ -12905,6 +15292,7 @@ FACTOR=${p8}`);
       var eval_1 = require_eval();
       var is_1 = require_is();
       var list_1 = require_list();
+      var sin_1 = require_sin();
       var multiply_1 = require_multiply();
       var add_1 = require_add();
       var quantity_1 = require_quantity();
@@ -12938,6 +15326,10 @@ FACTOR=${p8}`);
         }
         if (is_1.isMinusSqrtThreeOverTwo(x)) {
           return defs_1.defs.evaluatingAsFloats ? bignum_1.double(-Math.PI / 3) : multiply_1.multiply(bignum_1.rational(-1, 3), symbol_1.symbol(defs_1.PI));
+        }
+        const degrees = sin_1.specialSineAngle(x);
+        if (degrees !== void 0) {
+          return multiply_1.multiply(multiply_1.divide(bignum_1.integer(degrees), bignum_1.integer(180)), symbol_1.symbol(defs_1.PI));
         }
         if (!defs_1.isrational(x)) {
           return list_1.makeList(symbol_1.symbol(defs_1.ARCSIN), x);
@@ -13422,6 +15814,9 @@ FACTOR=${p8}`);
       var denominator_1 = require_denominator();
       var float_1 = require_float();
       var is_1 = require_is();
+      var add_1 = require_add();
+      var log_1 = require_log();
+      var power_1 = require_power();
       var list_1 = require_list();
       var misc_1 = require_misc();
       var multiply_1 = require_multiply();
@@ -13456,10 +15851,14 @@ FACTOR=${p8}`);
         const X = eval_1.Eval(defs_1.caddr(p1));
         const A = eval_1.Eval(defs_1.cadddr(p1));
         let sides = [-1, 1];
-        if (defs_1.caddddr(p1) !== symbol_1.symbol(defs_1.NIL)) {
-          const direction = eval_1.Eval(defs_1.caddddr(p1));
+        const side = defs_1.caddddr(p1);
+        const sideName = defs_1.issymbol(side) ? side.printname : "";
+        if (sideName === "left" || sideName === "right") {
+          sides = [sideName === "left" ? -1 : 1];
+        } else if (side !== symbol_1.symbol(defs_1.NIL)) {
+          const direction = eval_1.Eval(side);
           if (!defs_1.isNumericAtom(direction) || is_1.isZeroAtomOrTensor(direction)) {
-            run_1.stop("limit: 4th argument must be a positive or negative number");
+            run_1.stop("limit: 4th argument must be left, right or a positive or negative number");
           }
           sides = [is_1.isnegativenumber(direction) ? -1 : 1];
         }
@@ -13468,6 +15867,92 @@ FACTOR=${p8}`);
       exports.Eval_limit = Eval_limit;
       var VANISHING_DENOMINATOR = "limit: denominator vanishes while numerator does not \u2014 limit is infinite or does not exist";
       function limit(F, X, A, sides = [-1, 1]) {
+        const viaExp = powerLimit(F, X, A, sides);
+        if (viaExp !== void 0) {
+          return viaExp;
+        }
+        try {
+          return limitCore(F, X, A, sides);
+        } catch (e) {
+          const r = squeeze(F, X, A, sides) || termwise(F, X, A, sides) || factorwise(F, X, A, sides) || compose(F, X, A, sides);
+          if (r === void 0) {
+            throw e;
+          }
+          return r;
+        }
+      }
+      exports.limit = limit;
+      function powerLimit(F, X, A, sides) {
+        if (!defs_1.ispower(F) || !find_1.Find(defs_1.cadr(F), X) || !find_1.Find(defs_1.caddr(F), X)) {
+          return void 0;
+        }
+        try {
+          const L = limit(multiply_1.multiply(defs_1.caddr(F), log_1.logarithm(defs_1.cadr(F))), X, A, sides);
+          if (L === symbol_1.symbol(defs_1.INF)) {
+            return L;
+          }
+          return isInfinite(L) ? defs_1.Constants.zero : misc_1.exponential(L);
+        } catch (e) {
+          return void 0;
+        }
+      }
+      function squeeze(F, X, A, sides) {
+        const factors = defs_1.ismultiply(F) ? F.tail() : [F];
+        const isBounded = (f) => defs_1.car(f) === symbol_1.symbol(defs_1.SIN) || defs_1.car(f) === symbol_1.symbol(defs_1.COS) || defs_1.ispower(f) && is_1.isposint(defs_1.caddr(f)) && isBounded(defs_1.cadr(f));
+        const bounded = factors.filter((f) => find_1.Find(f, X) && isBounded(f));
+        if (bounded.length === 0 || bounded.length === factors.length) {
+          return void 0;
+        }
+        try {
+          const rest = multiply_1.multiply_all(factors.filter((f) => !bounded.includes(f)));
+          return is_1.isZeroAtomOrTensor(limit(rest, X, A, sides)) ? defs_1.Constants.zero : void 0;
+        } catch (e) {
+          return void 0;
+        }
+      }
+      function termwise(F, X, A, sides) {
+        const expanded = misc_1.yyexpand(F);
+        if (!defs_1.isadd(expanded)) {
+          return void 0;
+        }
+        try {
+          const parts = expanded.tail().map((t) => limit(t, X, A, sides));
+          const infinite = parts.filter(isInfinite);
+          if (infinite.some((p) => !misc_1.equal(p, infinite[0]))) {
+            return void 0;
+          }
+          return infinite.length > 0 ? infinite[0] : parts.reduce(add_1.add, defs_1.Constants.zero);
+        } catch (e) {
+          return void 0;
+        }
+      }
+      function factorwise(F, X, A, sides) {
+        if (!defs_1.ismultiply(F)) {
+          return void 0;
+        }
+        try {
+          const parts = F.tail().map((f) => find_1.Find(f, X) ? limit(f, X, A, sides) : f);
+          return parts.some((p) => find_1.Find(p, symbol_1.symbol(defs_1.INF))) ? void 0 : multiply_1.multiply_all(parts);
+        } catch (e) {
+          return void 0;
+        }
+      }
+      function compose(F, X, A, sides) {
+        if (!defs_1.iscons(F) || F.tail().length !== 1 || !defs_1.issymbol(defs_1.car(F)) || !find_1.Find(defs_1.cadr(F), X)) {
+          return void 0;
+        }
+        try {
+          const inner = limit(defs_1.cadr(F), X, A, sides);
+          if (find_1.Find(inner, X) || misc_1.equal(inner, defs_1.cadr(F))) {
+            return void 0;
+          }
+          const y = symbol_1.usr_symbol("limit_y");
+          return limitCore(list_1.makeList(defs_1.car(F), y), y, inner, [-1, 1]);
+        } catch (e) {
+          return void 0;
+        }
+      }
+      function limitCore(F, X, A, sides) {
         if (A === symbol_1.symbol(defs_1.INF)) {
           return limitAtInfinity(F, X, defs_1.Constants.one);
         }
@@ -13476,7 +15961,6 @@ FACTOR=${p8}`);
         }
         return limitAt(F, X, A, sides);
       }
-      exports.limit = limit;
       function limitAtInfinity(F, X, sign) {
         const near = is_1.isnegativenumber(sign) ? "negative" : "positive";
         return assume_1.withSign(X, near, () => {
@@ -13489,11 +15973,20 @@ FACTOR=${p8}`);
             return lhopital;
           }
           return assume_1.withSign(X, "positive", () => {
-            const at = (p) => rationalize_1.rationalize(eval_1.Eval(subst_1.subst(p, X, multiply_1.divide(sign, X))));
+            const at = (p) => rationalize_1.rationalize(splitRadicals(eval_1.Eval(subst_1.subst(p, X, multiply_1.divide(sign, X))), X));
             const G = multiply_1.divide(at(numerator_1.numerator(F)), at(denominator_1.denominator(F)));
             return limitAt(G, X, defs_1.Constants.zero, [1]);
           });
         });
+      }
+      function splitRadicals(p, X) {
+        if (!defs_1.iscons(p) || !find_1.Find(p, X)) {
+          return p;
+        }
+        if (defs_1.ispower(p) && defs_1.isrational(defs_1.caddr(p)) && !is_1.isinteger(defs_1.caddr(p))) {
+          return power_1.power(rationalize_1.rationalize(splitRadicals(defs_1.cadr(p), X)), defs_1.caddr(p));
+        }
+        return eval_1.Eval(list_1.makeList(defs_1.car(p), ...p.tail().map((q) => splitRadicals(q, X))));
       }
       var isInfinite = (p) => p === symbol_1.symbol(defs_1.INF) || misc_1.equal(p, multiply_1.negate(symbol_1.symbol(defs_1.INF)));
       function atInfinity(F, X, sign) {
@@ -13568,6 +16061,20 @@ FACTOR=${p8}`);
               if (arg === inf) {
                 return inf;
               }
+          }
+          switch (defs_1.issymbol(head) ? head.printname : "") {
+            case "Si":
+              return multiply_1.multiply(s, multiply_1.divide(defs_1.Constants.Pi(), bignum_1.integer(2)));
+            case "fresnels":
+            case "fresnelc":
+              return multiply_1.multiply(s, bignum_1.rational(1, 2));
+            case "Ci":
+              if (arg === inf) {
+                return defs_1.Constants.zero;
+              }
+              break;
+            case "Ei":
+              return arg === inf ? inf : defs_1.Constants.zero;
           }
         }
         return signedInf(eval_1.Eval(list_1.makeList(head, ...args)));
@@ -13704,8 +16211,9 @@ FACTOR=${p8}`);
           if (!is_1.isZeroAtomOrTensor(nAtA)) {
             return infiniteLimit(F, X, A, sides);
           }
-          N = derivative_1.derivative(N, X);
-          D = derivative_1.derivative(D, X);
+          const G = multiply_1.divide(derivative_1.derivative(N, X), derivative_1.derivative(D, X));
+          N = numerator_1.numerator(G);
+          D = denominator_1.denominator(G);
         }
         run_1.stop("limit: could not resolve after repeated L'Hopital iterations");
       }
@@ -13731,6 +16239,8 @@ FACTOR=${p8}`);
       var integral_1 = require_integral();
       var is_1 = require_is();
       var limit_1 = require_limit();
+      var bignum_1 = require_bignum();
+      var abs_1 = require_abs();
       var list_1 = require_list();
       var misc_1 = require_misc();
       var multiply_1 = require_multiply();
@@ -13738,6 +16248,10 @@ FACTOR=${p8}`);
       var simplify_1 = require_simplify();
       var subst_1 = require_subst();
       function Eval_defint(p1) {
+        return float_1.evalExactly(evalDefint, p1);
+      }
+      exports.Eval_defint = Eval_defint;
+      function evalDefint(p1) {
         const n = misc_1.length(p1) - 1;
         if (n < 4 || (n - 1) % 3 !== 0) {
           run_1.stop(`defint: expected f,x,a,b[,y,c,d...], got ${n} arguments`);
@@ -13761,7 +16275,6 @@ FACTOR=${p8}`);
         }
         return F;
       }
-      exports.Eval_defint = Eval_defint;
       function toNumber(p) {
         if (p === symbol_1.symbol(defs_1.INF)) {
           return Infinity;
@@ -13783,8 +16296,28 @@ FACTOR=${p8}`);
         };
         inside.symbolic = (r) => (lo === -Infinity || assume_1.isPositive(add_1.subtract(r, loU)) === true) && (hi === Infinity || assume_1.isPositive(add_1.subtract(hiU, r)) === true);
         const pole = poleIn(f, X, inside);
-        if (pole !== void 0 && poleIn(simplify_1.simplify(f), X, inside) !== void 0) {
+        if (pole !== void 0 && poleIn(simplify_1.simplify(f), X, inside) !== void 0 && !isRemovable(f, X, lastZero)) {
           run_1.stop(`defint: the integrand has a pole at ${X} = ${pole} inside the interval`);
+        }
+      }
+      var lastZero = NaN;
+      function isRemovable(f, X, r) {
+        if (Number.isNaN(r)) {
+          return false;
+        }
+        const at = (x) => {
+          const v = float_1.zzfloat(abs_1.absval(eval_1.Eval(subst_1.subst(f, X, bignum_1.double(x)))));
+          return defs_1.isdouble(v) ? v.d : NaN;
+        };
+        const eps = 1e-4 * Math.max(1, Math.abs(r));
+        try {
+          return [-1, 1].every((side) => {
+            const far = at(r + side * eps);
+            const near = at(r + side * eps / 100);
+            return Number.isFinite(far) && Number.isFinite(near) && near < 2 * far + 1e-9;
+          });
+        } catch (e) {
+          return false;
         }
       }
       function poleIn(p, X, inside) {
@@ -13828,6 +16361,7 @@ FACTOR=${p8}`);
           for (let k = -1e3; k <= 1e3; k++) {
             const r = (offset + k * Math.PI - beta.d) / alpha.d;
             if (inside(r)) {
+              lastZero = r;
               return `${Number(r.toPrecision(6))}`;
             }
           }
@@ -13846,6 +16380,7 @@ FACTOR=${p8}`);
           const re = float_1.zzfloat(real_1.real(z));
           const im = float_1.zzfloat(imag_1.imag(z));
           if (defs_1.isdouble(re) && defs_1.isdouble(im) && Math.abs(im.d) < 1e-4 * Math.max(1, Math.abs(re.d)) && inside(re.d)) {
+            lastZero = re.d;
             return `${Number(re.d.toPrecision(6))}`;
           }
         }
@@ -13858,6 +16393,7 @@ FACTOR=${p8}`);
           return void 0;
         }
         const r = multiply_1.negate(multiply_1.divide(subst_1.subst(g, X, defs_1.Constants.zero), alpha));
+        lastZero = NaN;
         return ((_a = inside.symbolic) === null || _a === void 0 ? void 0 : _a.call(inside, r)) ? `${r}` : void 0;
       }
     }
@@ -14281,101 +16817,6 @@ FACTOR=${p8}`);
     }
   });
 
-  // bazel-out/k8-fastbuild/bin/sources/gamma.js
-  var require_gamma = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/gamma.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.Eval_gamma = void 0;
-      var defs_1 = require_defs();
-      var run_1 = require_run();
-      var symbol_1 = require_symbol();
-      var add_1 = require_add();
-      var bignum_1 = require_bignum();
-      var eval_1 = require_eval();
-      var factorial_1 = require_factorial();
-      var is_1 = require_is();
-      var list_1 = require_list();
-      var multiply_1 = require_multiply();
-      var power_1 = require_power();
-      var sin_1 = require_sin();
-      var misc_1 = require_misc();
-      function Eval_gamma(p1) {
-        misc_1.checkArgCount(p1, 1);
-        return gamma(eval_1.Eval(defs_1.cadr(p1)));
-      }
-      exports.Eval_gamma = Eval_gamma;
-      function gamma(p1) {
-        return gammaf(p1);
-      }
-      function gammaf(p1) {
-        if (defs_1.isrational(p1) && defs_1.MEQUAL(p1.q.a, 1) && defs_1.MEQUAL(p1.q.b, 2)) {
-          return power_1.power(defs_1.Constants.Pi(), bignum_1.rational(1, 2));
-        }
-        if (is_1.isposint(p1)) {
-          return factorial_1.factorial(add_1.subtract(p1, defs_1.Constants.one));
-        }
-        if (defs_1.isrational(p1) && defs_1.MEQUAL(p1.q.b, 2) && is_1.ispositivenumber(p1)) {
-          const p = add_1.subtract(p1, defs_1.Constants.one);
-          return multiply_1.multiply(p, gamma(p));
-        }
-        if (defs_1.isdouble(p1)) {
-          if (p1.d <= 0 && Number.isInteger(p1.d)) {
-            run_1.stop("divide by zero");
-          }
-          return bignum_1.double(lanczos(p1.d));
-        }
-        if (is_1.isnegativeterm(p1)) {
-          return multiply_1.divide(multiply_1.multiply(defs_1.Constants.Pi(), defs_1.Constants.negOne), multiply_1.multiply(multiply_1.multiply(sin_1.sine(multiply_1.multiply(defs_1.Constants.Pi(), p1)), p1), gamma(multiply_1.negate(p1))));
-        }
-        if (defs_1.isadd(p1)) {
-          return gamma_of_sum(p1);
-        }
-        return list_1.makeList(symbol_1.symbol(defs_1.GAMMA), p1);
-      }
-      function gamma_of_sum(p1) {
-        const p3 = defs_1.cdr(p1);
-        if (defs_1.isrational(defs_1.car(p3)) && defs_1.MEQUAL(defs_1.car(p3).q.a, 1) && defs_1.MEQUAL(defs_1.car(p3).q.b, 1)) {
-          return multiply_1.multiply(defs_1.cadr(p3), gamma(defs_1.cadr(p3)));
-        }
-        if (defs_1.isrational(defs_1.car(p3)) && defs_1.MEQUAL(defs_1.car(p3).q.a, -1) && defs_1.MEQUAL(defs_1.car(p3).q.b, 1)) {
-          return multiply_1.divide(gamma(defs_1.cadr(p3)), add_1.add(defs_1.cadr(p3), defs_1.Constants.negOne));
-        }
-        return list_1.makeList(symbol_1.symbol(defs_1.GAMMA), p1);
-      }
-      var LANCZOS = [
-        0.9999999999998099,
-        676.5203681218851,
-        -1259.1392167224028,
-        771.3234287776531,
-        -176.6150291621406,
-        12.507343278686905,
-        -0.13857109526572012,
-        9984369578019572e-21,
-        15056327351493116e-23
-      ];
-      function lanczos(x) {
-        if (Number.isInteger(x) && x > 0 && x < 172) {
-          let f = 1;
-          for (let i = 2; i < x; i++) {
-            f *= i;
-          }
-          return f;
-        }
-        if (x < 0.5) {
-          return Math.PI / (Math.sin(Math.PI * x) * lanczos(1 - x));
-        }
-        x -= 1;
-        let a = LANCZOS[0];
-        const t = x + 7.5;
-        for (let i = 1; i < 9; i++) {
-          a += LANCZOS[i] / (x + i);
-        }
-        return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
-      }
-    }
-  });
-
   // bazel-out/k8-fastbuild/bin/sources/isprime.js
   var require_isprime = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/isprime.js"(exports) {
@@ -14570,220 +17011,6 @@ FACTOR=${p8}`);
         return p1;
       }
       exports.Eval_lookup = Eval_lookup;
-    }
-  });
-
-  // bazel-out/k8-fastbuild/bin/sources/test.js
-  var require_test = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/test.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.cmp_values = exports.Eval_or = exports.Eval_and = exports.Eval_not = exports.Eval_testlt = exports.Eval_testle = exports.Eval_testgt = exports.Eval_testge = exports.Eval_testeq = exports.Eval_test = void 0;
-      var assume_1 = require_assume();
-      var defs_1 = require_defs();
-      var symbol_1 = require_symbol();
-      var add_1 = require_add();
-      var eval_1 = require_eval();
-      var float_1 = require_float();
-      var is_1 = require_is();
-      var misc_1 = require_misc();
-      var quantity_1 = require_quantity();
-      var simplify_1 = require_simplify();
-      function Eval_test(p1) {
-        const orig = p1;
-        p1 = defs_1.cdr(p1);
-        while (defs_1.iscons(p1)) {
-          if (defs_1.cdr(p1) === symbol_1.symbol(defs_1.NIL)) {
-            return eval_1.Eval(defs_1.car(p1));
-          }
-          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(p1));
-          if (checkResult == null) {
-            return orig;
-          } else if (checkResult) {
-            return eval_1.Eval(defs_1.cadr(p1));
-          } else {
-            p1 = defs_1.cddr(p1);
-          }
-        }
-        return defs_1.Constants.zero;
-      }
-      exports.Eval_test = Eval_test;
-      function Eval_testeq(p1) {
-        const orig = p1;
-        const lhs = eval_1.Eval(defs_1.cadr(p1));
-        const rhs = eval_1.Eval(defs_1.caddr(p1));
-        if (misc_1.equal(lhs, rhs)) {
-          return defs_1.Constants.one;
-        }
-        let subtractionResult = add_1.subtract(lhs, rhs);
-        let checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(subtractionResult);
-        if (checkResult) {
-          return defs_1.Constants.zero;
-        } else if (checkResult != null && !checkResult) {
-          return defs_1.Constants.one;
-        }
-        const arg1 = simplify_1.simplify(eval_1.Eval(defs_1.cadr(p1)));
-        const arg2 = simplify_1.simplify(eval_1.Eval(defs_1.caddr(p1)));
-        subtractionResult = add_1.subtract(arg1, arg2);
-        checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(subtractionResult);
-        if (checkResult) {
-          return defs_1.Constants.zero;
-        } else if (checkResult != null && !checkResult) {
-          return defs_1.Constants.one;
-        }
-        return orig;
-      }
-      exports.Eval_testeq = Eval_testeq;
-      function Eval_testge(p1) {
-        const orig = p1;
-        const comparison = cmp_args(p1);
-        if (comparison == null) {
-          return orig;
-        }
-        if (comparison >= 0) {
-          return defs_1.Constants.one;
-        } else {
-          return defs_1.Constants.zero;
-        }
-      }
-      exports.Eval_testge = Eval_testge;
-      function Eval_testgt(p1) {
-        const orig = p1;
-        const comparison = cmp_args(p1);
-        if (comparison == null) {
-          return orig;
-        }
-        if (comparison > 0) {
-          return defs_1.Constants.one;
-        } else {
-          return defs_1.Constants.zero;
-        }
-      }
-      exports.Eval_testgt = Eval_testgt;
-      function Eval_testle(p1) {
-        const orig = p1;
-        const comparison = cmp_args(p1);
-        if (comparison == null) {
-          return orig;
-        }
-        if (comparison <= 0) {
-          return defs_1.Constants.one;
-        } else {
-          return defs_1.Constants.zero;
-        }
-      }
-      exports.Eval_testle = Eval_testle;
-      function Eval_testlt(p1) {
-        const orig = p1;
-        const comparison = cmp_args(p1);
-        if (comparison == null) {
-          return orig;
-        }
-        if (comparison < 0) {
-          return defs_1.Constants.one;
-        } else {
-          return defs_1.Constants.zero;
-        }
-      }
-      exports.Eval_testlt = Eval_testlt;
-      function Eval_not(p1) {
-        const wholeAndExpression = p1;
-        const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.cadr(p1));
-        if (checkResult == null) {
-          return wholeAndExpression;
-        } else if (checkResult) {
-          return defs_1.Constants.zero;
-        } else {
-          return defs_1.Constants.one;
-        }
-      }
-      exports.Eval_not = Eval_not;
-      function Eval_and(p1) {
-        const wholeAndExpression = p1;
-        let andPredicates = defs_1.cdr(wholeAndExpression);
-        let somePredicateUnknown = false;
-        while (defs_1.iscons(andPredicates)) {
-          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(andPredicates));
-          if (checkResult == null) {
-            somePredicateUnknown = true;
-            andPredicates = defs_1.cdr(andPredicates);
-          } else if (checkResult) {
-            andPredicates = defs_1.cdr(andPredicates);
-          } else if (!checkResult) {
-            return defs_1.Constants.zero;
-          }
-        }
-        if (somePredicateUnknown) {
-          return wholeAndExpression;
-        } else {
-          return defs_1.Constants.one;
-        }
-      }
-      exports.Eval_and = Eval_and;
-      function Eval_or(p1) {
-        const wholeOrExpression = p1;
-        let orPredicates = defs_1.cdr(wholeOrExpression);
-        let somePredicateUnknown = false;
-        while (defs_1.iscons(orPredicates)) {
-          const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(orPredicates));
-          if (checkResult == null) {
-            somePredicateUnknown = true;
-            orPredicates = defs_1.cdr(orPredicates);
-          } else if (checkResult) {
-            return defs_1.Constants.one;
-          } else if (!checkResult) {
-            orPredicates = defs_1.cdr(orPredicates);
-          }
-        }
-        if (somePredicateUnknown) {
-          return wholeOrExpression;
-        } else {
-          return defs_1.Constants.zero;
-        }
-      }
-      exports.Eval_or = Eval_or;
-      function cmp_args(p1) {
-        return cmp_values(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
-      }
-      function cmp_values(arg1, arg2) {
-        if (misc_1.equal(arg1, arg2)) {
-          return 0;
-        }
-        let t = 0;
-        let p1 = add_1.subtract(simplify_1.simplify(arg1), simplify_1.simplify(arg2));
-        if (quantity_1.isQuantity(p1)) {
-          p1 = defs_1.cadr(p1);
-        }
-        const difference = p1;
-        if (p1.k !== defs_1.NUM && p1.k !== defs_1.DOUBLE) {
-          p1 = eval_1.Eval(float_1.yyfloat(p1));
-        }
-        if (is_1.isZeroAtomOrTensor(p1)) {
-          return 0;
-        }
-        switch (p1.k) {
-          case defs_1.NUM:
-            if (defs_1.MSIGN(p1.q.a) === -1) {
-              t = -1;
-            } else {
-              t = 1;
-            }
-            break;
-          case defs_1.DOUBLE:
-            if (p1.d < 0) {
-              t = -1;
-            } else {
-              t = 1;
-            }
-            break;
-          default: {
-            const known = assume_1.facts(difference);
-            t = known.positive ? 1 : known.negative ? -1 : known.zero ? 0 : null;
-          }
-        }
-        return t;
-      }
-      exports.cmp_values = cmp_values;
     }
   });
 
@@ -15275,131 +17502,623 @@ FACTOR=${p8}`);
     }
   });
 
-  // bazel-out/k8-fastbuild/bin/sources/rref.js
-  var require_rref = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/rref.js"(exports) {
+  // bazel-out/k8-fastbuild/bin/sources/solve_transcendental.js
+  var require_solve_transcendental = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/solve_transcendental.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.matrix = exports.Eval_eigenvectors = exports.Eval_eigenvalues = exports.Eval_nullspace = exports.Eval_matrixrank = exports.Eval_rref = void 0;
+      exports.tidySolutions = exports.solveEquation = exports.solveWithFamily = void 0;
       var defs_1 = require_defs();
-      var alloc_1 = require_alloc();
+      var find_1 = require_find();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var abs_1 = require_abs();
+      var add_1 = require_add();
+      var bignum_1 = require_bignum();
+      var denominator_1 = require_denominator();
+      var derivative_1 = require_derivative();
+      var eval_1 = require_eval();
+      var float_1 = require_float();
+      var is_1 = require_is();
+      var list_1 = require_list();
+      var misc_1 = require_misc();
+      var multiply_1 = require_multiply();
+      var numerator_1 = require_numerator();
+      var power_1 = require_power();
+      var rationalize_1 = require_rationalize();
+      var roots_1 = require_roots();
+      var simplify_1 = require_simplify();
+      var subst_1 = require_subst();
+      var MAX_DEPTH = 6;
+      var family;
+      function solveWithFamily(E, x, n) {
+        family = n;
+        try {
+          return solveEquation(E, x);
+        } finally {
+          family = void 0;
+        }
+      }
+      exports.solveWithFamily = solveWithFamily;
+      function periodic(angle, period) {
+        return family === void 0 ? angle : add_1.add(angle, multiply_1.multiply(period, family));
+      }
+      function solveEquation(E, x, depth = 0) {
+        if (!find_1.Find(E, x)) {
+          if (is_1.isZeroAtomOrTensor(simplify_1.simplify(E))) {
+            run_1.stop("solve: infinitely many solutions");
+          }
+          return [];
+        }
+        if (is_1.ispolyexpandedform(E, x)) {
+          return roots_1.rootsList(E, x);
+        }
+        if (depth > MAX_DEPTH) {
+          cannot(x);
+        }
+        const R = rationalize_1.rationalize(E);
+        const candidates = is_1.isone(denominator_1.denominator(R)) ? solveInKernel(E, x, depth) : solveEquation(numerator_1.numerator(R), x, depth + 1);
+        return candidates.filter((c) => holds(E, x, c));
+      }
+      exports.solveEquation = solveEquation;
+      function cannot(x) {
+        return run_1.stop("solve: cannot solve the equation for " + x);
+      }
+      function kernels(p, x, acc = []) {
+        if (!find_1.Find(p, x) || misc_1.equal(p, x)) {
+          return acc;
+        }
+        if (defs_1.isadd(p) || defs_1.ismultiply(p)) {
+          p.tail().forEach((el) => kernels(el, x, acc));
+        } else if (defs_1.ispower(p) && !find_1.Find(defs_1.caddr(p), x) && is_1.isinteger(defs_1.caddr(p))) {
+          kernels(defs_1.cadr(p), x, acc);
+        } else if (!acc.some((k) => misc_1.equal(k, p))) {
+          acc.push(p);
+        }
+        return acc;
+      }
+      function kind(k, x) {
+        if (defs_1.ispower(k)) {
+          if (find_1.Find(defs_1.caddr(k), x)) {
+            return find_1.Find(defs_1.cadr(k), x) ? "other" : "exp";
+          }
+          return defs_1.isrational(defs_1.caddr(k)) ? "radical" : "other";
+        }
+        const fns = {
+          [defs_1.LOG]: "log",
+          [defs_1.SIN]: "sin",
+          [defs_1.COS]: "cos",
+          [defs_1.TAN]: "tan",
+          [defs_1.ARCSIN]: "arcsin",
+          [defs_1.ARCCOS]: "arccos",
+          [defs_1.ARCTAN]: "arctan",
+          [defs_1.ABS]: "abs",
+          lambertw: "lambertw"
+        };
+        const f = defs_1.car(k);
+        const name = defs_1.issymbol(f) ? f.printname : "";
+        return fns[name] && !find_1.Find(defs_1.cadr(k), f) ? fns[name] : "other";
+      }
+      function solveInKernel(E, x, depth) {
+        const ks = kernels(E, x);
+        const kinds = ks.map((k) => kind(k, x));
+        const lambert = lambertForm(E, ks, kinds, x);
+        if (lambert !== void 0) {
+          return lambert;
+        }
+        if (kinds.includes("other")) {
+          cannot(x);
+        }
+        const u = symbol_1.usr_symbol("solve_u");
+        if (kinds.every((k) => k === "exp")) {
+          const [kernel, Eu] = commonExponential(E, ks, x, u);
+          return viaKernel(Eu, u, kernel, x, depth);
+        }
+        if (ks.length === 1) {
+          return viaKernel(subst_1.subst(E, ks[0], u), u, ks[0], x, depth);
+        }
+        if (kinds.every((k) => k === "log")) {
+          return solveEquation(combineLogs(E, ks, x), x, depth + 1);
+        }
+        if (ks.length === 2 && kinds.includes("sin") && kinds.includes("cos")) {
+          const rewritten = pythagorean(E, ks, kinds, x) || asTangent(E, ks, kinds, x);
+          if (rewritten !== void 0) {
+            return solveEquation(rewritten, x, depth + 1);
+          }
+        }
+        const i = kinds.findIndex((k) => k === "radical" || k === "abs");
+        if (i < 0) {
+          cannot(x);
+        }
+        return viaKernel(subst_1.subst(E, ks[i], u), u, ks[i], x, depth);
+      }
+      function lambertForm(E, ks, kinds, x) {
+        if (ks.length !== 1) {
+          return void 0;
+        }
+        const k = ks[0];
+        const u = symbol_1.usr_symbol("solve_u");
+        const Eu = subst_1.subst(E, k, u);
+        const a = derivative_1.derivative(Eu, u);
+        const c = eval_1.Eval(add_1.subtract(Eu, multiply_1.multiply(a, u)));
+        if (find_1.Find(a, u) || find_1.Find(c, u) || find_1.Find(c, x) || is_1.isZeroAtomOrTensor(a)) {
+          return void 0;
+        }
+        const W = (v) => call("lambertw", v);
+        if (defs_1.ispower(k) && misc_1.equal(defs_1.cadr(k), x) && misc_1.equal(defs_1.caddr(k), x)) {
+          return find_1.Find(a, x) ? void 0 : [misc_1.exponential(W(call(defs_1.LOG, multiply_1.divide(multiply_1.negate(c), a))))];
+        }
+        const alpha = multiply_1.divide(a, x);
+        if (find_1.Find(alpha, x)) {
+          return void 0;
+        }
+        const r = multiply_1.divide(multiply_1.negate(c), alpha);
+        if (kinds[0] === "log" && misc_1.equal(defs_1.cadr(k), x)) {
+          return [misc_1.exponential(W(r))];
+        }
+        if (kinds[0] === "exp") {
+          const beta = multiply_1.divide(defs_1.caddr(k), x);
+          if (find_1.Find(beta, x)) {
+            return void 0;
+          }
+          const B = defs_1.cadr(k) === symbol_1.symbol(defs_1.YYE) ? beta : multiply_1.multiply(beta, call(defs_1.LOG, defs_1.cadr(k)));
+          return [multiply_1.divide(W(multiply_1.multiply(r, B)), B)];
+        }
+        return void 0;
+      }
+      function viaKernel(Eu, u, kernel, x, depth) {
+        const P = numerator_1.numerator(rationalize_1.rationalize(Eu));
+        if (!is_1.ispolyexpandedform(P, u)) {
+          cannot(x);
+        }
+        const what = kind(kernel, x);
+        const result = [];
+        for (const c of roots_1.rootsList(P, u)) {
+          if (find_1.Find(c, x) && what !== "radical" && what !== "abs") {
+            cannot(x);
+          }
+          result.push(...invert(kernel, what, c, x, depth));
+        }
+        return result;
+      }
+      function invert(kernel, what, c, x, depth) {
+        const g = defs_1.cadr(kernel);
+        let eqs;
+        switch (what) {
+          case "exp":
+            if (is_1.isZeroAtomOrTensor(c)) {
+              return [];
+            }
+            eqs = [add_1.subtract(defs_1.caddr(kernel), logBase(g, c))];
+            break;
+          case "log":
+            eqs = [add_1.subtract(g, misc_1.exponential(c))];
+            break;
+          case "sin": {
+            if (outsideUnitInterval(c)) {
+              return [];
+            }
+            const a = call(defs_1.ARCSIN, c);
+            eqs = distinctAngles(g, [a, add_1.subtract(defs_1.Constants.Pi(), a)]);
+            break;
+          }
+          case "cos": {
+            if (outsideUnitInterval(c)) {
+              return [];
+            }
+            const a = call(defs_1.ARCCOS, c);
+            eqs = distinctAngles(g, [a, multiply_1.negate(a)]);
+            break;
+          }
+          case "tan":
+            eqs = [add_1.subtract(g, periodic(call(defs_1.ARCTAN, c), defs_1.Constants.Pi()))];
+            break;
+          case "arcsin":
+            eqs = [add_1.subtract(g, call(defs_1.SIN, c))];
+            break;
+          case "arccos":
+            eqs = [add_1.subtract(g, call(defs_1.COS, c))];
+            break;
+          case "arctan":
+            eqs = [add_1.subtract(g, call(defs_1.TAN, c))];
+            break;
+          case "lambertw":
+            eqs = [add_1.subtract(g, multiply_1.multiply(c, misc_1.exponential(c)))];
+            break;
+          case "abs":
+            if (is_1.isnegativenumber(c)) {
+              return [];
+            }
+            eqs = [add_1.add(g, c), add_1.subtract(g, c)];
+            break;
+          case "radical": {
+            const e = defs_1.caddr(kernel);
+            const p = bignum_1.integer(e.a.toJSNumber());
+            const q = bignum_1.integer(e.b.toJSNumber());
+            if (e.b.isEven() && is_1.isnegativenumber(c)) {
+              return [];
+            }
+            eqs = [add_1.subtract(power_1.power(g, p), power_1.power(c, q))];
+            break;
+          }
+          default:
+            cannot(x);
+        }
+        return eqs.reduce((acc, eq) => acc.concat(solveEquation(misc_1.yyexpand(eq), x, depth + 1)), []);
+      }
+      function call(fn, ...args) {
+        return eval_1.Eval(list_1.makeList(symbol_1.usr_symbol(fn), ...args));
+      }
+      function outsideUnitInterval(c) {
+        const f = float_1.zzfloat(c);
+        return defs_1.isdouble(f) && Math.abs(f.d) > 1;
+      }
+      function distinctAngles(g, angles) {
+        const kept = [];
+        for (const a of angles) {
+          const same = kept.some((b) => {
+            const turns = float_1.zzfloat(multiply_1.divide(add_1.subtract(a, b), multiply_1.multiply(bignum_1.integer(2), defs_1.Constants.Pi())));
+            return defs_1.isdouble(turns) && Math.abs(turns.d - Math.round(turns.d)) < 1e-9;
+          });
+          if (!same) {
+            kept.push(a);
+          }
+        }
+        const twoPi = multiply_1.multiply(bignum_1.integer(2), defs_1.Constants.Pi());
+        return kept.map((a) => add_1.subtract(g, periodic(a, twoPi)));
+      }
+      function logBase(b, c) {
+        if (b === symbol_1.symbol(defs_1.E)) {
+          return call(defs_1.LOG, c);
+        }
+        if (defs_1.isrational(b) && defs_1.isrational(c) && !is_1.isnegativenumber(b) && !is_1.isnegativenumber(c)) {
+          const k = Math.round(Math.log(toNumber(c)) / Math.log(toNumber(b)));
+          if (misc_1.equal(power_1.power(b, bignum_1.integer(k)), c)) {
+            return bignum_1.integer(k);
+          }
+        }
+        return multiply_1.divide(call(defs_1.LOG, c), call(defs_1.LOG, b));
+      }
+      function toNumber(p) {
+        const f = float_1.zzfloat(p);
+        return defs_1.isdouble(f) ? f.d : NaN;
+      }
+      function commonExponential(E, ks, x, u) {
+        const bases = ks.map((k) => defs_1.cadr(k));
+        let exponents = ks.map((k) => defs_1.caddr(k));
+        let base = bases[0];
+        if (!bases.every((b) => misc_1.equal(b, base))) {
+          if (!bases.every((b) => defs_1.isrational(b) && !is_1.isnegativenumber(b))) {
+            cannot(x);
+          }
+          base = bases.reduce((m, b) => toNumber(b) < toNumber(m) ? b : m);
+          exponents = bases.map((b, i) => {
+            const k = Math.round(Math.log(toNumber(b)) / Math.log(toNumber(base)));
+            if (!misc_1.equal(power_1.power(base, bignum_1.integer(k)), b)) {
+              cannot(x);
+            }
+            return multiply_1.multiply(bignum_1.integer(k), exponents[i]);
+          });
+        }
+        const ratios = exponents.map((g) => misc_1.equal(g, exponents[0]) ? defs_1.Constants.one : simplify_1.simplify(multiply_1.divide(g, exponents[0])));
+        if (!ratios.every(defs_1.isrational)) {
+          cannot(x);
+        }
+        const L = ratios.reduce((l, r) => lcm(l, r.b.toJSNumber()), 1);
+        const h = multiply_1.divide(exponents[0], bignum_1.integer(L));
+        let Eu = E;
+        ks.forEach((k, i) => {
+          const r = ratios[i];
+          const ki = r.a.toJSNumber() * L / r.b.toJSNumber();
+          Eu = subst_1.subst(Eu, k, power_1.power(u, bignum_1.integer(ki)));
+        });
+        return [power_1.power(base, h), Eu];
+      }
+      function lcm(a, b) {
+        const gcd = (p, q) => q === 0 ? p : gcd(q, p % q);
+        return a * b / gcd(a, b);
+      }
+      function combineLogs(E, ks, x) {
+        const us = ks.map((_, i) => symbol_1.usr_symbol("solve_u" + i));
+        let Eu = ks.reduce((acc, k, i) => subst_1.subst(acc, k, us[i]), E);
+        let lhs = defs_1.Constants.one;
+        let rhs = defs_1.Constants.one;
+        ks.forEach((k, i) => {
+          const n = derivative_1.derivative(Eu, us[i]);
+          if (!is_1.isinteger(n) || us.some((v) => find_1.Find(n, v))) {
+            cannot(x);
+          }
+          Eu = add_1.subtract(Eu, multiply_1.multiply(n, us[i]));
+          if (is_1.isnegativenumber(n)) {
+            rhs = multiply_1.multiply(rhs, power_1.power(defs_1.cadr(k), multiply_1.negate(n)));
+          } else {
+            lhs = multiply_1.multiply(lhs, power_1.power(defs_1.cadr(k), n));
+          }
+        });
+        if (find_1.Find(Eu, x) || us.some((v) => find_1.Find(Eu, v))) {
+          cannot(x);
+        }
+        return misc_1.yyexpand(add_1.subtract(lhs, multiply_1.multiply(rhs, misc_1.exponential(multiply_1.negate(Eu)))));
+      }
+      function pythagorean(E, ks, kinds, x) {
+        const s = ks[kinds.indexOf("sin")];
+        const c = ks[kinds.indexOf("cos")];
+        if (!misc_1.equal(defs_1.cadr(s), defs_1.cadr(c))) {
+          return void 0;
+        }
+        for (const [from, to] of [
+          [s, c],
+          [c, s]
+        ]) {
+          const sq = power_1.power(add_1.subtract(defs_1.Constants.one, power_1.power(to, bignum_1.integer(2))), bignum_1.rational(1, 2));
+          const rewritten = misc_1.yyexpand(subst_1.subst(E, from, sq));
+          if (kernels(rewritten, x).every((k) => misc_1.equal(k, to))) {
+            return rewritten;
+          }
+        }
+        return void 0;
+      }
+      function asTangent(E, ks, kinds, x) {
+        const s = ks[kinds.indexOf("sin")];
+        const c = ks[kinds.indexOf("cos")];
+        if (!misc_1.equal(defs_1.cadr(s), defs_1.cadr(c))) {
+          return void 0;
+        }
+        const [us, uc] = [symbol_1.usr_symbol("solve_u0"), symbol_1.usr_symbol("solve_u1")];
+        const Eu = subst_1.subst(subst_1.subst(E, s, us), c, uc);
+        const a = derivative_1.derivative(Eu, us);
+        const b = derivative_1.derivative(Eu, uc);
+        const rest = eval_1.Eval(add_1.subtract(Eu, add_1.add(multiply_1.multiply(a, us), multiply_1.multiply(b, uc))));
+        if (!is_1.isZeroAtomOrTensor(rest) || [a, b].some((p) => find_1.Find(p, x) || find_1.Find(p, us) || find_1.Find(p, uc)) || is_1.isZeroAtomOrTensor(a)) {
+          return void 0;
+        }
+        return add_1.add(call(defs_1.TAN, defs_1.cadr(s)), multiply_1.divide(b, a));
+      }
+      function holds(E, x, c) {
+        try {
+          let v = eval_1.Eval(subst_1.subst(E, x, c));
+          if (is_1.isZeroAtomOrTensor(v)) {
+            return true;
+          }
+          v = simplify_1.simplify(v);
+          if (is_1.isZeroAtomOrTensor(v)) {
+            return true;
+          }
+          const m = float_1.zzfloat(abs_1.absval(v));
+          return !defs_1.isdouble(m) || Math.abs(m.d) < 1e-9;
+        } catch (e) {
+          return false;
+        }
+      }
+      function tidySolutions(sols) {
+        const uniq = sols.filter((s, i) => sols.findIndex((t) => misc_1.equal(s, t)) === i);
+        const values = uniq.map(toNumber);
+        if (values.every((v) => !Number.isNaN(v))) {
+          uniq.sort((a, b) => toNumber(a) - toNumber(b));
+        }
+        return uniq;
+      }
+      exports.tidySolutions = tidySolutions;
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/solve_inequality.js
+  var require_solve_inequality = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/solve_inequality.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.solveInequalities = exports.solveInequality = void 0;
+      var defs_1 = require_defs();
+      var find_1 = require_find();
       var run_1 = require_run();
       var symbol_1 = require_symbol();
       var add_1 = require_add();
-      var bignum_1 = require_bignum();
-      var det_1 = require_det();
-      var eval_1 = require_eval();
-      var is_1 = require_is();
+      var assume_1 = require_assume();
+      var derivative_1 = require_derivative();
       var multiply_1 = require_multiply();
-      var roots_1 = require_roots();
       var simplify_1 = require_simplify();
-      var tensor_1 = require_tensor();
-      function Eval_rref(p1) {
-        const [rows] = rowReduce(matrixArg(p1, "rref"));
-        return matrix(rows);
+      var bignum_1 = require_bignum();
+      var denominator_1 = require_denominator();
+      var eval_1 = require_eval();
+      var float_1 = require_float();
+      var is_1 = require_is();
+      var list_1 = require_list();
+      var numerator_1 = require_numerator();
+      var rationalize_1 = require_rationalize();
+      var solve_transcendental_1 = require_solve_transcendental();
+      var subst_1 = require_subst();
+      var defs_2 = require_defs();
+      function solveInequality(rel, x) {
+        return solveInequalities([rel], x);
       }
-      exports.Eval_rref = Eval_rref;
-      function Eval_matrixrank(p1) {
-        const [, pivots] = rowReduce(matrixArg(p1, "matrixrank"));
-        return bignum_1.integer(pivots.length);
-      }
-      exports.Eval_matrixrank = Eval_matrixrank;
-      function Eval_nullspace(p1) {
-        const M = matrixArg(p1, "nullspace");
-        const basis = nullBasis(M);
-        return matrix(basis.length ? basis : [new Array(M.dim[1]).fill(defs_1.Constants.zero)]);
-      }
-      exports.Eval_nullspace = Eval_nullspace;
-      function nullBasis(M) {
-        const n = M.dim[1];
-        const [rows, pivots] = rowReduce(M);
-        const basis = [];
-        for (let free = 0; free < n; free++) {
-          if (pivots.includes(free)) {
-            continue;
+      exports.solveInequality = solveInequality;
+      function solveInequalities(rels, x) {
+        const sides = rels.map((rel) => ({
+          op: defs_1.car(rel),
+          E: add_1.subtract(eval_1.Eval(defs_1.cadr(rel)), eval_1.Eval(defs_1.caddr(rel)))
+        }));
+        if (sides.length === 1) {
+          const linear = linearWithParameters(sides[0].op, sides[0].E, x);
+          if (linear !== void 0) {
+            return linear;
           }
-          const v = new Array(n).fill(defs_1.Constants.zero);
-          v[free] = defs_1.Constants.one;
-          pivots.forEach((col, i) => v[col] = multiply_1.negate(rows[i][free]));
-          basis.push(v);
         }
-        return basis;
-      }
-      function Eval_eigenvalues(p1) {
-        return list(eigenvalues(squareArg(p1, "eigenvalues")));
-      }
-      exports.Eval_eigenvalues = Eval_eigenvalues;
-      function Eval_eigenvectors(p1) {
-        const M = squareArg(p1, "eigenvectors");
-        return matrix([].concat(...eigenvalues(M).map((lambda) => nullBasis(shift(M, lambda)))));
-      }
-      exports.Eval_eigenvectors = Eval_eigenvectors;
-      function eigenvalues(M) {
-        const x = symbol_1.symbol(defs_1.SECRETX);
-        const r = roots_1.roots(det_1.det(shift(M, x)), x);
-        return defs_1.istensor(r) ? r.tensor.elem : [r];
-      }
-      function shift(M, lambda) {
-        const n = M.dim[0];
-        return matrix(Array.from({ length: n }, (_, i) => M.elem.slice(i * n, (i + 1) * n).map((e, j) => i === j ? add_1.subtract(e, lambda) : e)));
-      }
-      function squareArg(p1, name) {
-        const M = eval_1.Eval(defs_1.cadr(p1));
-        if (!defs_1.istensor(M) || M.ndim !== 2 || M.dim[0] !== M.dim[1]) {
-          run_1.stop(name + ": square matrix expected");
-        }
-        return M;
-      }
-      function list(elems) {
-        const T = alloc_1.alloc_tensor(elems.length);
-        T.ndim = 1;
-        T.dim = [elems.length];
-        T.elem = elems;
-        return T;
-      }
-      function matrixArg(p1, name) {
-        const M = eval_1.Eval(defs_1.cadr(p1));
-        if (!defs_1.istensor(M) || M.ndim !== 2) {
-          run_1.stop(name + ": matrix expected");
-        }
-        return M;
-      }
-      function matrix(rows) {
-        const n = rows[0].length;
-        const T = alloc_1.alloc_tensor(rows.length * n);
-        T.ndim = 2;
-        T.dim = [rows.length, n];
-        T.elem = [].concat(...rows);
-        tensor_1.check_tensor_dimensions(T);
-        return T;
-      }
-      exports.matrix = matrix;
-      function rowReduce(M) {
-        const tidy = (e) => defs_1.isNumericAtom(e) ? e : simplify_1.simplify(e);
-        const [m, n] = M.dim;
-        const R = [];
-        for (let i = 0; i < m; i++) {
-          R.push(M.elem.slice(i * n, (i + 1) * n));
-        }
-        const pivots = [];
-        for (let c = 0, r = 0; c < n && r < m; c++) {
-          const p = R.findIndex((row, i) => i >= r && !is_1.isZeroAtomOrTensor(row[c]));
-          if (p < 0) {
-            continue;
+        const constant = sides.filter(({ E }) => !find_1.Find(E, x));
+        for (const { op, E } of constant) {
+          const t = truth(op, E);
+          if (t === void 0) {
+            run_1.stop("solve: inequalities with parameters are not supported");
           }
-          [R[r], R[p]] = [R[p], R[r]];
-          const pivot = R[r][c];
-          R[r] = R[r].map((e) => tidy(multiply_1.divide(e, pivot)));
-          for (let i = 0; i < m; i++) {
-            const f = R[i][c];
-            if (i !== r && !is_1.isZeroAtomOrTensor(f)) {
-              R[i] = R[i].map((e, j) => tidy(add_1.subtract(e, multiply_1.multiply(f, R[r][j]))));
+          if (!t) {
+            return defs_1.Constants.zero;
+          }
+        }
+        const active = sides.filter(({ E }) => find_1.Find(E, x));
+        if (active.length === 0) {
+          return defs_1.Constants.one;
+        }
+        if (active.some(({ E }) => hasTrig(E, x))) {
+          run_1.stop("solve: periodic inequalities are not supported");
+        }
+        const cutsOf = (E) => {
+          const R = rationalize_1.rationalize(E);
+          return [numerator_1.numerator(R), denominator_1.denominator(R), ...domainArgs(E, x)].reduce((acc, p) => acc.concat(realRoots(p, x)), []);
+        };
+        const cuts = active.reduce((acc, { E }) => acc.concat(cutsOf(E)), []).concat([defs_1.Constants.zero]);
+        const pts = cuts.filter((p, i) => cuts.findIndex((q) => toNumber(q) === toNumber(p)) === i).sort((a, b) => toNumber(a) - toNumber(b));
+        const n = pts.length;
+        const holdsAt = (v) => {
+          try {
+            if (assume_1.violatesAssumptions(v, x)) {
+              return false;
             }
+            return active.every(({ op, E }) => {
+              const value = eval_1.Eval(subst_1.subst(E, x, v));
+              const f = float_1.zzfloat(value);
+              if (defs_2.isdouble(f) && !Number.isFinite(f.d)) {
+                return false;
+              }
+              return truth(op, value) === true;
+            });
+          } catch (e) {
+            return false;
           }
-          pivots.push(c);
-          r++;
+        };
+        const segments = [];
+        for (let i = 0; i <= n; i++) {
+          const lo = i === 0 ? toNumber(pts[0]) - 1 : toNumber(pts[i - 1]);
+          const hi = i === n ? toNumber(pts[n - 1]) + 1 : toNumber(pts[i]);
+          segments.push(holdsAt(bignum_1.double((lo + hi) / 2)));
+          if (i < n) {
+            segments.push(holdsAt(pts[i]));
+          }
         }
-        return [R, pivots];
+        const pieces = [];
+        let start = -1;
+        for (let i = 0; i <= segments.length; i++) {
+          if (i < segments.length && segments[i]) {
+            if (start < 0) {
+              start = i;
+            }
+            continue;
+          }
+          if (start >= 0) {
+            pieces.push(piece(x, pts, start, i - 1));
+            start = -1;
+          }
+        }
+        if (pieces.length === 0) {
+          return defs_1.Constants.zero;
+        }
+        if (pieces.length === 1 && pieces[0] === defs_1.Constants.one) {
+          return defs_1.Constants.one;
+        }
+        return pieces.length === 1 ? pieces[0] : list_1.makeList(symbol_1.symbol(defs_1.OR), ...pieces);
+      }
+      exports.solveInequalities = solveInequalities;
+      function linearWithParameters(op, E, x) {
+        const slope = derivative_1.derivative(E, x);
+        if (!find_1.Find(E, x) || find_1.Find(slope, x)) {
+          return void 0;
+        }
+        const root = simplify_1.simplify(multiply_1.negate(multiply_1.divide(eval_1.Eval(subst_1.subst(E, x, defs_1.Constants.zero)), slope)));
+        if (defs_2.isdouble(float_1.zzfloat(root))) {
+          return void 0;
+        }
+        const sign = assume_1.facts(slope);
+        if (!sign.positive && !sign.negative) {
+          run_1.stop("solve: inequalities with parameters are not supported");
+        }
+        const flipped = {
+          [defs_1.TESTLT]: defs_1.TESTGT,
+          [defs_1.TESTGT]: defs_1.TESTLT,
+          [defs_1.TESTLE]: defs_1.TESTGE,
+          [defs_1.TESTGE]: defs_1.TESTLE
+        };
+        const name = op.printname;
+        return list_1.makeList(symbol_1.symbol(sign.positive ? name : flipped[name]), x, root);
+      }
+      function piece(x, pts, a, b) {
+        const conds = [];
+        if (a % 2 === 1) {
+          conds.push(list_1.makeList(symbol_1.symbol(defs_1.TESTGE), x, pts[(a - 1) / 2]));
+        } else if (a > 0) {
+          conds.push(list_1.makeList(symbol_1.symbol(defs_1.TESTGT), x, pts[a / 2 - 1]));
+        }
+        if (b % 2 === 1) {
+          if (a === b) {
+            return list_1.makeList(symbol_1.symbol(defs_1.TESTEQ), x, pts[(b - 1) / 2]);
+          }
+          conds.push(list_1.makeList(symbol_1.symbol(defs_1.TESTLE), x, pts[(b - 1) / 2]));
+        } else if (b / 2 < pts.length) {
+          conds.push(list_1.makeList(symbol_1.symbol(defs_1.TESTLT), x, pts[b / 2]));
+        }
+        if (conds.length === 0) {
+          return defs_1.Constants.one;
+        }
+        return conds.length === 1 ? conds[0] : list_1.makeList(symbol_1.symbol(defs_1.AND), ...conds);
+      }
+      function truth(op, v) {
+        try {
+          const r = eval_1.Eval(list_1.makeList(op, v, defs_1.Constants.zero));
+          if (is_1.isone(r)) {
+            return true;
+          }
+          return defs_1.isrational(r) || defs_2.isdouble(r) ? false : void 0;
+        } catch (e) {
+          return false;
+        }
+      }
+      function toNumber(p) {
+        const f = float_1.zzfloat(p);
+        return defs_2.isdouble(f) ? f.d : NaN;
+      }
+      function realRoots(p, x) {
+        if (!find_1.Find(p, x)) {
+          return [];
+        }
+        let sols;
+        try {
+          sols = solve_transcendental_1.solveEquation(p, x);
+        } catch (e) {
+          run_1.stop("solve: cannot solve the inequality for " + x);
+        }
+        return sols.filter((s) => {
+          const f = float_1.zzfloat(s);
+          if (defs_2.isdouble(f)) {
+            return true;
+          }
+          if (!find_1.Find(f, x) && isNumberLike(f)) {
+            return false;
+          }
+          return run_1.stop("solve: inequalities with parameters are not supported");
+        });
+      }
+      function isNumberLike(p) {
+        return defs_1.isNumericAtom(p) || defs_1.iscons(p) && p.tail().every(isNumberLike);
+      }
+      function hasTrig(p, x) {
+        if (!defs_1.iscons(p)) {
+          return false;
+        }
+        if ([defs_1.SIN, defs_1.COS, defs_1.TAN].some((f) => defs_1.car(p) === symbol_1.symbol(f)) && find_1.Find(defs_1.cadr(p), x)) {
+          return true;
+        }
+        return p.tail().some((el) => hasTrig(el, x));
+      }
+      function domainArgs(p, x, acc = []) {
+        if (!defs_1.iscons(p)) {
+          return acc;
+        }
+        if (defs_1.car(p) === symbol_1.symbol(defs_1.LOG) && find_1.Find(defs_1.cadr(p), x)) {
+          acc.push(defs_1.cadr(p));
+        }
+        const e = defs_1.caddr(p);
+        if (defs_1.ispower(p) && find_1.Find(defs_1.cadr(p), x) && defs_1.isrational(e) && !is_1.isinteger(e) && e.b.isEven()) {
+          acc.push(defs_1.cadr(p));
+        }
+        p.tail().forEach((el) => domainArgs(el, x, acc));
+        return acc;
       }
     }
   });
@@ -15419,6 +18138,7 @@ FACTOR=${p8}`);
       var derivative_1 = require_derivative();
       var det_1 = require_det();
       var eval_1 = require_eval();
+      var float_1 = require_float();
       var inner_1 = require_inner();
       var inv_1 = require_inv();
       var is_1 = require_is();
@@ -15431,11 +18151,27 @@ FACTOR=${p8}`);
       var rref_1 = require_rref();
       var scan_1 = require_scan();
       var simplify_1 = require_simplify();
+      var solve_inequality_1 = require_solve_inequality();
+      var solve_transcendental_1 = require_solve_transcendental();
       var subst_1 = require_subst();
+      var guess_1 = require_guess();
       var tensor_1 = require_tensor();
       function Eval_solve(p1) {
+        return float_1.evalExactly(solve, p1);
+      }
+      exports.Eval_solve = Eval_solve;
+      function solve(p1) {
         const eqsArg = defs_1.cadr(p1);
         const vars = eval_1.Eval(defs_1.caddr(p1));
+        if (isInequality(eqsArg)) {
+          const x = vars === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(add_1.subtract(eval_1.Eval(defs_1.cadr(eqsArg)), eval_1.Eval(defs_1.caddr(eqsArg)))) : vars;
+          return solve_inequality_1.solveInequality(eqsArg, x);
+        }
+        if (defs_1.istensor(eqsArg) && eqsArg.elem.length > 0 && eqsArg.elem.every(isInequality)) {
+          const first = eqsArg.elem[0];
+          const x = vars === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(add_1.subtract(eval_1.Eval(defs_1.cadr(first)), eval_1.Eval(defs_1.caddr(first)))) : vars;
+          return solve_inequality_1.solveInequalities(eqsArg.elem, x);
+        }
         if (defs_1.istensor(eqsArg) || defs_1.istensor(vars)) {
           const eqs = defs_1.istensor(eqsArg) ? scan_1.build_tensor(eqsArg.elem.map(roots_1.equationToExpr)) : eval_1.Eval(eqsArg);
           if (!defs_1.istensor(eqs)) {
@@ -15444,12 +18180,22 @@ FACTOR=${p8}`);
           return solveLinearSystem(eqs, defs_1.istensor(vars) ? vars : scan_1.build_tensor(vars === symbol_1.symbol(defs_1.NIL) ? freeSymbols(eqs) : [vars]));
         }
         const [POLY1, X1] = roots_1.normalizeEquation(p1);
-        if (!is_1.ispolyexpandedform(POLY1, X1)) {
-          run_1.stop("solve: 1st argument is not a polynomial in the variable " + X1 + " \u2014 solve() currently only supports polynomial equations");
+        if (!find_1.Find(POLY1, X1)) {
+          run_1.stop("solve: 1st argument does not contain the variable " + X1);
         }
-        return roots_1.keepAssumedRoots(roots_1.roots(POLY1, X1), X1, "solve");
+        if (is_1.ispolyexpandedform(POLY1, X1)) {
+          return roots_1.keepAssumedRoots(roots_1.roots(POLY1, X1), X1, "solve");
+        }
+        const family = defs_1.cadddr(p1) === symbol_1.symbol(defs_1.NIL) ? void 0 : eval_1.Eval(defs_1.cadddr(p1));
+        const sols = solve_transcendental_1.tidySolutions(solve_transcendental_1.solveWithFamily(POLY1, X1, family));
+        if (sols.length === 0) {
+          run_1.stop("solve: no solution");
+        }
+        return roots_1.keepAssumedRoots(sols.length === 1 ? sols[0] : scan_1.build_tensor(sols), X1, "solve");
       }
-      exports.Eval_solve = Eval_solve;
+      function isInequality(p) {
+        return defs_1.iscons(p) && [defs_1.TESTLT, defs_1.TESTLE, defs_1.TESTGT, defs_1.TESTGE].some((op) => defs_1.car(p) === symbol_1.symbol(op));
+      }
       function freeSymbols(p) {
         const acc = [];
         symbol_1.collectUserSymbols(p, acc);
@@ -16152,7 +18898,9 @@ FACTOR=${p8}`);
         if (!is_1.isinteger(p1) || !is_1.isinteger(p2)) {
           run_1.stop("mod function: integer arguments expected");
         }
-        return new defs_1.Num(mmul_1.mmod(p1.q.a, p2.q.a));
+        const r = mmul_1.mmod(p1.q.a, p2.q.a);
+        const flip = !r.isZero() && r.isNegative() !== p2.q.a.isNegative();
+        return new defs_1.Num(flip ? r.add(p2.q.a) : r);
       }
     }
   });
@@ -16534,9 +19282,18 @@ FACTOR=${p8}`);
       var symbol_1 = require_symbol();
       var bignum_1 = require_bignum();
       var eval_1 = require_eval();
+      var float_1 = require_float();
       var multiply_1 = require_multiply();
+      var find_1 = require_find();
+      var add_1 = require_add();
+      var factorial_1 = require_factorial();
+      var power_1 = require_power();
       var misc_1 = require_misc();
       function Eval_product(p1) {
+        return float_1.evalExactly(evalProduct, p1);
+      }
+      exports.Eval_product = Eval_product;
+      function evalProduct(p1) {
         misc_1.checkArgCount(p1, 4);
         const body = defs_1.cadr(p1);
         const indexVariable = defs_1.caddr(p1);
@@ -16544,12 +19301,9 @@ FACTOR=${p8}`);
           run_1.stop("product: 2nd arg?");
         }
         const j = eval_1.evaluate_integer(defs_1.cadddr(p1));
-        if (isNaN(j)) {
-          return p1;
-        }
         const k = eval_1.evaluate_integer(defs_1.caddddr(p1));
-        if (isNaN(k)) {
-          return p1;
+        if (isNaN(j) || isNaN(k)) {
+          return symbolicProduct(p1, body, indexVariable);
         }
         const oldIndexVariableValue = symbol_1.get_binding(indexVariable);
         let temp = defs_1.Constants.one;
@@ -16570,7 +19324,44 @@ FACTOR=${p8}`);
         }
         return temp;
       }
-      exports.Eval_product = Eval_product;
+      function symbolicProduct(p1, body, x) {
+        const saved = symbol_1.get_binding(x);
+        symbol_1.set_binding(x, x);
+        try {
+          const f = eval_1.Eval(body);
+          const a = eval_1.Eval(defs_1.cadddr(p1));
+          const b = eval_1.Eval(defs_1.caddddr(p1));
+          if ([a, b].some((p) => defs_1.isNumericAtom(p) && isNaN(bignum_1.nativeInt(p)))) {
+            return p1;
+          }
+          const count = add_1.add(add_1.subtract(b, a), defs_1.Constants.one);
+          const one = (g) => {
+            if (!find_1.Find(g, x)) {
+              return power_1.power(g, count);
+            }
+            if (defs_1.ispower(g) && !find_1.Find(defs_1.caddr(g), x)) {
+              const base = one(defs_1.cadr(g));
+              return base && power_1.power(base, defs_1.caddr(g));
+            }
+            const m = add_1.subtract(g, x);
+            if (find_1.Find(m, x)) {
+              return null;
+            }
+            return multiply_1.divide(factorial_1.factorial(add_1.add(b, m)), factorial_1.factorial(add_1.add(add_1.subtract(a, defs_1.Constants.one), m)));
+          };
+          let result = defs_1.Constants.one;
+          for (const g of defs_1.ismultiply(f) ? f.tail() : [f]) {
+            const r = one(g);
+            if (!r) {
+              return p1;
+            }
+            result = multiply_1.multiply(result, r);
+          }
+          return result;
+        } finally {
+          symbol_1.set_binding(x, saved);
+        }
+      }
     }
   });
 
@@ -16661,13 +19452,26 @@ FACTOR=${p8}`);
       var coeff_1 = require_coeff();
       var eval_1 = require_eval();
       var is_1 = require_is();
+      var expand_1 = require_expand();
+      var denominator_1 = require_denominator();
+      var numerator_1 = require_numerator();
+      var log_1 = require_log();
+      var misc_1 = require_misc();
+      var derivative_1 = require_derivative();
+      var float_1 = require_float();
+      var misc_2 = require_misc();
+      var zeta_1 = require_zeta();
       var multiply_1 = require_multiply();
       var power_1 = require_power();
       var simplify_1 = require_simplify();
       var subst_1 = require_subst();
-      var misc_1 = require_misc();
+      var misc_3 = require_misc();
       function Eval_sum(p1) {
-        misc_1.checkArgCount(p1, 4);
+        return float_1.evalExactly(evalSum, p1);
+      }
+      exports.Eval_sum = Eval_sum;
+      function evalSum(p1) {
+        misc_3.checkArgCount(p1, 4);
         const body = defs_1.cadr(p1);
         const indexVariable = defs_1.caddr(p1);
         if (!defs_1.issymbol(indexVariable)) {
@@ -16690,7 +19494,6 @@ FACTOR=${p8}`);
         }
         return temp;
       }
-      exports.Eval_sum = Eval_sum;
       function symbolicSum(p1, body, x) {
         const saved = symbol_1.get_binding(x);
         symbol_1.set_binding(x, x);
@@ -16701,8 +19504,24 @@ FACTOR=${p8}`);
           if ([a, b].some((p) => defs_1.isNumericAtom(p) && isNaN(bignum_1.nativeInt(p)))) {
             return p1;
           }
-          const terms = defs_1.isadd(f) ? f.tail() : [f];
+          let terms = defs_1.isadd(f) ? f.tail() : [f];
           const isPoly = (t) => !find_1.Find(t, x) || is_1.ispolyexpandedform(t, x);
+          const rationalTerms = terms.filter((t) => !isPoly(t) && isRationalIn(t, x));
+          let telescoped = defs_1.Constants.zero;
+          if (rationalTerms.length > 0) {
+            const r = telescope(rationalTerms.reduce(add_1.add, defs_1.Constants.zero), x, a, b);
+            if (r !== null) {
+              telescoped = r;
+              terms = terms.filter((t) => !rationalTerms.includes(t));
+              if (terms.length === 0) {
+                return telescoped;
+              }
+            }
+          }
+          if (b === symbol_1.symbol(defs_1.INF)) {
+            const rest = infiniteSum(p1, terms, x, a);
+            return rest === p1 ? p1 : add_1.add(telescoped, rest);
+          }
           let result = polynomialSum(terms.filter(isPoly).reduce(add_1.add, defs_1.Constants.zero), x, a, b);
           for (const t of terms.filter((t2) => !isPoly(t2))) {
             const g = geometricSum(t, x, a, b);
@@ -16711,7 +19530,7 @@ FACTOR=${p8}`);
             }
             result = add_1.add(result, g);
           }
-          return result;
+          return add_1.add(telescoped, result);
         } finally {
           symbol_1.set_binding(x, saved);
         }
@@ -16743,6 +19562,142 @@ FACTOR=${p8}`);
           S.push(multiply_1.divide(t, bignum_1.integer(p + 1)));
         }
         return S;
+      }
+      function infiniteSum(p1, terms, x, a) {
+        let result = defs_1.Constants.zero;
+        for (const t of terms) {
+          if (is_1.isZeroAtomOrTensor(t)) {
+            continue;
+          }
+          if (!find_1.Find(t, x) || is_1.ispolyexpandedform(t, x)) {
+            run_1.stop("sum: the series diverges");
+          }
+          const g = infiniteTerm(t, x, a);
+          if (!g) {
+            return p1;
+          }
+          result = add_1.add(result, g);
+        }
+        return result;
+      }
+      function infiniteTerm(t, x, a) {
+        const at = (v) => eval_1.Eval(subst_1.subst(t, x, v));
+        const next = at(add_1.add(x, defs_1.Constants.one));
+        const skipped = (from) => {
+          const n = bignum_1.nativeInt(a);
+          if (isNaN(n) || n < from) {
+            return null;
+          }
+          let acc = defs_1.Constants.zero;
+          for (let j = from; j < n; j++) {
+            acc = add_1.add(acc, at(bignum_1.integer(j)));
+          }
+          return acc;
+        };
+        const r = simplify_1.simplify(multiply_1.divide(next, t));
+        if (!find_1.Find(r, x)) {
+          const f = float_1.zzfloat(r);
+          if (defs_1.isdouble(f) && Math.abs(f.d) >= 1) {
+            run_1.stop("sum: the series diverges");
+          }
+          return simplify_1.simplify(multiply_1.divide(at(a), add_1.subtract(defs_1.Constants.one, r)));
+        }
+        const q = simplify_1.simplify(multiply_1.multiply(r, add_1.add(x, defs_1.Constants.one)));
+        if (!find_1.Find(q, x)) {
+          const head = skipped(0);
+          return head && add_1.subtract(multiply_1.multiply(at(defs_1.Constants.zero), misc_2.exponential(q)), head);
+        }
+        const alternating = findSign(t, x);
+        if (alternating !== void 0) {
+          const u = simplify_1.simplify(multiply_1.divide(t, alternating));
+          const su = simplify_1.simplify(multiply_1.negate(multiply_1.divide(multiply_1.multiply(x, derivative_1.derivative(u, x)), u)));
+          const cu = is_1.isposint(su) ? simplify_1.simplify(multiply_1.multiply(u, power_1.power(x, su))) : x;
+          const head = skipped(1);
+          const shift = eval_1.Eval(power_1.power(defs_1.Constants.negOne, add_1.subtract(defs_1.caddr(alternating), x)));
+          if (findSign(u, x) !== void 0 || find_1.Find(cu, x) || !head || !defs_1.isNumericAtom(shift)) {
+            return null;
+          }
+          const eta = is_1.equaln(su, 1) ? log_1.logarithm(bignum_1.integer(2)) : multiply_1.multiply(add_1.subtract(defs_1.Constants.one, power_1.power(bignum_1.integer(2), add_1.subtract(defs_1.Constants.one, su))), zeta_1.zeta(su));
+          return add_1.subtract(multiply_1.negate(multiply_1.multiply(multiply_1.multiply(shift, cu), eta)), head);
+        }
+        const s = simplify_1.simplify(multiply_1.negate(multiply_1.divide(multiply_1.multiply(x, derivative_1.derivative(t, x)), t)));
+        if (is_1.isposint(s)) {
+          if (is_1.equaln(s, 1)) {
+            run_1.stop("sum: the series diverges");
+          }
+          const c = simplify_1.simplify(multiply_1.multiply(t, power_1.power(x, s)));
+          const head = skipped(1);
+          return head && !find_1.Find(c, x) ? add_1.subtract(multiply_1.multiply(c, zeta_1.zeta(s)), head) : null;
+        }
+        return null;
+      }
+      function findSign(t, x) {
+        if (!defs_1.iscons(t)) {
+          return void 0;
+        }
+        if (defs_1.ispower(t) && misc_1.equal(defs_1.cadr(t), defs_1.Constants.negOne) && is_1.equaln(derivative_1.derivative(defs_1.caddr(t), x), 1)) {
+          return t;
+        }
+        for (const q of t.tail()) {
+          const r = findSign(q, x);
+          if (r !== void 0) {
+            return r;
+          }
+        }
+        return void 0;
+      }
+      function isRationalIn(t, x) {
+        const isPoly = (p) => !find_1.Find(p, x) || is_1.ispolyfactoredorexpandedform(p, x);
+        return find_1.Find(denominator_1.denominator(t), x) && isPoly(numerator_1.numerator(t)) && isPoly(denominator_1.denominator(t));
+      }
+      function telescope(R, x, a, b) {
+        const infinite = b === symbol_1.symbol(defs_1.INF);
+        const P = expand_1.apart(R, x);
+        const fractions = [];
+        for (const part of defs_1.isadd(P) ? P.tail() : [P]) {
+          const k = coeff_1.coeff(denominator_1.denominator(part), x);
+          const num = numerator_1.numerator(part);
+          if (k.length !== 2 || find_1.Find(num, x)) {
+            return null;
+          }
+          const m = multiply_1.divide(k[0], k[1]);
+          if (!defs_1.isrational(m)) {
+            return null;
+          }
+          fractions.push({ c: multiply_1.divide(num, k[1]), m });
+        }
+        const frac = (m) => add_1.subtract(m, bignum_1.integer(Math.floor(toNumber(m))));
+        let result = defs_1.Constants.zero;
+        const done = [];
+        for (const f of fractions) {
+          const key = frac(f.m);
+          if (done.some((d) => misc_1.equal(d, key))) {
+            continue;
+          }
+          done.push(key);
+          const group = fractions.filter((g) => misc_1.equal(frac(g.m), key));
+          const total = group.reduce((acc, g) => add_1.add(acc, g.c), defs_1.Constants.zero);
+          if (!is_1.isZeroAtomOrTensor(simplify_1.simplify(total))) {
+            if (infinite) {
+              run_1.stop("sum: the series diverges");
+            }
+            return null;
+          }
+          const m0 = group.reduce((min, g) => toNumber(g.m) < toNumber(min) ? g.m : min, group[0].m);
+          for (const g of group) {
+            const d = Math.round(toNumber(g.m) - toNumber(m0));
+            for (let j = 1; j <= d; j++) {
+              const lower = multiply_1.divide(g.c, add_1.add(add_1.add(add_1.subtract(a, defs_1.Constants.one), m0), bignum_1.integer(j)));
+              const upper = infinite ? defs_1.Constants.zero : multiply_1.divide(g.c, add_1.add(add_1.add(b, m0), bignum_1.integer(j)));
+              result = add_1.add(result, add_1.subtract(upper, lower));
+            }
+          }
+        }
+        return result;
+      }
+      function toNumber(p) {
+        const f = float_1.zzfloat(p);
+        return defs_1.isdouble(f) ? f.d : NaN;
       }
     }
   });
@@ -16817,6 +19772,18 @@ FACTOR=${p8}`);
           case 120:
           case 300:
             return multiply_1.negate(power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2)));
+          case 15:
+          case 195:
+            return add_1.subtract(bignum_1.integer(2), power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2)));
+          case 165:
+          case 345:
+            return add_1.subtract(power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2)), bignum_1.integer(2));
+          case 75:
+          case 255:
+            return add_1.add(bignum_1.integer(2), power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2)));
+          case 105:
+          case 285:
+            return multiply_1.negate(add_1.add(bignum_1.integer(2), power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2))));
           default:
             return list_1.makeList(symbol_1.symbol(defs_1.TAN), p1);
         }
@@ -16875,6 +19842,9 @@ FACTOR=${p8}`);
       var factorial_1 = require_factorial();
       var guess_1 = require_guess();
       var is_1 = require_is();
+      var denominator_1 = require_denominator();
+      var numerator_1 = require_numerator();
+      var power_1 = require_power();
       var list_1 = require_list();
       var multiply_1 = require_multiply();
       var subst_1 = require_subst();
@@ -16900,6 +19870,17 @@ FACTOR=${p8}`);
         if (isNaN(k)) {
           return list_1.makeList(symbol_1.symbol(defs_1.TAYLOR), F, X, N, A);
         }
+        try {
+          return regularTaylor(F, X, k, A);
+        } catch (e) {
+          const q = quotientSeries(F, X, k, A);
+          if (q === void 0) {
+            throw e;
+          }
+          return q;
+        }
+      }
+      function regularTaylor(F, X, k, A) {
         let p5 = defs_1.Constants.one;
         let temp = eval_1.Eval(subst_1.subst(F, X, A));
         for (let i = 1; i <= k; i++) {
@@ -16912,6 +19893,68 @@ FACTOR=${p8}`);
           temp = add_1.add(temp, multiply_1.divide(multiply_1.multiply(arg1a, p5), factorial_1.factorial(bignum_1.integer(i))));
         }
         return temp;
+      }
+      function coefficients(F, X, A) {
+        let i = 0;
+        return () => {
+          const c = multiply_1.divide(eval_1.Eval(subst_1.subst(F, X, A)), factorial_1.factorial(bignum_1.integer(i)));
+          F = derivative_1.derivative(F, X);
+          i++;
+          return c;
+        };
+      }
+      var MAX_ORDER = 12;
+      function quotientSeries(F, X, k, A) {
+        const den = denominator_1.denominator(F);
+        if (is_1.isone(den)) {
+          return void 0;
+        }
+        let nextN;
+        let nextD;
+        let n;
+        let d;
+        let n0 = 0;
+        let d0 = 0;
+        try {
+          nextN = coefficients(numerator_1.numerator(F), X, A);
+          nextD = coefficients(den, X, A);
+          n = [nextN()];
+          d = [nextD()];
+          for (; is_1.isZeroAtomOrTensor(n[0]); n0++) {
+            if (n0 === MAX_ORDER) {
+              return void 0;
+            }
+            n = [nextN()];
+          }
+          for (; is_1.isZeroAtomOrTensor(d[0]); d0++) {
+            if (d0 === MAX_ORDER) {
+              return void 0;
+            }
+            d = [nextD()];
+          }
+          const shift = n0 - d0;
+          const q = [];
+          let result = defs_1.Constants.zero;
+          let pow = defs_1.Constants.one;
+          for (let j = 0; j + shift <= k; j++) {
+            if (j > 0) {
+              n.push(nextN());
+              d.push(nextD());
+              pow = multiply_1.multiply(pow, add_1.subtract(X, A));
+            }
+            let c = n[j];
+            for (let i = 1; i <= j; i++) {
+              c = add_1.subtract(c, multiply_1.multiply(d[i], q[j - i]));
+            }
+            q.push(multiply_1.divide(c, d[0]));
+            const e = j + shift;
+            const term = e >= 0 ? multiply_1.multiply(q[j], e === j ? pow : power_1.power(add_1.subtract(X, A), bignum_1.integer(e))) : multiply_1.multiply(q[j], power_1.power(add_1.subtract(X, A), bignum_1.integer(e)));
+            result = add_1.add(result, e >= 0 && e !== j ? eval_1.Eval(term) : term);
+          }
+          return result;
+        } catch (e) {
+          return void 0;
+        }
       }
     }
   });
@@ -17084,6 +20127,7 @@ FACTOR=${p8}`);
         'version="' + defs_1.version + '"',
         "e=exp(1)",
         "i=sqrt(-1)",
+        "infinity=inf",
         "autoexpand=1",
         "assumeRealVariables=1",
         "trange=[-pi,pi]",
@@ -18121,7 +21165,7 @@ FACTOR=${p8}`);
             }
             break;
           case defs_1.DOUBLE:
-            tmpString = otherCFunctions_1.doubleToReasonableString(p.d);
+            tmpString = otherCFunctions_1.doubleToReasonableString(p.d, p.bigRepr);
             if (tmpString[0] === "-" && emit_sign === 0) {
               tmpString = tmpString.substring(1);
             }
@@ -20299,7 +23343,7 @@ FACTOR=${p8}`);
       }
       exports.printline = printline;
       function isscientific(p) {
-        return defs_1.isdouble(p) && /[*^]|\\cdot/.test(otherCFunctions_1.doubleToReasonableString(p.d));
+        return defs_1.isdouble(p) && /[*^]|\\cdot/.test(otherCFunctions_1.doubleToReasonableString(p.d, p.bigRepr));
       }
       function print_base_of_denom(BASE) {
         let accumulator = "";
@@ -21328,6 +24372,8 @@ FACTOR=${p8}`);
             accumulator += print_TESTLT_latex(p);
             return accumulator;
           }
+          accumulator += print_expr(defs_1.cadr(p)) + "<" + print_expr(defs_1.caddr(p));
+          return accumulator;
         } else if (defs_1.car(p) === symbol_1.symbol(defs_1.TESTLE)) {
           if (defs_1.defs.codeGen) {
             accumulator += "((" + print_expr(defs_1.cadr(p)) + ") <= (" + print_expr(defs_1.caddr(p)) + "))";
@@ -21337,6 +24383,8 @@ FACTOR=${p8}`);
             accumulator += print_TESTLE_latex(p);
             return accumulator;
           }
+          accumulator += print_expr(defs_1.cadr(p)) + "<=" + print_expr(defs_1.caddr(p));
+          return accumulator;
         } else if (defs_1.car(p) === symbol_1.symbol(defs_1.TESTGT)) {
           if (defs_1.defs.codeGen) {
             accumulator += "((" + print_expr(defs_1.cadr(p)) + ") > (" + print_expr(defs_1.caddr(p)) + "))";
@@ -21346,6 +24394,8 @@ FACTOR=${p8}`);
             accumulator += print_TESTGT_latex(p);
             return accumulator;
           }
+          accumulator += print_expr(defs_1.cadr(p)) + ">" + print_expr(defs_1.caddr(p));
+          return accumulator;
         } else if (defs_1.car(p) === symbol_1.symbol(defs_1.TESTGE)) {
           if (defs_1.defs.codeGen) {
             accumulator += "((" + print_expr(defs_1.cadr(p)) + ") >= (" + print_expr(defs_1.caddr(p)) + "))";
@@ -21355,6 +24405,8 @@ FACTOR=${p8}`);
             accumulator += print_TESTGE_latex(p);
             return accumulator;
           }
+          accumulator += print_expr(defs_1.cadr(p)) + ">=" + print_expr(defs_1.caddr(p));
+          return accumulator;
         } else if (defs_1.car(p) === symbol_1.symbol(defs_1.TESTEQ)) {
           if (defs_1.defs.codeGen) {
             accumulator += "((" + print_expr(defs_1.cadr(p)) + ") === (" + print_expr(defs_1.caddr(p)) + "))";
@@ -21364,6 +24416,16 @@ FACTOR=${p8}`);
             accumulator += print_TESTEQ_latex(p);
             return accumulator;
           }
+          accumulator += print_expr(defs_1.cadr(p)) + "==" + print_expr(defs_1.caddr(p));
+          return accumulator;
+        } else if (defs_1.defs.printMode === defs_1.PRINTMODE_LATEX && !defs_1.defs.codeGen && (defs_1.car(p) === symbol_1.symbol(defs_1.AND) || defs_1.car(p) === symbol_1.symbol(defs_1.OR) || defs_1.car(p) === symbol_1.symbol(defs_1.NOT))) {
+          const operand = (q) => defs_1.car(q) === symbol_1.symbol(defs_1.AND) || defs_1.car(q) === symbol_1.symbol(defs_1.OR) ? "\\left(" + print_expr(q) + "\\right)" : print_expr(q);
+          const args = p.tail();
+          if (defs_1.car(p) === symbol_1.symbol(defs_1.NOT)) {
+            return accumulator + "\\neg " + operand(args[0]);
+          }
+          const op = defs_1.car(p) === symbol_1.symbol(defs_1.AND) ? " \\land " : " \\lor ";
+          return accumulator + args.map(operand).join(op);
         } else if (defs_1.car(p) === symbol_1.symbol(defs_1.FLOOR)) {
           if (defs_1.defs.codeGen) {
             accumulator += "Math.floor(" + print_expr(defs_1.cadr(p)) + ")";
@@ -21546,9 +24608,9 @@ FACTOR=${p8}`);
       exports.GCD = exports.GAMMA = exports.FUNCTION = exports.FOR = exports.FLOOR = exports.FLOATF = exports.FILTER = exports.FACTORPOLY = exports.FACTORIAL = exports.FACTOR = exports.EXPSIN = exports.EXPCOS = exports.EXPAND = exports.EXP = exports.EVAL = exports.ERFC = exports.ERF = exports.EIGENVECTORS = exports.EIGENVALUES = exports.EIGENVEC = exports.EIGENVAL = exports.EIGEN = exports.DSOLVE = exports.DRAW = exports.DOT = exports.DO = exports.DIVISORS = exports.DIV = exports.DIRAC = exports.DIMENSIONOF = exports.DIM = exports.DET = exports.DERIVATIVE = exports.DENOMINATOR = exports.DEGREE = exports.DEFINT = exports.DECOMP = exports.COSH = exports.COS = exports.CONVERT = exports.CURL = exports.CROSS = exports.CONTRACT = exports.CONJ = exports.CONDENSE = exports.COFACTOR = exports.COEFF = exports.CLOCK = exports.CLEARPATTERNS = exports.CLEARALL = void 0;
       exports.OR = exports.OPERATOR = exports.NUMERATOR = exports.NUMBER = exports.NULLSPACE = exports.NROOTS = exports.NOT = exports.MULTIPLY = exports.MOD = exports.MIN = exports.MAX = exports.ISNONZERO = exports.ISNEGATIVE = exports.ISPOSITIVE = exports.ISREAL = exports.ASSUMPTIONS = exports.FORGET = exports.ASSUME = exports.AT = exports.INVLAPLACE = exports.LAPLACE = exports.NSOLVE = exports.TRIGSIMP = exports.TRIGEXPAND = exports.RANDOM = exports.SSD = exports.SD = exports.SVARIANCE = exports.VARIANCE = exports.MEDIAN = exports.MEAN = exports.MATRIXRANK = exports.LOOKUP = exports.LOG = exports.LIMIT = exports.LEGENDRE = exports.LEADING = exports.LCM = exports.LAGUERRE = exports.ISPRIME = exports.ISINTEGER = exports.INVG = exports.INV = exports.INTEGRAL = exports.INNER = exports.INDEX = exports.IMAG = exports.HILBERT = exports.HERMITE = exports.GROEBNER = void 0;
       exports.TRANSPOSE = exports.TESTLT = exports.TESTLE = exports.TESTGT = exports.TESTGE = exports.TESTEQ = exports.TEST = exports.TAYLOR = exports.TANH = exports.TAN = exports.SYMBOLSINFO = exports.SUM = exports.SUBST = exports.STOP = exports.SQRT = exports.SOLVE = exports.SHAPE = exports.SINH = exports.SIN = exports.SIMPLIFY = exports.SILENTPATTERN = exports.SGN = exports.SETQ = exports.ROOTS = exports.YYRECT = exports.RREF = exports.ROUND = exports.RESULTANT = exports.REAL = exports.RATIONALIZE = exports.RANK = exports.QUOTIENT = exports.QUOTE = exports.QUANTITY = exports.PRODUCT = exports.PRINTPLAIN = exports.PRINTLIST = exports.PRINTLATEX = exports.PRINTFULL = exports.PRINT2DASCII = exports.PRINT = exports.PRINT_LEAVE_X_ALONE = exports.PRINT_LEAVE_E_ALONE = exports.PRIME = exports.POWER = exports.POLAR = exports.PATTERNSINFO = exports.PATTERN = exports.PARTFRAC = exports.OUTER = void 0;
-      exports.MAXPRIMETAB = exports.E = exports.C6 = exports.C5 = exports.C4 = exports.C3 = exports.C2 = exports.C1 = exports.SYMBOL_X_UNDERSCORE = exports.SYMBOL_B_UNDERSCORE = exports.SYMBOL_A_UNDERSCORE = exports.SYMBOL_IDENTITY_MATRIX = exports.SYMBOL_Z = exports.SYMBOL_Y = exports.SYMBOL_X = exports.SYMBOL_T = exports.SYMBOL_S = exports.SYMBOL_R = exports.SYMBOL_N = exports.SYMBOL_J = exports.SYMBOL_I = exports.SYMBOL_D = exports.SYMBOL_C = exports.SYMBOL_B = exports.SYMBOL_A = exports.INF = exports.PI = exports.VERSION = exports.SECRETX = exports.METAX = exports.METAB = exports.METAA = exports.DRAWX = exports.YYE = exports.MAX_FIXED_PRINTOUT_DIGITS = exports.FORCE_FIXED_PRINTOUT = exports.ASSUME_REAL_VARIABLES = exports.BAKE = exports.AUTOEXPAND = exports.LAST_PLAIN_PRINT = exports.LAST_LIST_PRINT = exports.LAST_LATEX_PRINT = exports.LAST_FULL_PRINT = exports.LAST_2DASCII_PRINT = exports.LAST_PRINT = exports.LAST = exports.NIL = exports.ZERO = exports.UNITS = exports.UNIT = void 0;
-      exports.isidentitymatrix = exports.isinv = exports.istranspose = exports.isinnerordot = exports.isfactorial = exports.ispower = exports.ismultiply = exports.isadd = exports.caddaddr = exports.cdddaddr = exports.caddadr = exports.cddaddr = exports.cadaddr = exports.caddddr = exports.cddddr = exports.cadddr = exports.cdaddr = exports.caddar = exports.cadadr = exports.caaddr = exports.cdddr = exports.cddar = exports.cdadr = exports.cadar = exports.caddr = exports.caadr = exports.cddr = exports.cdar = exports.cadr = exports.caar = exports.cdr = exports.car = exports.issymbol = exports.isNumericAtomOrTensor = exports.istensor = exports.isstr = exports.isNumericAtom = exports.isdouble = exports.isrational = exports.iscons = exports.dotprod_unicode = exports.transpose_unicode = exports.logbuf = exports.mtotal = exports.primetab = exports.parse_time_simplifications = exports.predefinedSymbolsInGlobalScope_doNotTrackInDependencies = exports.MAXDIM = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES = void 0;
-      exports.evalFloats = exports.evalPolar = exports.doexpand = exports.noexpand = exports.Constants = exports.$ = exports.reset_after_error = exports.MEQUAL = exports.MZERO = exports.MSIGN = void 0;
+      exports.C6 = exports.C5 = exports.C4 = exports.C3 = exports.C2 = exports.C1 = exports.SYMBOL_X_UNDERSCORE = exports.SYMBOL_B_UNDERSCORE = exports.SYMBOL_A_UNDERSCORE = exports.SYMBOL_IDENTITY_MATRIX = exports.SYMBOL_Z = exports.SYMBOL_Y = exports.SYMBOL_X = exports.SYMBOL_T = exports.SYMBOL_S = exports.SYMBOL_R = exports.SYMBOL_N = exports.SYMBOL_J = exports.SYMBOL_I = exports.SYMBOL_D = exports.SYMBOL_C = exports.SYMBOL_B = exports.SYMBOL_A = exports.INF = exports.PI = exports.VERSION = exports.SECRETX = exports.METAX = exports.METAB = exports.METAA = exports.DRAWX = exports.YYE = exports.MAX_FIXED_PRINTOUT_DIGITS = exports.FORCE_FIXED_PRINTOUT = exports.ASSUME_REAL_VARIABLES = exports.BAKE = exports.AUTOEXPAND = exports.LAST_PLAIN_PRINT = exports.LAST_LIST_PRINT = exports.LAST_LATEX_PRINT = exports.LAST_FULL_PRINT = exports.LAST_2DASCII_PRINT = exports.LAST_PRINT = exports.LAST = exports.NIL = exports.BERNOULLI = exports.ZETA = exports.ZERO = exports.UNITS = exports.UNIT = void 0;
+      exports.istranspose = exports.isinnerordot = exports.isfactorial = exports.ispower = exports.ismultiply = exports.isadd = exports.caddaddr = exports.cdddaddr = exports.caddadr = exports.cddaddr = exports.cadaddr = exports.caddddr = exports.cddddr = exports.cadddr = exports.cdaddr = exports.caddar = exports.cadadr = exports.caaddr = exports.cdddr = exports.cddar = exports.cdadr = exports.cadar = exports.caddr = exports.caadr = exports.cddr = exports.cdar = exports.cadr = exports.caar = exports.cdr = exports.car = exports.issymbol = exports.isNumericAtomOrTensor = exports.istensor = exports.isstr = exports.isNumericAtom = exports.isdouble = exports.isrational = exports.iscons = exports.dotprod_unicode = exports.transpose_unicode = exports.logbuf = exports.mtotal = exports.primetab = exports.parse_time_simplifications = exports.predefinedSymbolsInGlobalScope_doNotTrackInDependencies = exports.MAXDIM = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES = exports.MAXPRIMETAB = exports.E = void 0;
+      exports.evalFloats = exports.noFloats = exports.evalPolar = exports.doexpand = exports.noexpand = exports.Constants = exports.$ = exports.reset_after_error = exports.MEQUAL = exports.MZERO = exports.MSIGN = exports.isidentitymatrix = exports.isinv = void 0;
       var big_integer_1 = __importDefault(require_BigInteger());
       var print_1 = require_print();
       var symbol_1 = require_symbol();
@@ -21863,6 +24925,8 @@ FACTOR=${p8}`);
       exports.UNIT = "unit";
       exports.UNITS = "units";
       exports.ZERO = "zero";
+      exports.ZETA = "zeta";
+      exports.BERNOULLI = "bernoulli";
       exports.NIL = "nil";
       exports.LAST = "last";
       exports.LAST_PRINT = "lastprint";
@@ -22230,6 +25294,16 @@ FACTOR=${p8}`);
         }
       }
       exports.evalPolar = evalPolar;
+      function noFloats(func, ...args) {
+        const prev_evaluatingAsFloats = exports.defs.evaluatingAsFloats;
+        exports.defs.evaluatingAsFloats = false;
+        try {
+          return func(...args);
+        } finally {
+          exports.defs.evaluatingAsFloats = prev_evaluatingAsFloats;
+        }
+      }
+      exports.noFloats = noFloats;
       function evalFloats(func, ...args) {
         const prev_evaluatingAsFloats = exports.defs.evaluatingAsFloats;
         exports.defs.evaluatingAsFloats = true;
@@ -22425,6 +25499,7 @@ FACTOR=${p8}`);
         "arctanh",
         "arg",
         "atomize",
+        "bernoulli",
         "besselj",
         "bessely",
         "binding",
@@ -22582,7 +25657,39 @@ FACTOR=${p8}`);
         "transpose",
         "unit",
         "units",
-        "zero"
+        "zero",
+        "zeta",
+        "lambertw",
+        "Si",
+        "Ci",
+        "Ei",
+        "fresnels",
+        "fresnelc",
+        "digamma",
+        "beta",
+        "chebyshevt",
+        "chebyshevu",
+        "cfrac",
+        "fibonacci",
+        "harmonic",
+        "totient",
+        "powermod",
+        "nextprime",
+        "primes",
+        "norm",
+        "jacobian",
+        "gradient",
+        "hessian",
+        "laplacian",
+        "lu",
+        "qr",
+        "cholesky",
+        "length",
+        "append",
+        "sort",
+        "range",
+        "table",
+        "map"
       ];
       Array.from(builtin_fns).map((fn) => $[fn] = zombocom_1.exec.bind(exports, fn));
       $.setDrawHandler = draw_1.setDrawHandler;

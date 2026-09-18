@@ -45,5 +45,9 @@ function mod(p1, p2) {
     if (!is_1.isinteger(p1) || !is_1.isinteger(p2)) {
         run_1.stop('mod function: integer arguments expected');
     }
-    return new defs_1.Num(mmul_1.mmod(p1.q.a, p2.q.a));
+    // mmod truncates (sign of the dividend); the result takes the sign of the
+    // divisor instead, as in Maxima, Mathematica and SymPy: mod(-7,3) = 2
+    const r = mmul_1.mmod(p1.q.a, p2.q.a);
+    const flip = !r.isZero() && r.isNegative() !== p2.q.a.isNegative();
+    return new defs_1.Num(flip ? r.add(p2.q.a) : r);
 }

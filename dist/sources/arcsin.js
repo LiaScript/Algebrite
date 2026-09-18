@@ -8,6 +8,7 @@ const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
+const sin_1 = require("./sin");
 const multiply_1 = require("./multiply");
 const add_1 = require("./add");
 const quantity_1 = require("./quantity");
@@ -80,6 +81,11 @@ function arcsin(x) {
         return defs_1.defs.evaluatingAsFloats
             ? bignum_1.double(-Math.PI / 3.0)
             : multiply_1.multiply(bignum_1.rational(-1, 3), symbol_1.symbol(defs_1.PI));
+    }
+    // arcsin((6^(1/2)-2^(1/2))/4) = pi/12 and the like
+    const degrees = sin_1.specialSineAngle(x);
+    if (degrees !== undefined) {
+        return multiply_1.multiply(multiply_1.divide(bignum_1.integer(degrees), bignum_1.integer(180)), symbol_1.symbol(defs_1.PI));
     }
     if (!defs_1.isrational(x)) {
         return list_1.makeList(symbol_1.symbol(defs_1.ARCSIN), x);

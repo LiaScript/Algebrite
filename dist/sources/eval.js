@@ -23,6 +23,7 @@ const quantity_1 = require("./quantity");
 const subst_1 = require("./subst");
 const tensor_1 = require("./tensor");
 const userfunc_1 = require("./userfunc");
+const linalg_1 = require("./linalg");
 function evaluate_integer(p) {
     return bignum_1.nativeInt(Eval(p));
 }
@@ -269,7 +270,11 @@ exports.Eval_Eval = Eval_Eval;
 // exp evaluation: it replaces itself with
 // a POWER(E,something) node and evals that one
 function Eval_exp(p1) {
-    return misc_1.exponential(quantity_1.requireDimensionless(Eval(defs_1.cadr(p1)), 'exp'));
+    const arg = Eval(defs_1.cadr(p1));
+    if (defs_1.istensor(arg) && arg.ndim === 2) {
+        return linalg_1.matrixExponential(arg);
+    }
+    return misc_1.exponential(quantity_1.requireDimensionless(arg, 'exp'));
 }
 exports.Eval_exp = Eval_exp;
 function Eval_factorial(p1) {

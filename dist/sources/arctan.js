@@ -10,6 +10,7 @@ const denominator_1 = require("./denominator");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const add_1 = require("./add");
+const power_1 = require("./power");
 const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const numerator_1 = require("./numerator");
@@ -73,6 +74,19 @@ function arctan(x) {
     // arctan(sqrt(3)) -> pi/3
     if (defs_1.ispower(x) && is_1.equaln(defs_1.cadr(x), 3) && is_1.equalq(defs_1.caddr(x), 1, 2)) {
         return multiply_1.multiply(bignum_1.rational(1, 3), defs_1.Constants.Pi());
+    }
+    // arctan(2-sqrt(3)) -> pi/12, arctan(2+sqrt(3)) -> 5*pi/12
+    const sqrt3 = power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2));
+    for (const [value, twelfths] of [
+        [add_1.subtract(bignum_1.integer(2), sqrt3), 1],
+        [add_1.add(bignum_1.integer(2), sqrt3), 5]
+    ]) {
+        if (misc_1.equal(x, value)) {
+            return multiply_1.multiply(bignum_1.rational(twelfths, 12), defs_1.Constants.Pi());
+        }
+        if (misc_1.equal(x, multiply_1.negate(value))) {
+            return multiply_1.multiply(bignum_1.rational(-twelfths, 12), defs_1.Constants.Pi());
+        }
     }
     return list_1.makeList(symbol_1.symbol(defs_1.ARCTAN), x);
 }

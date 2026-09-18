@@ -81,6 +81,19 @@ function tangent(p1) {
         case 120:
         case 300:
             return multiply_1.negate(power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2)));
+        // tan(15) = 2-3^(1/2), tan(75) = 2+3^(1/2)
+        case 15:
+        case 195:
+            return add_1.subtract(bignum_1.integer(2), power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2)));
+        case 165:
+        case 345:
+            return add_1.subtract(power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2)), bignum_1.integer(2));
+        case 75:
+        case 255:
+            return add_1.add(bignum_1.integer(2), power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2)));
+        case 105:
+        case 285:
+            return multiply_1.negate(add_1.add(bignum_1.integer(2), power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2))));
         default:
             return list_1.makeList(symbol_1.symbol(defs_1.TAN), p1);
     }

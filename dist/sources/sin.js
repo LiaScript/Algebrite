@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.integerTimesPi = exports.sine = exports.Eval_sin = void 0;
+exports.specialSineAngle = exports.specialSine = exports.integerTimesPi = exports.sine = exports.Eval_sin = void 0;
 const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
@@ -10,6 +10,7 @@ const cos_1 = require("./cos");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
+const misc_1 = require("./misc");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
 const quantity_1 = require("./quantity");
@@ -122,6 +123,42 @@ function sine_of_angle(p1) {
         case 270:
             return defs_1.Constants.negOne;
         default:
-            return list_1.makeList(symbol_1.symbol(defs_1.SIN), p1);
+            return specialSine(n % 360) || list_1.makeList(symbol_1.symbol(defs_1.SIN), p1);
     }
 }
+// sin of n degrees, 0 <= n < 360, for the odd multiples of 15:
+// sin(15) = (6^(1/2)-2^(1/2))/4, sin(75) = (6^(1/2)+2^(1/2))/4 and their
+// mirror images. cos uses it through cos(n) = sin(90-n).
+// ponytail: multiples of 18 degrees (pi/10) are left alone on purpose, their
+// nested radicals make roots of unity and arg() results unreadable.
+function specialSine(n) {
+    if (n > 180) {
+        const s = specialSine(n - 180);
+        return s && multiply_1.negate(s);
+    }
+    if (n > 90) {
+        return specialSine(180 - n);
+    }
+    const sqrt = (k) => power_1.power(bignum_1.integer(k), bignum_1.rational(1, 2));
+    if (n === 15) {
+        return multiply_1.multiply(bignum_1.rational(1, 4), add_1.subtract(sqrt(6), sqrt(2)));
+    }
+    if (n === 75) {
+        return multiply_1.multiply(bignum_1.rational(1, 4), add_1.add(sqrt(6), sqrt(2)));
+    }
+    return undefined;
+}
+exports.specialSine = specialSine;
+// the angle in degrees within [-90, 90] whose sine is the special value x
+function specialSineAngle(x) {
+    for (const n of [15, 75]) {
+        if (misc_1.equal(x, specialSine(n))) {
+            return n;
+        }
+        if (misc_1.equal(x, multiply_1.negate(specialSine(n)))) {
+            return -n;
+        }
+    }
+    return undefined;
+}
+exports.specialSineAngle = specialSineAngle;

@@ -13,6 +13,9 @@ const derivative_1 = require("./derivative");
 const denominator_1 = require("./denominator");
 const float_1 = require("./float");
 const is_1 = require("./is");
+const add_1 = require("./add");
+const log_1 = require("./log");
+const power_1 = require("./power");
 const list_1 = require("./list");
 const misc_1 = require("./misc");
 const multiply_1 = require("./multiply");
@@ -61,10 +64,15 @@ function Eval_limit(p1) {
     // optional 4th arg: a positive number for the limit from the right,
     // a negative one for the limit from the left
     let sides = [-1, 1];
-    if (defs_1.caddddr(p1) !== symbol_1.symbol(defs_1.NIL)) {
-        const direction = eval_1.Eval(defs_1.caddddr(p1));
+    const side = defs_1.caddddr(p1);
+    const sideName = defs_1.issymbol(side) ? side.printname : '';
+    if (sideName === 'left' || sideName === 'right') {
+        sides = [sideName === 'left' ? -1 : 1];
+    }
+    else if (side !== symbol_1.symbol(defs_1.NIL)) {
+        const direction = eval_1.Eval(side);
         if (!defs_1.isNumericAtom(direction) || is_1.isZeroAtomOrTensor(direction)) {
-            run_1.stop('limit: 4th argument must be a positive or negative number');
+            run_1.stop('limit: 4th argument must be left, right or a positive or negative number');
         }
         sides = [is_1.isnegativenumber(direction) ? -1 : 1];
     }
@@ -73,6 +81,109 @@ function Eval_limit(p1) {
 exports.Eval_limit = Eval_limit;
 const VANISHING_DENOMINATOR = 'limit: denominator vanishes while numerator does not — limit is infinite or does not exist';
 function limit(F, X, A, sides = [-1, 1]) {
+    const viaExp = powerLimit(F, X, A, sides);
+    if (viaExp !== undefined) {
+        return viaExp;
+    }
+    try {
+        return limitCore(F, X, A, sides);
+    }
+    catch (e) {
+        const r = squeeze(F, X, A, sides) ||
+            termwise(F, X, A, sides) ||
+            factorwise(F, X, A, sides) ||
+            compose(F, X, A, sides);
+        if (r === undefined) {
+            throw e;
+        }
+        return r;
+    }
+}
+exports.limit = limit;
+// f^g with X in base and exponent (1^inf, inf^0, 0^0): exp(limit(g*log(f)))
+function powerLimit(F, X, A, sides) {
+    if (!defs_1.ispower(F) || !find_1.Find(defs_1.cadr(F), X) || !find_1.Find(defs_1.caddr(F), X)) {
+        return undefined;
+    }
+    try {
+        const L = limit(multiply_1.multiply(defs_1.caddr(F), log_1.logarithm(defs_1.cadr(F))), X, A, sides);
+        if (L === symbol_1.symbol(defs_1.INF)) {
+            return L;
+        }
+        return isInfinite(L) ? defs_1.Constants.zero : misc_1.exponential(L);
+    }
+    catch (e) {
+        return undefined;
+    }
+}
+// a bounded factor (sin, cos or a positive power of one) times a rest that
+// goes to 0: sin(x)/x at inf, x*sin(1/x) at 0
+function squeeze(F, X, A, sides) {
+    const factors = defs_1.ismultiply(F) ? F.tail() : [F];
+    const isBounded = (f) => (defs_1.car(f) === symbol_1.symbol(defs_1.SIN) || defs_1.car(f) === symbol_1.symbol(defs_1.COS)) ||
+        (defs_1.ispower(f) && is_1.isposint(defs_1.caddr(f)) && isBounded(defs_1.cadr(f)));
+    const bounded = factors.filter((f) => find_1.Find(f, X) && isBounded(f));
+    if (bounded.length === 0 || bounded.length === factors.length) {
+        return undefined;
+    }
+    try {
+        const rest = multiply_1.multiply_all(factors.filter((f) => !bounded.includes(f)));
+        return is_1.isZeroAtomOrTensor(limit(rest, X, A, sides)) ? defs_1.Constants.zero : undefined;
+    }
+    catch (e) {
+        return undefined;
+    }
+}
+// the sum of the limits of the expanded terms, when each one exists
+function termwise(F, X, A, sides) {
+    const expanded = misc_1.yyexpand(F);
+    if (!defs_1.isadd(expanded)) {
+        return undefined;
+    }
+    try {
+        const parts = expanded.tail().map((t) => limit(t, X, A, sides));
+        const infinite = parts.filter(isInfinite);
+        if (infinite.some((p) => !misc_1.equal(p, infinite[0]))) {
+            return undefined; // inf - inf
+        }
+        return infinite.length > 0 ? infinite[0] : parts.reduce(add_1.add, defs_1.Constants.zero);
+    }
+    catch (e) {
+        return undefined;
+    }
+}
+// the product of the limits of the factors, when all are finite
+function factorwise(F, X, A, sides) {
+    if (!defs_1.ismultiply(F)) {
+        return undefined;
+    }
+    try {
+        const parts = F.tail().map((f) => (find_1.Find(f, X) ? limit(f, X, A, sides) : f));
+        return parts.some((p) => find_1.Find(p, symbol_1.symbol(defs_1.INF))) ? undefined : multiply_1.multiply_all(parts);
+    }
+    catch (e) {
+        return undefined;
+    }
+}
+// f(g(x)) for a function f of one argument: f at the limit of g, itself
+// taken as a limit so that log(0), arctan(inf) and the like are resolved
+function compose(F, X, A, sides) {
+    if (!defs_1.iscons(F) || F.tail().length !== 1 || !defs_1.issymbol(defs_1.car(F)) || !find_1.Find(defs_1.cadr(F), X)) {
+        return undefined;
+    }
+    try {
+        const inner = limit(defs_1.cadr(F), X, A, sides);
+        if (find_1.Find(inner, X) || misc_1.equal(inner, defs_1.cadr(F))) {
+            return undefined;
+        }
+        const y = symbol_1.usr_symbol('limit_y');
+        return limitCore(list_1.makeList(defs_1.car(F), y), y, inner, [-1, 1]);
+    }
+    catch (e) {
+        return undefined;
+    }
+}
+function limitCore(F, X, A, sides) {
     if (A === symbol_1.symbol(defs_1.INF)) {
         return limitAtInfinity(F, X, defs_1.Constants.one);
     }
@@ -81,7 +192,6 @@ function limit(F, X, A, sides = [-1, 1]) {
     }
     return limitAt(F, X, A, sides);
 }
-exports.limit = limit;
 // x -> +-inf becomes t -> 0 from the right with x = +-1/t (X is reused as t).
 // Numerator and denominator are rationalized separately so the powers of t
 // cancel; rationalizing the whole quotient leaves nested fractions behind.
@@ -99,11 +209,22 @@ function limitAtInfinity(F, X, sign) {
             return lhopital;
         }
         return assume_1.withSign(X, 'positive', () => {
-            const at = (p) => rationalize_1.rationalize(eval_1.Eval(subst_1.subst(p, X, multiply_1.divide(sign, X))));
+            const at = (p) => rationalize_1.rationalize(splitRadicals(eval_1.Eval(subst_1.subst(p, X, multiply_1.divide(sign, X))), X));
             const G = multiply_1.divide(at(numerator_1.numerator(F)), at(denominator_1.denominator(F)));
             return limitAt(G, X, defs_1.Constants.zero, [1]);
         });
     });
+}
+// (N/t^2)^(1/2) = N^(1/2)/t for t > 0: the radicand is put over one
+// denominator, then the power splits over its positive factors
+function splitRadicals(p, X) {
+    if (!defs_1.iscons(p) || !find_1.Find(p, X)) {
+        return p;
+    }
+    if (defs_1.ispower(p) && defs_1.isrational(defs_1.caddr(p)) && !is_1.isinteger(defs_1.caddr(p))) {
+        return power_1.power(rationalize_1.rationalize(splitRadicals(defs_1.cadr(p), X)), defs_1.caddr(p));
+    }
+    return eval_1.Eval(list_1.makeList(defs_1.car(p), ...p.tail().map((q) => splitRadicals(q, X))));
 }
 const isInfinite = (p) => p === symbol_1.symbol(defs_1.INF) || misc_1.equal(p, multiply_1.negate(symbol_1.symbol(defs_1.INF)));
 // F at x = +-inf: substituted, with the functions that have a value at
@@ -198,6 +319,22 @@ function resolveInf(p) {
                 if (arg === inf) {
                     return inf;
                 }
+        }
+        // Si(+-inf) = +-pi/2, the Fresnel integrals +-1/2, Ci(inf) = 0,
+        // Ei(inf) = inf, Ei(-inf) = 0
+        switch (defs_1.issymbol(head) ? head.printname : '') {
+            case 'Si':
+                return multiply_1.multiply(s, multiply_1.divide(defs_1.Constants.Pi(), bignum_1.integer(2)));
+            case 'fresnels':
+            case 'fresnelc':
+                return multiply_1.multiply(s, bignum_1.rational(1, 2));
+            case 'Ci':
+                if (arg === inf) {
+                    return defs_1.Constants.zero;
+                }
+                break;
+            case 'Ei':
+                return arg === inf ? inf : defs_1.Constants.zero;
         }
     }
     return signedInf(eval_1.Eval(list_1.makeList(head, ...args)));
@@ -357,8 +494,9 @@ function limitAt(F, X, A, sides) {
         if (!is_1.isZeroAtomOrTensor(nAtA)) {
             return infiniteLimit(F, X, A, sides);
         }
-        N = derivative_1.derivative(N, X);
-        D = derivative_1.derivative(D, X);
+        const G = multiply_1.divide(derivative_1.derivative(N, X), derivative_1.derivative(D, X));
+        N = numerator_1.numerator(G);
+        D = denominator_1.denominator(G);
     }
     run_1.stop("limit: could not resolve after repeated L'Hopital iterations");
 }

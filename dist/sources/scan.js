@@ -786,6 +786,12 @@ function get_token() {
         }
         scan_str++;
     }
+    // a semicolon ends a statement like a line break does
+    if (scanned[scan_str] === ';') {
+        token = T_NEWLINE;
+        scan_str++;
+        return;
+    }
     token_str = scan_str;
     // end of string?
     if (scan_str === scanned.length) {

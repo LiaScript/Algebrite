@@ -8,6 +8,7 @@ const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
+const sin_1 = require("./sin");
 const multiply_1 = require("./multiply");
 const add_1 = require("./add");
 const quantity_1 = require("./quantity");
@@ -83,6 +84,11 @@ function arccos(x) {
         return defs_1.defs.evaluatingAsFloats
             ? bignum_1.double((5.0 * Math.PI) / 6.0)
             : multiply_1.multiply(bignum_1.rational(5, 6), symbol_1.symbol(defs_1.PI));
+    }
+    // arccos of the special sines: 90 degrees minus the arcsin
+    const degrees = sin_1.specialSineAngle(x);
+    if (degrees !== undefined) {
+        return multiply_1.multiply(multiply_1.divide(bignum_1.integer(90 - degrees), bignum_1.integer(180)), symbol_1.symbol(defs_1.PI));
     }
     if (!defs_1.isrational(x)) {
         return list_1.makeList(symbol_1.symbol(defs_1.ARCCOS), x);

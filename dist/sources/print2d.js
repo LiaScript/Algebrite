@@ -825,7 +825,7 @@ function emit_number(p, emit_sign) {
             }
             break;
         case defs_1.DOUBLE:
-            tmpString = otherCFunctions_1.doubleToReasonableString(p.d);
+            tmpString = otherCFunctions_1.doubleToReasonableString(p.d, p.bigRepr);
             if (tmpString[0] === '-' && emit_sign === 0) {
                 tmpString = tmpString.substring(1);
             }

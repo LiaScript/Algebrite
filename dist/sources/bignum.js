@@ -371,7 +371,7 @@ function print_number(p, signed) {
             }
             break;
         case defs_1.DOUBLE:
-            aAsString = otherCFunctions_1.doubleToReasonableString(p.d);
+            aAsString = otherCFunctions_1.doubleToReasonableString(p.d, p.bigRepr);
             if (!signed) {
                 if (aAsString[0] === '-') {
                     aAsString = aAsString.substring(1);

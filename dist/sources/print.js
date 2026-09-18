@@ -152,7 +152,7 @@ function printline(p) {
 exports.printline = printline;
 // a double printed as 1.5*10^(-7): needs parentheses as a base or exponent
 function isscientific(p) {
-    return defs_1.isdouble(p) && /[*^]|\\cdot/.test(otherCFunctions_1.doubleToReasonableString(p.d));
+    return defs_1.isdouble(p) && /[*^]|\\cdot/.test(otherCFunctions_1.doubleToReasonableString(p.d, p.bigRepr));
 }
 function print_base_of_denom(BASE) {
     let accumulator = '';
@@ -1487,6 +1487,8 @@ function print_factor(p, omitParens = false, pastFirstFactor = false) {
             accumulator += print_TESTLT_latex(p);
             return accumulator;
         }
+        accumulator += print_expr(defs_1.cadr(p)) + '<' + print_expr(defs_1.caddr(p));
+        return accumulator;
     }
     else if (defs_1.car(p) === symbol_1.symbol(defs_1.TESTLE)) {
         if (defs_1.defs.codeGen) {
@@ -1498,6 +1500,8 @@ function print_factor(p, omitParens = false, pastFirstFactor = false) {
             accumulator += print_TESTLE_latex(p);
             return accumulator;
         }
+        accumulator += print_expr(defs_1.cadr(p)) + '<=' + print_expr(defs_1.caddr(p));
+        return accumulator;
     }
     else if (defs_1.car(p) === symbol_1.symbol(defs_1.TESTGT)) {
         if (defs_1.defs.codeGen) {
@@ -1509,6 +1513,8 @@ function print_factor(p, omitParens = false, pastFirstFactor = false) {
             accumulator += print_TESTGT_latex(p);
             return accumulator;
         }
+        accumulator += print_expr(defs_1.cadr(p)) + '>' + print_expr(defs_1.caddr(p));
+        return accumulator;
     }
     else if (defs_1.car(p) === symbol_1.symbol(defs_1.TESTGE)) {
         if (defs_1.defs.codeGen) {
@@ -1520,6 +1526,8 @@ function print_factor(p, omitParens = false, pastFirstFactor = false) {
             accumulator += print_TESTGE_latex(p);
             return accumulator;
         }
+        accumulator += print_expr(defs_1.cadr(p)) + '>=' + print_expr(defs_1.caddr(p));
+        return accumulator;
     }
     else if (defs_1.car(p) === symbol_1.symbol(defs_1.TESTEQ)) {
         if (defs_1.defs.codeGen) {
@@ -1531,6 +1539,22 @@ function print_factor(p, omitParens = false, pastFirstFactor = false) {
             accumulator += print_TESTEQ_latex(p);
             return accumulator;
         }
+        accumulator += print_expr(defs_1.cadr(p)) + '==' + print_expr(defs_1.caddr(p));
+        return accumulator;
+    }
+    else if (defs_1.defs.printMode === defs_1.PRINTMODE_LATEX &&
+        !defs_1.defs.codeGen &&
+        (defs_1.car(p) === symbol_1.symbol(defs_1.AND) || defs_1.car(p) === symbol_1.symbol(defs_1.OR) || defs_1.car(p) === symbol_1.symbol(defs_1.NOT))) {
+        // a \land b, a \lor b, \neg a; a nested and/or gets parentheses
+        const operand = (q) => defs_1.car(q) === symbol_1.symbol(defs_1.AND) || defs_1.car(q) === symbol_1.symbol(defs_1.OR)
+            ? '\\left(' + print_expr(q) + '\\right)'
+            : print_expr(q);
+        const args = p.tail();
+        if (defs_1.car(p) === symbol_1.symbol(defs_1.NOT)) {
+            return accumulator + '\\neg ' + operand(args[0]);
+        }
+        const op = defs_1.car(p) === symbol_1.symbol(defs_1.AND) ? ' \\land ' : ' \\lor ';
+        return accumulator + args.map(operand).join(op);
     }
     else if (defs_1.car(p) === symbol_1.symbol(defs_1.FLOOR)) {
         if (defs_1.defs.codeGen) {

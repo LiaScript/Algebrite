@@ -19,12 +19,18 @@ function strcmp(str1, str2) {
     }
 }
 exports.strcmp = strcmp;
-function doubleToReasonableString(d) {
+function doubleToReasonableString(d, bigRepr) {
     // when generating code, print out
     // the standard JS Number printout
     let stringRepresentation;
     if (defs_1.defs.codeGen || defs_1.defs.fullDoubleOutput) {
         return '' + d;
+    }
+    // the digits of float(x, n), already rounded to length
+    if (bigRepr !== undefined) {
+        return defs_1.defs.printMode === defs_1.PRINTMODE_LATEX
+            ? bigRepr.replace(/\*10\^\(?(-?\d+)\)?/, ' \\cdot 10^{$1}')
+            : bigRepr;
     }
     // float overflow: print like the inf symbol, not as JS "Infinity.0"
     if (d === Infinity || d === -Infinity) {

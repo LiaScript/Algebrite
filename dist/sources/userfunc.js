@@ -5,6 +5,7 @@ const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const derivative_1 = require("./derivative");
+const soft_builtins_1 = require("./soft_builtins");
 const eval_1 = require("./eval");
 const list_1 = require("./list");
 const tensor_1 = require("./tensor");
@@ -42,6 +43,15 @@ function Eval_user_function(p1) {
     if (defs_1.car(p1) === symbol_1.symbol(defs_1.SYMBOL_D) &&
         symbol_1.get_binding(symbol_1.symbol(defs_1.SYMBOL_D)) === symbol_1.symbol(defs_1.SYMBOL_D)) {
         return derivative_1.Eval_derivative(p1);
+    }
+    // soft builtins (gamma, zeta, laplacian, map, ...) apply unless the user
+    // bound the name to something of their own, see soft_builtins.ts
+    const fn = defs_1.car(p1);
+    if (defs_1.issymbol(fn) && symbol_1.get_binding(fn) === fn) {
+        const soft = soft_builtins_1.softBuiltin(fn.printname);
+        if (soft) {
+            return soft(p1);
+        }
     }
     // normally car(p1) is a symbol with the function name
     // but it could be something that has to be
