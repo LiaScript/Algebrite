@@ -95,6 +95,9 @@ run_test([
   'arccos(2)',
   'arccos(2)',
 
+  'arccos(1.5)',
+  'Stop: arccos function argument is not in the interval [-1,1]',
+
   'arccos(x)',
   'arccos(x)',
 

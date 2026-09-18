@@ -13,6 +13,7 @@ import {
   POWER,
   U
 } from '../runtime/defs';
+import { stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
 import { double, integer, nativeInt, rational } from './bignum';
 import { Eval } from './eval';
@@ -63,6 +64,9 @@ function arccos(x: U): U {
   }
 
   if (isdouble(x)) {
+    if (Math.abs(x.d) > 1) {
+      stop('arccos function argument is not in the interval [-1,1]');
+    }
     return double(Math.acos(x.d));
   }
 

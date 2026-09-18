@@ -13,6 +13,7 @@ import {
   SIN,
   U
 } from '../runtime/defs';
+import { stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
 import { double, integer, nativeInt, rational } from './bignum';
 import { Eval } from './eval';
@@ -62,6 +63,9 @@ function arcsin(x: U): U {
   }
 
   if (isdouble(x)) {
+    if (Math.abs(x.d) > 1) {
+      stop('arcsin function argument is not in the interval [-1,1]');
+    }
     return double(Math.asin(x.d));
   }
 

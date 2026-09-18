@@ -101,6 +101,15 @@ run_test([
   'arcsin(2)',
   'arcsin(2)',
 
+  'arcsin(2.0)',
+  'Stop: arcsin function argument is not in the interval [-1,1]',
+
+  'arcsin(-1.5)',
+  'Stop: arcsin function argument is not in the interval [-1,1]',
+
+  'float(arcsin(2))',
+  'Stop: arcsin function argument is not in the interval [-1,1]',
+
   'arcsin(x)',
   'arcsin(x)',
 
