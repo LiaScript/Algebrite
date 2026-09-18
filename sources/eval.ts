@@ -265,7 +265,7 @@ export function Eval_dim(p1: U) {
   const n = iscons(cddr(p1)) ? evaluate_integer(caddr(p1)) : 1;
   if (!istensor(p2)) {
     return Constants.one; // dim of scalar is 1
-  } else if (n < 1 || n > p2.tensor.ndim) {
+  } else if (!(n >= 1 && n <= p2.tensor.ndim)) {
     return p1;
   } else {
     return integer(p2.tensor.dim[n - 1]);
