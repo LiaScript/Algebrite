@@ -29,9 +29,18 @@ import { double, nativeInt } from './bignum';
 import { derivative } from './derivative';
 import { Eval } from './eval';
 import { guess } from './guess';
-import { equalq, isminusone, isminusoneovertwo, isoneovertwo } from './is';
+import { denominator } from './denominator';
+import { apart } from './expand';
+import {
+  equalq,
+  isminusone,
+  isminusoneovertwo,
+  isoneovertwo,
+  ispolyfactoredorexpandedform,
+} from './is';
 import { makeList } from './list';
 import { multiply } from './multiply';
+import { numerator } from './numerator';
 import { partition } from './partition';
 import { scan_meta } from './scan';
 import { simplify } from './simplify';
@@ -116,6 +125,10 @@ const itab: string[] = [
   // 61
   'f(1/(a+b*x^2),1/(2*sqrt(-a*b))*log((a+x*sqrt(-a*b))/(a-x*sqrt(-a*b))),or(not(number(a*b)),a*b<0))',
   // 62 is the same as 60
+  // monic quadratic with a linear term, by completing the square
+  // (only a and b are pattern variables, so the leading coefficient is 1)
+  'f(1/(x^2+a*x+b),2/sqrt(4*b-a^2)*arctan((2*x+a)/sqrt(4*b-a^2)),or(not(number(4*b-a^2)),4*b-a^2>0))',
+  'f(x/(x^2+a*x+b),1/2*log(x^2+a*x+b)-a/sqrt(4*b-a^2)*arctan((2*x+a)/sqrt(4*b-a^2)),or(not(number(4*b-a^2)),4*b-a^2>0))',
   // 63
   'f(x/(a+b*x^2),1/2*1/b*log(a+b*x^2))',
   //64
@@ -501,10 +514,23 @@ export function integral(F: U, X: U): U {
     integ = integral_of_form(F, X);
   }
   if (Find(integ, symbol(INTEGRAL))) {
+    // a rational function the table does not cover: integrate its partial
+    // fractions term by term
+    if (isrationalfunction(F, X)) {
+      const G = apart(F, X);
+      if (!equal(G, F)) {
+        return integral(G, X);
+      }
+    }
     stop('integral: sorry, could not find a solution');
   }
   // polish then normalize
   return Eval(simplify(integ));
+}
+
+function isrationalfunction(F: U, X: U): boolean {
+  const ispoly = (p: U) => !Find(p, X) || ispolyfactoredorexpandedform(p, X);
+  return ispoly(numerator(F)) && ispoly(denominator(F));
 }
 
 function integral_of_sum(F: U, X: U): U {
@@ -601,7 +627,7 @@ function hash_function(u: U, x: U): number {
   const arg_hash = italu_hashcode(cadr(u), x);
   const base = hashcode_values[name.printname];
   if (!base) {
-    throw new Error('Unsupported function ' + name.printname);
+    return NaN; // no table entry has this function, integral() stops
   }
   return Math.pow(base, arg_hash);
 }
@@ -934,5 +960,11 @@ var hashed_itab: { [key: string]: string[] } = {
   '1.064970': ['f(x^3*exp(a*x),exp(a*x)*x^3/a-3/a*integral(x^2*exp(a*x),x))'],
   '1.242392': [
     'f(x^3*exp(a*x+b),exp(a*x+b)*x^3/a-3/a*integral(x^2*exp(a*x+b),x))',
+  ],
+  '0.331992': [
+    'f(1/(x^2+a*x+b),2/sqrt(4*b-a^2)*arctan((2*x+a)/sqrt(4*b-a^2)),or(not(number(4*b-a^2)),4*b-a^2>0))',
+  ],
+  '0.317158': [
+    'f(x/(x^2+a*x+b),1/2*log(x^2+a*x+b)-a/sqrt(4*b-a^2)*arctan((2*x+a)/sqrt(4*b-a^2)),or(not(number(4*b-a^2)),4*b-a^2>0))',
   ],
 };
