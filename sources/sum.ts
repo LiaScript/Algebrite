@@ -5,6 +5,7 @@ import {
   cadr,
   Constants,
   isadd,
+  isNumericAtom,
   issymbol,
   U
 } from '../runtime/defs';
@@ -78,6 +79,11 @@ function symbolicSum(p1: U, body: U, x: U): U {
     const f = Eval(body);
     const a = Eval(cadddr(p1));
     const b = Eval(caddddr(p1));
+    // numeric bounds that are not integers: the closed forms below assume
+    // integer steps from a to b, sum(k,k,1/2,3) is not F(3) - F(-1/2)
+    if ([a, b].some((p) => isNumericAtom(p) && isNaN(nativeInt(p)))) {
+      return p1;
+    }
     const terms = isadd(f) ? f.tail() : [f];
     const isPoly = (t: U) => !Find(t, x) || ispolyexpandedform(t, x);
 

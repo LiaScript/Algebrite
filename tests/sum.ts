@@ -127,6 +127,97 @@ run_test([
   'f = quote(f)',
   '',
 
+  // numeric bounds
+  'sum(k,k,1,10)',
+  '55',
+
+  'sum(k,k,1,1000)',
+  '500500',
+
+  'sum(k,k,-3,3)',
+  '0',
+
+  'sum(k,k,3,3)',
+  '3',
+
+  'sum(1/k^2,k,1,4)',
+  '205/144',
+
+  'sum(x^k,k,0,3)',
+  'x^3+x^2+x+1',
+
+  'sum([k,k^2],k,1,3)',
+  '[6,14]',
+
+  // zeta(2) minus a tail of about 1/1000
+  'sum(float(1/k^2),k,1,1000)',
+  '1.643935...',
+
+  // float bounds with integer values
+  'sum(k,k,1.0,3)',
+  '6.0',
+
+  // empty ranges (upper < lower) sum to 0
+  'sum(k,k,5,1)',
+  '0',
+
+  'sum(k^2,k,1,0)',
+  '0',
+
+  'sum(2^k,k,5,3)',
+  '0',
+
+  // ... and so do the closed forms at upper = lower - 1
+  'sum(k,k,n+1,n)',
+  '0',
+
+  'eval(sum(k,k,m,n),m,5,n,4)',
+  '0',
+
+  'eval(sum(k^2,k,1,n),n,0)',
+  '0',
+
+  'eval(sum(2^k,k,0,n),n,-1)',
+  '0',
+
+  'sum(k,k,n,n)',
+  'n',
+
+  // more closed forms
+  'sum(k^4,k,1,n)',
+  '-1/30*n+1/3*n^3+1/2*n^4+1/5*n^5',
+
+  'sum(1,k,1,n)',
+  'n',
+
+  'sum(n,k,1,n)',
+  'n^2',
+
+  'sum(k*n,k,1,n)',
+  '1/2*n^2+1/2*n^3',
+
+  // no closed form known here (2^n and n/(n+1))
+  'sum(binomial(n,k),k,0,n)',
+  'sum(binomial(n,k),k,0,n)',
+
+  'sum(1/(k*(k+1)),k,1,n)',
+  'sum(1/(k*(k+1)),k,1,n)',
+
+  // non-integer numeric bounds: the closed form would give 49/8 and 5.625,
+  // but k takes the values 1/2, 3/2, 5/2 (and 1.5, 2.5)
+  'sum(k,k,1/2,3)',
+  'sum(k,k,1/2,3)',
+
+  'sum(k,k,1.5,3)',
+  'sum(k,k,1.5,3)',
+
+  'sum(2^k,k,1/2,n)',
+  'sum(2^k,k,1/2,n)',
+
+  // the index must be a symbol
+  'sum(k,1,1,3)',
+  'Stop: sum: 2nd arg?',
+
   // wrong number of arguments
   'sum(k,k,1)',
   'Stop: sum: expected 4 arguments, got 3',
