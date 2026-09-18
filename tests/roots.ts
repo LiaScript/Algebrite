@@ -588,3 +588,84 @@ run_test([
   'theRoots = quote(theRoots)',
   '',
 ]);
+
+run_test([
+  // repeated root of the biquadratic resolvent y^2+2*a*y+a^2: x^2 = -a
+  'roots(x^4+2*a*x^2+a^2)',
+  '[-(-a)^(1/2),(-a)^(1/2)]',
+
+  'roots(x^4-2*a*x^2+a^2)',
+  '[-a^(1/2),a^(1/2)]',
+
+  // a factor of degree 5 cannot be solved: stop instead of returning only
+  // the root 1 of the other factor
+  'roots((x-1)*(x^5-x+1))',
+  'Stop: roots: the polynomial is not factorable, try nroots',
+
+  'roots(x^5-x+1)',
+  'Stop: roots: the polynomial is not factorable, try nroots',
+
+  // repeated irreducible quadratics, alone and with other factors
+  'roots((x^2+2)^2)',
+  '[-i*2^(1/2),i*2^(1/2)]',
+
+  'roots(x^4+4*x^2+4)',
+  '[-i*2^(1/2),i*2^(1/2)]',
+
+  'roots((x^2+2)^3)',
+  '[-i*2^(1/2),i*2^(1/2)]',
+
+  'roots((x^2-2)^2)',
+  '[-2^(1/2),2^(1/2)]',
+
+  'roots((x-1)*(x^2-2)^2)',
+  '[1,-2^(1/2),2^(1/2)]',
+
+  'roots((x^2-x+1)^2)',
+  '[1/2-1/2*i*3^(1/2),1/2+1/2*i*3^(1/2)]',
+
+  'roots(x^4+5*x^2+6)',
+  '[-i*2^(1/2),-i*3^(1/2),i*2^(1/2),i*3^(1/2)]',
+
+  // 2*x^2+x+5: (-1+-i*39^(1/2))/4, 3*x^2+1: +-i/3^(1/2)
+  'roots(1/2*(x-1)^2*(3*x^2+1)^2*(2*x^2+x+5)^2)',
+  '[1,-1/4-1/4*i*3^(1/2)*13^(1/2),-1/4+1/4*i*3^(1/2)*13^(1/2),-i/(3^(1/2)),i/(3^(1/2))]',
+
+  // x^2+x+1, x^2-x+1 and x^4-x^2+1 (x^2 = exp(+-i*pi/3))
+  'roots(x^8+x^4+1)',
+  '[-1/2-1/2*i*3^(1/2),-1/2+1/2*i*3^(1/2),1/2-1/2*i*3^(1/2),1/2+1/2*i*3^(1/2),-(-1)^(5/6),-1/2*(i+3^(1/2)),1/2*(i+3^(1/2)),(-1)^(5/6)]',
+
+  // discriminant 9-40 = -31
+  'roots(2*x^2+3*x+5)',
+  '[-3/4-1/4*i*31^(1/2),-3/4+1/4*i*31^(1/2)]',
+
+  'roots(-x^2+4)',
+  '[-2,2]',
+
+  'roots(1/2*x^2-2)',
+  '[-2,2]',
+
+  'roots((x-1)^3*(x+2))',
+  '[-2,1]',
+
+  'roots(x^2*y-y,x)',
+  '[-1,1]',
+
+  'roots(x-1==2*x+3)',
+  '-4',
+
+  'roots(x^2+x==0)',
+  '[-1,0]',
+
+  'roots(sin(x))',
+  'Stop: roots: 1st argument is not a polynomial in the variable x',
+
+  'roots(1/x+1)',
+  'Stop: roots: 1st argument is not a polynomial in the variable x',
+
+  'roots(5)',
+  'Stop: roots: 1st argument is not a polynomial in the variable x',
+
+  'roots(0)',
+  'Stop: roots: 1st argument is not a polynomial in the variable x',
+]);

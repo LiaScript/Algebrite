@@ -8,6 +8,7 @@ import {
   defs,
   ismultiply,
   ispower,
+  istensor,
   NIL,
   SECRETX,
   SETQ,
@@ -150,6 +151,13 @@ export function roots(POLY: U, X: U): U {
   return tensor;
 }
 
+// roots() returns a lone root bare instead of as a one element list,
+// e.g. for the repeated root of the resolvent of (x^2+2)^2
+function rootsList(poly: U, x: U): U[] {
+  const r = roots(poly, x);
+  return istensor(r) ? r.tensor.elem : [r];
+}
+
 // ok to generate these roots take a look at their form
 // in the case of even and odd exponents here:
 // http://www.wolframalpha.com/input/?i=roots+x%5E14+%2B+1
@@ -261,7 +269,9 @@ function mini_solve(coefficients: U[]):U[] {
     return _solveDegree4(A, B, C, D, E);
   }
 
-  return [];
+  // an unsolved factor of degree > 4: returning the roots of the other
+  // factors only would silently drop roots
+  return stop('roots: the polynomial is not factorable, try nroots');
 }
 
 function _solveDegree1(A: U, B: U): U[] {
@@ -499,16 +509,16 @@ function _solveDegree4(A: U, B: U, C: U, D: U, E: U): U[] {
 function _solveDegree4Biquadratic(A: U, B: U, C: U, D: U, E: U): U[] {
   log.debug('biquadratic case');
 
-  const biquadraticSolutions = roots(
+  const biquadraticSolutions = rootsList(
     add(
       multiply(A, power(symbol(SECRETX), integer(2))),
       add(multiply(C, symbol(SECRETX)), E)
     ),
     symbol(SECRETX)
-  ) as Tensor;
+  );
 
   const results = [];
-  for (const sol of biquadraticSolutions.tensor.elem) {
+  for (const sol of biquadraticSolutions) {
     results.push(simplify(power(sol, rational(1, 2))));
     results.push(simplify(negate(power(sol, rational(1, 2)))));
   }
@@ -544,12 +554,12 @@ function _solveDegree4ZeroB(A: U, B: U, C: U, D: U, E: U): U[] {
 
   log.debug(`resolventCubic: ${arg1}`);
 
-  const resolventCubicSolutions = roots(arg1, symbol(SECRETX)) as Tensor;
+  const resolventCubicSolutions = rootsList(arg1, symbol(SECRETX));
   log.debug(`resolventCubicSolutions: ${resolventCubicSolutions}`);
 
         let R_m = null;
         //R_m = resolventCubicSolutions.tensor.elem[1]
-  for (const sol of resolventCubicSolutions.tensor.elem) {
+  for (const sol of resolventCubicSolutions) {
     log.debug(`examining solution: ${sol}`);
 
     const toBeCheckedIfZero = absValFloat(add(multiply(sol, integer(2)), R_p));
@@ -643,7 +653,7 @@ function _solveDegree4NonzeroB(A: U, B: U, C: U, D: U, E: U): U[] {
   const r_q_x_2 = multiply(R_p, power(symbol(SECRETX), integer(2)));
   const r_q_x = multiply(R_q, symbol(SECRETX));
   const simplified = simplify(add_all([four_x_4, r_q_x_2, r_q_x, R_r]));
-  const depressedSolutions = roots(simplified, symbol(SECRETX)) as Tensor;
+  const depressedSolutions = rootsList(simplified, symbol(SECRETX));
 
   log.debug(`p for depressed quartic: ${R_p}`);
   log.debug(`q for depressed quartic: ${R_q}`);
@@ -655,7 +665,7 @@ function _solveDegree4NonzeroB(A: U, B: U, C: U, D: U, E: U): U[] {
   log.debug(`solving depressed quartic: ${simplified}`);
   log.debug(`depressedSolutions: ${depressedSolutions}`);
 
-  return depressedSolutions.tensor.elem.map((sol) => {
+  return depressedSolutions.map((sol) => {
     const result = simplify(subtract(sol, divide(B, multiply(integer(4), A))));
     log.debug(`solution from depressed: ${result}`);
     return result;
