@@ -2,17 +2,23 @@ import bigInt from 'big-integer';
 import {
   ABS,
   ARCCOS,
+  ARCCOSH,
   ARCSIN,
+  ARCSINH,
   ARCTAN,
+  ARCTANH,
+  BESSELJ,
   caddr,
   cadr,
   car,
+  Constants,
   COS,
   COSH,
   Double,
   E,
   ERF,
   ERFC,
+  FACTORIAL,
   GAMMA,
   isadd,
   iscons,
@@ -24,15 +30,22 @@ import {
   istensor,
   LOG,
   PI,
+  POWER,
   SIN,
   SINH,
   TAN,
   TANH,
-  U
+  U,
+  ZETA
 } from '../runtime/defs';
 import { stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
+import { add } from './add';
+import { integer } from './bignum';
+import { zzfloat } from './float';
 import { isinteger } from './is';
+import { makeList } from './list';
+import { negate } from './multiply';
 import { copy_tensor } from './tensor';
 import { bernoulliNumber } from './zeta';
 
@@ -287,6 +300,119 @@ class Fixed {
     return this.div(this.exp(logGamma), shift);
   }
 
+  // digamma(z) = psi(w) - sum_{k<n} 1/(z+k) with w = z+n at least P, where
+  // psi(w) = log w - 1/(2w) - sum B_2k/(2k w^(2k)) reaches the working
+  // precision (the terms fall to about exp(-2 pi w) before they grow);
+  // reflection psi(z) = psi(1-z) - pi*cot(pi z) for z <= 0
+  digamma(z: Big): Big {
+    if (!z.isPositive()) {
+      if (z.mod(this.S).isZero()) {
+        throw new Error('digamma pole');
+      }
+      const a = this.mul(this.pi(), z);
+      return this.digamma(this.S.subtract(z)).subtract(
+        this.div(this.mul(this.pi(), this.cos(a)), this.sin(a))
+      );
+    }
+    let w = z;
+    let shift = bigInt.zero;
+    const target = this.S.multiply(Math.max(10, this.P));
+    while (w.lt(target)) {
+      shift = shift.add(this.div(this.S, w));
+      w = w.add(this.S);
+    }
+    let psi = this.log(w).subtract(this.div(this.S, w).divide(2)).subtract(shift);
+    const w2 = this.mul(w, w);
+    let wPow = w2; // w^(2k)
+    for (let k = 1; k < 2000; k++) {
+      const B = bernoulliNumber(2 * k) as any;
+      const term = this.div(this.fromRatio(B.a, B.b), wPow).divide(2 * k);
+      if (term.isZero()) {
+        break;
+      }
+      psi = psi.subtract(term);
+      wPow = this.mul(wPow, w2);
+    }
+    return psi;
+  }
+
+  eulerGamma(): Big {
+    return this.digamma(this.S).negate();
+  }
+
+  // zeta(s), s != 1, by Euler-Maclaurin with N = P:
+  //   sum_{k<N} k^-s + N^(1-s)/(s-1) + N^-s/2 + sum_j T_j,
+  //   T_j = B_2j/(2j)! * s(s+1)...(s+2j-2) * N^(1-s-2j)
+  // The error is below the first omitted term once s+2j+1 > 0; the terms
+  // fall to about exp(-2 pi N) N^-s, below the working precision, before
+  // they grow again. powNeg(k) is k^-s.
+  zeta(s: Big, powNeg: (k: number) => Big): Big {
+    if (s.eq(this.S)) {
+      throw new Error('zeta pole');
+    }
+    const N = Math.max(10, this.P);
+    let sum = bigInt.zero;
+    for (let k = 1; k < N; k++) {
+      sum = sum.add(powNeg(k));
+    }
+    const Ns = powNeg(N);
+    sum = sum.add(this.div(Ns.multiply(N), s.subtract(this.S))).add(Ns.divide(2));
+    let rising = s; // s(s+1)...(s+2j-2)
+    let scale = bigInt(2 * N); // (2j)! N^(2j-1)
+    for (let j = 1; ; j++) {
+      const B = bernoulliNumber(2 * j) as any;
+      const term = this.mul(this.mul(this.fromRatio(B.a, B.b), rising), Ns).divide(scale);
+      const bounded = s.add(this.S.multiply(2 * j + 1)).isPositive();
+      if (term.isZero() && bounded) {
+        return sum;
+      }
+      if (j > 4 * N) {
+        throw new Error('zeta: no convergence'); // s far to the left
+      }
+      sum = sum.add(term);
+      rising = this.mul(
+        this.mul(rising, s.add(this.S.multiply(2 * j - 1))),
+        s.add(this.S.multiply(2 * j))
+      );
+      scale = scale.multiply((2 * j + 1) * (2 * j + 2)).multiply(N * N);
+    }
+  }
+
+  // sum_k (+-1)^k t_k/d(k) with t_0 = first and t_k = t_(k-1)*step/m(k).
+  // The cancellation for a large argument is caught by the precision check
+  // of bigFloat.
+  series(
+    first: Big,
+    step: Big,
+    m: (k: number) => number,
+    d: (k: number) => number,
+    alternating: boolean
+  ): Big {
+    let term = first;
+    let sum = first.divide(d(0));
+    for (let k = 1; !term.isZero(); k++) {
+      term = this.mul(term, step).divide(m(k));
+      const t = term.divide(d(k));
+      sum = alternating && k % 2 ? sum.subtract(t) : sum.add(t);
+    }
+    return sum;
+  }
+
+  // Newton on w*exp(w) = x from a double precision start: both real
+  // branches, the start decides which
+  lambertw(x: Big, start: number): Big {
+    let w = this.fromNumber(start);
+    for (let i = 0; i < 100; i++) {
+      const e = this.exp(w);
+      const delta = this.div(this.mul(w, e).subtract(x), this.mul(e, w.add(this.S)));
+      w = w.subtract(delta);
+      if (delta.abs().leq(1)) {
+        break;
+      }
+    }
+    return w;
+  }
+
   arcsin(x: Big): Big {
     if (x.abs().gt(this.S)) {
       throw new Error('arcsin outside [-1,1]');
@@ -374,7 +500,90 @@ function evaluate(p: U, f: Fixed): Big {
         const [a, b] = expPair();
         return f.div(a.subtract(b), a.add(b));
       }
+      case ARCSINH:
+        return f.log(x().add(f.root(f.mul(x(), x()).add(f.S), 2)));
+      case ARCCOSH:
+        return f.log(x().add(f.root(f.mul(x(), x()).subtract(f.S), 2)));
+      case ARCTANH:
+        return f.log(f.div(f.S.add(x()), f.S.subtract(x()))).divide(2);
+      case FACTORIAL:
+        return f.gamma(x().add(f.S));
+      case ZETA: {
+        // k^-s through the power rules above: integer, root or exp(log)
+        const zetaAt = (s: U) =>
+          f.zeta(evaluate(s, f), (k) =>
+            evaluate(makeList(symbol(POWER), integer(k), negate(s)), f)
+          );
+        const s = x();
+        if (!s.isNegative()) {
+          return zetaAt(cadr(p));
+        }
+        // zeta(s) = 2^s pi^(s-1) sin(pi s/2) Gamma(1-s) zeta(1-s): left of 0
+        // Euler-Maclaurin would sum large terms that cancel
+        const t = f.S.subtract(s);
+        return [
+          f.exp(f.mul(s, f.log(f.S.multiply(2))).subtract(f.mul(t, f.log(f.pi())))),
+          f.sin(f.mul(f.pi(), s).divide(2)),
+          f.gamma(t),
+          zetaAt(add(Constants.one, negate(cadr(p))))
+        ].reduce((a, b) => f.mul(a, b));
+      }
+      case 'digamma':
+        return f.digamma(x());
+      case 'lambertw': {
+        const start = zzfloat(p);
+        if (!isdouble(start)) {
+          throw new Error('unsupported'); // not real
+        }
+        return f.lambertw(x(), start.d);
+      }
+      // Si(x) = sum (-1)^k x^(2k+1)/((2k+1)!(2k+1))
+      case 'Si':
+        return f.series(x(), f.mul(x(), x()), (k) => 2 * k * (2 * k + 1), (k) => 2 * k + 1, true);
+      // Ci(x) = gamma + log(x) + sum_{k>=1} (-1)^k x^(2k)/((2k)!(2k)), the
+      // series starts with a 1 for k = 0 that is taken off again
+      case 'Ci':
+        return f
+          .eulerGamma()
+          .add(f.log(x()))
+          .add(f.series(f.S, f.mul(x(), x()), (k) => (2 * k - 1) * 2 * k, (k) => 2 * k || 1, true))
+          .subtract(f.S);
+      // Ei(x) = gamma + log|x| + sum_{k>=1} x^k/(k! k)
+      case 'Ei':
+        return f
+          .eulerGamma()
+          .add(f.log(x().abs()))
+          .add(f.series(f.S, x(), (k) => k, (k) => k || 1, false))
+          .subtract(f.S);
+      // with u = pi x^2/2: S(x) = x sum (-1)^k u^(2k+1)/((2k+1)!(4k+3)),
+      // C(x) = x sum (-1)^k u^(2k)/((2k)!(4k+1))
+      case 'fresnels':
+      case 'fresnelc': {
+        const u = f.mul(f.pi(), f.mul(x(), x())).divide(2);
+        const sum =
+          name === 'fresnels'
+            ? f.series(u, f.mul(u, u), (k) => 2 * k * (2 * k + 1), (k) => 4 * k + 3, true)
+            : f.series(f.S, f.mul(u, u), (k) => (2 * k - 1) * 2 * k, (k) => 4 * k + 1, true);
+        return f.mul(x(), sum);
+      }
+      // J_n(x) = (x/2)^n/n! sum (-1)^k (x^2/4)^k/(k! (n+1)...(n+k)),
+      // J_(-n) = (-1)^n J_n
+      case BESSELJ: {
+        const order = cadr(p);
+        if (!isinteger(order) || order.a.abs().gt(1000)) {
+          throw new Error('no arbitrary precision for besselj of this order');
+        }
+        const n = Math.abs(order.a.toJSNumber());
+        const z = evaluate(caddr(p), f);
+        let first = f.powInt(z.divide(2), n);
+        for (let k = 2; k <= n; k++) {
+          first = first.divide(k);
+        }
+        const J = f.series(first, f.mul(z, z).divide(4), (k) => k * (n + k), () => 1, true);
+        return order.a.isNegative() && n % 2 ? J.negate() : J;
+      }
     }
+    throw new Error(`no arbitrary precision for ${name}`);
   }
   throw new Error('unsupported');
 }
@@ -427,7 +636,9 @@ export function bigFloat(p: U, n: number): U {
       low = evaluate(p, new Fixed(P));
       high = evaluate(p, fine);
     } catch (e) {
-      return stop(`float: cannot evaluate ${p} to ${n} digits`);
+      // a function without a method here says so
+      const why = /^no arbitrary precision/.test(e.message) ? `: ${e.message}` : '';
+      return stop(`float: cannot evaluate ${p} to ${n} digits${why}`);
     }
     const text = format(high, P + GUARD, n);
     const last = attempt === MAX_ATTEMPTS;

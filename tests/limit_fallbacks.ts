@@ -84,10 +84,10 @@ run_test([
 
   // no limit
   'limit(sin(x),x,inf)',
-  "Stop: limit: could not resolve after repeated L'Hopital iterations",
+  'Stop: limit: the limit does not exist: sin(x) oscillates',
 
   'limit(x*sin(x),x,inf)',
-  "Stop: limit: could not resolve after repeated L'Hopital iterations",
+  'Stop: limit: the limit does not exist: sin(x) oscillates',
 
   // as before
   'limit(sin(x)/x,x,0)',

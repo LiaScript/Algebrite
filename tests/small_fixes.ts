@@ -623,8 +623,9 @@ run_test([
   '0^(n-1)',
   '0^(-1+n)',
 
+  // a pole, left as it is (printed as a quotient)
   '0^(-n)',
-  '0^(-n)',
+  '1/0^n',
 
   'defint(x^n,x,0,1)',
   '1/(1+n)',
@@ -805,6 +806,170 @@ run_test([
 
   'limit(exp(b*x),x,inf)',
   "Stop: limit: could not resolve after repeated L'Hopital iterations",
+]);
+
+// a pole of log or tan inside another function says nothing about the sign
+// of an infinite limit: sin(log(x)) came out as -inf, arctan(log(x)) too
+run_test([
+  'limit(sin(log(x)),x,0,right)',
+  'Stop: limit: the limit does not exist: sin(log(x)) oscillates',
+
+  'limit(cos(tan(x)),x,pi/2)',
+  'Stop: limit: the limit does not exist: cos(tan(x)) oscillates',
+
+  'limit(sin(tan(x)),x,pi/2,left)',
+  'Stop: limit: the limit does not exist: sin(tan(x)) oscillates',
+
+  // arctan(-inf), tanh(-inf), 1/(-inf), exp(-inf)
+  'limit(arctan(log(x)),x,0,right)',
+  '-1/2*pi',
+
+  'limit(tanh(log(x)),x,0,right)',
+  '-1',
+
+  'limit(1/log(x),x,0,right)',
+  '0',
+
+  'limit(1/log(x)^2,x,0,right)',
+  '0',
+
+  'limit(exp(tan(x)),x,pi/2,right)',
+  '0',
+
+  'limit(exp(tan(x)),x,pi/2,left)',
+  'inf',
+
+  'limit(exp(log(x)^2),x,0,right)',
+  'inf',
+
+  // the pole itself, in sums, products and positive powers: as before
+  'limit(log(x),x,0,right)',
+  '-inf',
+
+  'limit(tan(x),x,pi/2,left)',
+  'inf',
+
+  'limit(-3*tan(x),x,pi/2,left)',
+  '-inf',
+
+  'limit(2*log(x)+1,x,0,right)',
+  '-inf',
+
+  'limit(log(x)^2,x,0,right)',
+  'inf',
+
+  'limit(log(x)^3,x,0,right)',
+  '-inf',
+
+  'limit(log(abs(x)),x,0)',
+  '-inf',
+
+  'limit(x*log(x),x,0,right)',
+  '0',
+
+  'limit(tan(x),x,pi/2)',
+  'Stop: limit: left and right limits differ — limit does not exist',
+
+  // a power with x in the base or in the exponent only: the limit of that
+  // part first. 1/(x-a)^2 is positive on both sides of a.
+  'limit(exp(-1/x),x,0,right)',
+  '0',
+
+  'limit(exp(-1/x^2),x,0)',
+  '0',
+
+  'limit(2^(1/x),x,0,left)',
+  '0',
+
+  'limit(2^(1/x),x,0,right)',
+  'inf',
+
+  'limit(sqrt(log(1/x)),x,0,right)',
+  'inf',
+
+  'limit(1/(x-a)^2,x,a)',
+  'inf',
+
+  // the sign of b is not known
+  'limit(b/(x-a)^2,x,a)',
+  'Stop: limit: denominator vanishes while numerator does not — limit is infinite or does not exist',
+
+  // tan goes to -inf on one side and to inf on the other, 1/tan to 0 on both
+  'limit(1/tan(x),x,pi/2)',
+  '0',
+
+  'limit(arctan(1/x^2),x,0)',
+  '1/2*pi',
+
+  // 0 from the left, inf from the right
+  'limit(exp(1/x),x,0)',
+  'Stop: limit: left and right limits differ — limit does not exist',
+
+  'limit(arctan(1/x),x,0)',
+  'Stop: limit: left and right limits differ — limit does not exist',
+]);
+
+// harder arguments for float(x,n), all values from mpmath
+run_test([
+  // far left of the pole: large terms that cancel
+  'float(zeta(-21/2),20)',
+  '0.011146122473942814136',
+
+  'float(zeta(-201/2),20)',
+  '-1.2790431911215158384*10^78',
+
+  'float(zeta(1001),20)',
+  '1.0000000000000000000',
+
+  'float(2*zeta(3)+pi,40)',
+  '5.545706459908981809262119706302402865727',
+
+  'float(Ci(1)+Ei(1),30)',
+  '2.23252173925690489012916713822',
+
+  'float(Si(100),30)',
+  '1.56222546688905629335234513880',
+
+  'float(fresnels(10),30)',
+  '0.468169978584882240403351110810',
+
+  'float(Ei(-30),30)',
+  '-3.02155201068881254481582504515*10^(-15)',
+
+  'float(digamma(1000),30)',
+  '6.90725519564881205205000611425',
+
+  'float(besselj(5,100),30)',
+  '-0.0741957369645139208341350498130',
+
+  'float(besselj(200,1),10)',
+  '7.880831795*10^(-436)',
+
+  // close to the branch point -1/e both branches are close to -1
+  'float(lambertw(-1/exp(1)+1/1000),30)',
+  '-0.928020150054567048760043025255',
+
+  'float(lambertw(-1/exp(1)+1/1000,-1),30)',
+  '-1.07560894118662498941494486925',
+
+  'float([zeta(3),Si(1)],20)',
+  '[1.2020569031595942854,0.94608307036718301494]',
+
+  // outside the real domain
+  'float(Ci(-1),20)',
+  'Stop: float: cannot evaluate Ci(-1) to 20 digits',
+
+  'float(digamma(-2),20)',
+  'Stop: float: cannot evaluate digamma(-2) to 20 digits',
+
+  'float(lambertw(-1),20)',
+  'Stop: float: cannot evaluate lambertw(-1) to 20 digits',
+
+  'float(arccosh(1/2),20)',
+  'Stop: float: cannot evaluate arccosh(1/2) to 20 digits',
+
+  'float(arctanh(2),20)',
+  'Stop: float: cannot evaluate arctanh(2) to 20 digits',
 ]);
 
 // 7. rank is the number of axes of a tensor, matrixrank the rank of a matrix

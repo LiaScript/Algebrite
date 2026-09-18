@@ -92,7 +92,7 @@ import {
 } from '../runtime/defs';
 import { doubleToReasonableString } from '../runtime/otherCFunctions';
 import { get_binding, get_printname, set_binding, symbol } from '../runtime/symbol';
-import { lessp } from '../sources/misc';
+import { length, lessp } from '../sources/misc';
 import { absval } from './abs';
 import { mp_denominator, mp_numerator, nativeDouble, print_number } from './bignum';
 import { denominator } from './denominator';
@@ -623,6 +623,43 @@ function print_factorial_function(p: BaseAtom): string {
   }
   accumulator += print_char('!');
   return accumulator;
+}
+
+// A function name in LaTeX is an operator name, not a product of italic
+// letters: the macro where there is one, \ln for log (the natural
+// logarithm), \operatorname for the rest. One-letter names, also with
+// primes or a subscript (f, y'', f_1), stay as they are: undefined.
+// TeX puts a thin space around operator names by itself.
+const LATEX_FUNCTION_MACROS =
+  'sin cos tan cot sec csc arcsin arccos arctan sinh cosh tanh coth exp min max gcd det arg deg'.split(
+    ' '
+  );
+
+function latexFunctionName(name: string): string | undefined {
+  if (/^[A-Za-z]('*|_.*)$/.test(name)) {
+    return undefined;
+  }
+  if (LATEX_FUNCTION_MACROS.includes(name)) {
+    return '\\' + name;
+  }
+  const renamed: { [name: string]: string } = {
+    log: '\\ln',
+    limit: '\\lim',
+    Gamma: '\\Gamma'
+  };
+  return renamed[name] ?? `\\operatorname{${name}}`;
+}
+
+// limit(f,x,a[,side]) unevaluated: \lim_{x \to a^{+}}{f}
+function print_LIMIT_latex(p: BaseAtom): string {
+  const [f, x, a, side] = (p as Cons).tail();
+  let direction = '';
+  if (side !== undefined) {
+    const left = issymbol(side) ? get_printname(side) === 'left' : isnegativeterm(side);
+    direction = left ? '^{-}' : '^{+}';
+  }
+  const body = isadd(f) ? '\\left(' + print_expr(f) + '\\right)' : print_expr(f);
+  return `\\lim_{${print_expr(x)} \\to ${print_expr(a)}${direction}}{${body}}`;
 }
 
 function print_ABS_latex(p: BaseAtom): string {
@@ -1829,10 +1866,17 @@ function print_factor(
     //  print_str(((struct symbol *) cadr(p))->name)
     //  return
     //}
-    accumulator += print_factor(car(p));
+    const latexName =
+      defs.printMode === PRINTMODE_LATEX && !defs.codeGen && issymbol(car(p))
+        ? latexFunctionName(get_printname(car(p)))
+        : undefined;
+    if (latexName === '\\lim' && (length(p) === 4 || length(p) === 5)) {
+      return accumulator + print_LIMIT_latex(p);
+    }
+    accumulator += latexName ?? print_factor(car(p));
     p = cdr(p);
     if (!omitParens) {
-      accumulator += print_str('(');
+      accumulator += print_str(latexName ? '\\left(' : '(');
     }
     if (iscons(p)) {
       accumulator += print_expr(car(p));
@@ -1844,7 +1888,7 @@ function print_factor(
       }
     }
     if (!omitParens) {
-      accumulator += print_str(')');
+      accumulator += print_str(latexName ? '\\right)' : ')');
     }
     return accumulator;
   }
