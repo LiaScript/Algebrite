@@ -1257,3 +1257,12 @@ nodejs_test(
     ],
     entry_point = ":tests/misc.ts",
 )
+
+nodejs_test(
+    name = "test_draw",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/draw.ts",
+)
