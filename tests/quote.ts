@@ -1,4 +1,5 @@
-import { run_test } from '../test-harness';
+import { run } from '../runtime/run';
+import { run_test, setup_test, test } from '../test-harness';
 
 // do, eval, quote, binding, lookup, clear, equals, stop and assignments
 run_test([
@@ -267,3 +268,12 @@ run_test([
   'test(0,stop,2)',
   '2',
 ]);
+
+// known bug: quote(x+x) prints 2*x. The quoted x+x is returned as it is,
+// but top_level_eval then bakes every result, and bake re-evaluates
+// polynomials in x, y, z, s and t (bake_poly calls coeff, which calls
+// Eval). quote(a+a) stays a+a. Fixing it needs a bake that only
+// reorders terms instead of evaluating them.
+setup_test(() =>
+  test.failing('quote(x+x)', t => t.is('x+x', run('quote(x+x)')))
+);
