@@ -67,4 +67,108 @@ run_test([
 
   'solve([x+y=3])',
   'Stop: solve: need as many equations as variables',
+
+  // a single variable is a one element list, not a request to guess
+  'solve([x+y=3,x-y=1],y)',
+  'Stop: solve: need as many equations as variables',
+
+  'solve([x+1=3],x)',
+  '[2]',
+
+  'solve([x+y=3,x-y=1],[x,2])',
+  'Stop: solve: variables must be distinct symbols',
+
+  'solve([x+y=3,x-y=1],[x,x])',
+  'Stop: solve: variables must be distinct symbols',
+
+  // results follow the order of the variable list
+  'solve([x+y=3,x-y=1],[y,x])',
+  '[1,2]',
+
+  // inconsistent
+  'solve([x+y=2,x+y=3],[x,y])',
+  'Stop: solve: system has no unique solution',
+
+  'solve([x+y+z=1,x+y+z=2,x-y=0],[x,y,z])',
+  'Stop: solve: system has no unique solution',
+
+  // dependent
+  'solve([x+2*y=5,3*x+6*y=15],[x,y])',
+  'Stop: solve: system has no unique solution',
+
+  'solve([x+1],[y])',
+  'Stop: solve: system has no unique solution',
+
+  'solve([sin(x)+y=1,x-y=0],[x,y])',
+  'Stop: solve: system is not linear in the given variables',
+
+  'solve([x=1,y=2],[x,y])',
+  '[1,2]',
+
+  // 1/2*19/15+1/3*11/10 = 1, 19/15-11/10 = 1/6
+  'solve([1/2*x+1/3*y=1,x-y=1/6],[x,y])',
+  '[19/15,11/10]',
+
+  'solve([a*x=1,b*y=1],[x,y])',
+  '[1/a,1/b]',
+
+  // x = y = 1/(1+a)
+  'solve([a*x+y=1,x-y=0],[x,y])',
+  '[-1/(-1-a),-1/(-1-a)]',
+
+  'solve([x+y=1.5,x-y=0.5],[x,y])',
+  '[1.0,0.5]',
+
+  // x = y, (1+i)*x = 1
+  'solve([x+i*y=1,x-y=0],[x,y])',
+  '[1/2-1/2*i,1/2-1/2*i]',
+
+  // pi is a constant, not a variable
+  'solve([x+pi=1])',
+  '[1-pi]',
+
+  'solve([x=y+1,y=2])',
+  '[3,2]',
+
+  'solve([2=x+y,x=y])',
+  '[1,1]',
+
+  'x',
+  'x',
+
+  'y',
+  'y',
+
+  // single equations
+  'solve(x^2-2*x+1,x)',
+  '1',
+
+  'solve(x^3-6*x^2+11*x-6,x)',
+  '[1,2,3]',
+
+  'solve(x=5,x)',
+  '5',
+
+  'solve(2*x=x+1,x)',
+  '1',
+
+  'solve(x^2=4)',
+  '[-2,2]',
+
+  'solve(x^2==-1)',
+  '[-i,i]',
+
+  // (-1+2*i)^2+2*(-1+2*i)+5 = -3-4*i-2+4*i+5 = 0
+  'solve(x^2+2*x+5,x)',
+  '[-1-2*i,-1+2*i]',
+
+  // (i*(-b/a)^(1/2))^2 = b/a
+  'solve(a*x^2-b,x)',
+  '[-i*(-b/a)^(1/2),i*(-b/a)^(1/2)]',
+
+  'solve(sin(x),x)',
+  'Stop: solve: 1st argument is not a polynomial in the variable x — solve() currently only supports polynomial equations',
+
+  'solve(3,x)',
+  'Stop: solve: 1st argument is not a polynomial in the variable x — solve() currently only supports polynomial equations',
 ]);

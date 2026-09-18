@@ -3,7 +3,9 @@ import {
   cadr,
   car,
   Constants,
+  issymbol,
   istensor,
+  NIL,
   Tensor,
   TESTEQ,
   U
@@ -46,7 +48,9 @@ export function Eval_solve(p1: U) {
     }
     return solveLinearSystem(
       eqs,
-      istensor(vars) ? vars : build_tensor(freeSymbols(eqs))
+      istensor(vars)
+        ? vars
+        : build_tensor(vars === symbol(NIL) ? freeSymbols(eqs) : [vars])
     );
   }
 
@@ -75,6 +79,9 @@ function freeSymbols(p: U): U[] {
 // each equation from those and comparing catches any nonlinear term.
 function solveLinearSystem(eqs: Tensor, vars: Tensor): U {
   const n = vars.nelem;
+  if (!vars.elem.every(issymbol) || new Set(vars.elem).size !== n) {
+    stop('solve: variables must be distinct symbols');
+  }
   if (eqs.nelem !== n) {
     stop('solve: need as many equations as variables');
   }
