@@ -109,6 +109,22 @@ run_test([
   'solve([1/2*x+1/3*y=1,x-y=1/6],[x,y])',
   '[19/15,11/10]',
 
+  // one equation with a symbolic coefficient: inv of a 1x1 matrix, whose
+  // adjugate needs the determinant of the empty matrix
+  'solve([a*x=1],[x])',
+  '[1/a]',
+
+  'solve([exp(1)*x=1],[x])',
+  '[exp(-1)]',
+
+  // Cramer: x = (c*f-b*g)/(a*f-b*d), y = (a*g-c*d)/(a*f-b*d)
+  'solve([a*x+b*y=c,d*x+f*y=g],[x,y])',
+  '[-b*g/(a*f-b*d)+c*f/(a*f-b*d),a*g/(a*f-b*d)-c*d/(a*f-b*d)]',
+
+  // x = y = 1/(1+2^(1/2))
+  'solve([sqrt(2)*x+y=1,x-y=0],[x,y])',
+  '[-1/(-1-2^(1/2)),-1/(-1-2^(1/2))]',
+
   'solve([a*x=1,b*y=1],[x,y])',
   '[1/a,1/b]',
 
