@@ -46,7 +46,7 @@ import { hilbert } from './hilbert';
 import { inv, invg } from './inv';
 import { isfloating, isinteger, isintegerorintegerfloat, isZeroLikeOrNonZeroLikeOrUndetermined } from './is';
 import { makeList } from './list';
-import { exponential } from './misc';
+import { checkArgCount, exponential } from './misc';
 import { power } from './power';
 import { makeQuantity, requireDimensionless } from './quantity';
 import { subst } from './subst';
@@ -345,6 +345,7 @@ export function Eval_factorpoly(p1: U): U {
 }
 
 export function Eval_hermite(p1: U) {
+  checkArgCount(p1, 2);
   const arg2 = Eval(caddr(p1));
   const arg1 = Eval(cadr(p1));
   return hermite(arg1, arg2);

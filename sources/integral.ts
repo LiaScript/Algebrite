@@ -23,7 +23,7 @@ import {
 import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
-import { equal } from '../sources/misc';
+import { checkArgCount, equal } from '../sources/misc';
 import { add } from './add';
 import { double, nativeInt } from './bignum';
 import { derivative } from './derivative';
@@ -394,6 +394,7 @@ const itab: string[] = [
 ];
 
 export function Eval_integral(p1: U) {
+  checkArgCount(p1, 1, Infinity);
   let n = 0;
 
   // evaluate 1st arg to get function F

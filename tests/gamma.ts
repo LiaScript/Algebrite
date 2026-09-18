@@ -18,4 +18,8 @@ run_test([
 
   'Gamma(-x)',
   '-pi/(x*Gamma(x)*sin(pi*x))',
+
+  // wrong number of arguments
+  'Gamma()',
+  'Stop: Gamma: expected 1 argument, got 0',
 ]);

@@ -181,4 +181,8 @@ run_test([
 
   'f=quote(f)',
   '',
+
+  // wrong number of arguments
+  'd()',
+  'Stop: d: expected at least 1 argument, got 0',
 ]);

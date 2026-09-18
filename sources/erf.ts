@@ -6,6 +6,7 @@ import { Eval } from './eval';
 import { isnegativeterm, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { negate } from './multiply';
+import { checkArgCount } from './misc';
 
 /* erf =====================================================================
 
@@ -28,6 +29,7 @@ erf(-x)=erf(x)
 
 */
 export function Eval_erf(p1: U) {
+  checkArgCount(p1, 1);
   return yerf(Eval(cadr(p1)));
 }
 

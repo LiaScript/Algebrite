@@ -19,6 +19,7 @@ import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { sine } from './sin';
+import { checkArgCount } from './misc';
 
 //-----------------------------------------------------------------------------
 //
@@ -28,6 +29,7 @@ import { sine } from './sin';
 //
 //-----------------------------------------------------------------------------
 export function Eval_gamma(p1: U) {
+  checkArgCount(p1, 1);
   return gamma(Eval(cadr(p1)));
 }
 

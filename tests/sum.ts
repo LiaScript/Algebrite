@@ -126,4 +126,8 @@ run_test([
 
   'f = quote(f)',
   '',
+
+  // wrong number of arguments
+  'sum(k,k,1)',
+  'Stop: sum: expected 4 arguments, got 3',
 ]);

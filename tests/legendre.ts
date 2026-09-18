@@ -108,4 +108,8 @@ run_test([
 
   'legendre(a-b,10)-eval(subst(a-b,x,legendre(x,10)))',
   '0',
+
+  // wrong number of arguments
+  'legendre(x,1,2,3)',
+  'Stop: legendre: expected 2 to 3 arguments, got 4',
 ]);

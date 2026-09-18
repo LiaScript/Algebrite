@@ -13,6 +13,7 @@ import { get_binding, set_binding } from '../runtime/symbol';
 import { integer, nativeInt } from './bignum';
 import { Eval, evaluate_integer } from './eval';
 import { multiply } from './multiply';
+import { checkArgCount } from './misc';
 
 // 'product' function
 
@@ -23,6 +24,7 @@ import { multiply } from './multiply';
 
 // leaves the product at the top of the stack
 export function Eval_product(p1: U) {
+    checkArgCount(p1, 4);
     // 1st arg
     const body = cadr(p1);
 

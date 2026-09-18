@@ -32,7 +32,7 @@ import { apart } from './expand';
 import { factorial } from './factorial';
 import { isone, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
-import { exponential } from './misc';
+import { checkArgCount, exponential } from './misc';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { subst } from './subst';
@@ -42,11 +42,13 @@ import { cmp_values } from './test';
 // Rules not covered return the call unevaluated, like unknown functions.
 
 export function Eval_laplace(p1: U) {
+  checkArgCount(p1, 1, 3);
   const [f, t, s] = args(p1, SYMBOL_T, SYMBOL_S);
   return laplace(f, t, s);
 }
 
 export function Eval_invlaplace(p1: U) {
+  checkArgCount(p1, 1, 3);
   const [F, s, t] = args(p1, SYMBOL_S, SYMBOL_T);
   return invlaplace(F, s, t);
 }

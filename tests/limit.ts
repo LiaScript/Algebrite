@@ -165,4 +165,11 @@ run_test([
   // at the point must stop rather than produce a wrong answer (pi/2 here)
   'limit(arctan(x),x,inf)',
   "Stop: limit: could not resolve after repeated L'Hopital iterations",
+
+  // wrong number of arguments
+  'limit(x)',
+  'Stop: limit: expected 3 to 4 arguments, got 1',
+
+  'limit(x,x,0,1,2)',
+  'Stop: limit: expected 3 to 4 arguments, got 5',
 ]);

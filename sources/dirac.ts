@@ -15,6 +15,7 @@ import { isnegativeterm } from './is';
 import { makeList } from './list';
 import { mmul } from './mmul';
 import { negate } from './multiply';
+import { checkArgCount } from './misc';
 
 //-----------------------------------------------------------------------------
 //
@@ -25,6 +26,7 @@ import { negate } from './multiply';
 //  dirac(b-a)=dirac(a-b)
 //-----------------------------------------------------------------------------
 export function Eval_dirac(p1: U) {
+  checkArgCount(p1, 1);
   return dirac(Eval(cadr(p1)));
 }
 

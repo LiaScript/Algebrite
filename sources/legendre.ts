@@ -13,7 +13,7 @@ import {
   U
 } from '../runtime/defs';
 import { symbol } from "../runtime/symbol";
-import { square } from '../sources/misc';
+import { checkArgCount, square } from '../sources/misc';
 import { subtract } from './add';
 import { integer, nativeInt, rational } from './bignum';
 import { cosine } from './cos';
@@ -55,6 +55,7 @@ For m > 0
   P(x,n,m) = (-1)^m * (1-x^2)^(m/2) * d^m/dx^m P(x,n)
 */
 export function Eval_legendre(p1: U) {
+  checkArgCount(p1, 2, 3);
   const X = Eval(cadr(p1));
   const N = Eval(caddr(p1));
   const p2 = Eval(cadddr(p1));

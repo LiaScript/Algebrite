@@ -16,6 +16,7 @@ import {
   U
 } from '../runtime/defs';
 import { strcmp } from '../runtime/otherCFunctions';
+import { stop } from '../runtime/run';
 import { get_printname, symbol } from '../runtime/symbol';
 import { compare_numbers, integer } from './bignum';
 import { Eval } from './eval';
@@ -154,6 +155,16 @@ export function cmp_expr(p1: U, p2: U): Sign {
 export function length(p: BaseAtom) {
   const n = iscons(p) ? [...p].length : 0;
   return n;
+}
+
+// stops unless the call p1 = f(arg1, ..., argn) has min <= n <= max args
+export function checkArgCount(p1: U, min: number, max = min) {
+  const n = length(p1) - 1;
+  if (n < min || n > max) {
+    const range = min === max ? `${min}` : max === Infinity ? `at least ${min}` : `${min} to ${max}`;
+    const word = max === 1 || (min === 1 && max === Infinity) ? 'argument' : 'arguments';
+    stop(`${get_printname(car(p1))}: expected ${range} ${word}, got ${n}`);
+  }
 }
 
 function unique(p: U) {

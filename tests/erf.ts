@@ -27,4 +27,11 @@ run_test([
 
   'float(erf(1))',
   '0.842701...',
+
+  // wrong number of arguments
+  'erf()',
+  'Stop: erf: expected 1 argument, got 0',
+
+  'erf(1,2)',
+  'Stop: erf: expected 1 argument, got 2',
 ]);

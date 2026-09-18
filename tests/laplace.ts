@@ -144,4 +144,11 @@ run_test([
 
   'invlaplace(laplace(sinh(3*t)-4*cos(t)))',
   '-4*cos(t)-1/2*exp(-3*t)+1/2*exp(3*t)',
+
+  // wrong number of arguments
+  'laplace()',
+  'Stop: laplace: expected 1 to 3 arguments, got 0',
+
+  'invlaplace(1/s,s,t,x)',
+  'Stop: invlaplace: expected 1 to 3 arguments, got 4',
 ]);

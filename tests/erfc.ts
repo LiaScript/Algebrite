@@ -24,4 +24,8 @@ run_test([
 
   'float(erfc(1))',
   '0.157299...',
+
+  // wrong number of arguments
+  'erfc()',
+  'Stop: erfc: expected 1 argument, got 0',
 ]);

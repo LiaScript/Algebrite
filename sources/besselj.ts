@@ -22,6 +22,7 @@ import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { sine } from './sin';
+import { checkArgCount } from './misc';
 
 /* besselj =====================================================================
 
@@ -62,6 +63,7 @@ Examples:
 
 */
 export function Eval_besselj(p1: U) {
+  checkArgCount(p1, 2);
   return besselj(Eval(cadr(p1)), Eval(caddr(p1)));
 }
 

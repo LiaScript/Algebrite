@@ -33,4 +33,8 @@ run_test([
 
   'laguerre(a-b,10)-eval(subst(a-b,x,laguerre(x,10)))',
   '0',
+
+  // wrong number of arguments
+  'laguerre(x)',
+  'Stop: laguerre: expected 2 to 3 arguments, got 1',
 ]);

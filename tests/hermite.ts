@@ -39,4 +39,8 @@ run_test([
 
   'hermite(a-b,10)-eval(subst(a-b,x,hermite(x,10)))',
   '0',
+
+  // wrong number of arguments
+  'hermite(x)',
+  'Stop: hermite: expected 2 arguments, got 1',
 ]);

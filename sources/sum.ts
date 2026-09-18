@@ -20,6 +20,7 @@ import { divide, multiply } from './multiply';
 import { power } from './power';
 import { simplify } from './simplify';
 import { subst } from './subst';
+import { checkArgCount } from './misc';
 
 // 'sum' function
 
@@ -30,6 +31,7 @@ import { subst } from './subst';
 
 // leaves the sum at the top of the stack
 export function Eval_sum(p1: U) {
+  checkArgCount(p1, 4);
   // 1st arg
   const body = cadr(p1);
 

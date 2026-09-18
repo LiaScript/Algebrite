@@ -32,4 +32,8 @@ run_test([
 
   'f = quote(f)',
   '',
+
+  // wrong number of arguments
+  'product(k,k,1)',
+  'Stop: product: expected 4 arguments, got 3',
 ]);

@@ -51,4 +51,11 @@ run_test([
 
   'defint(a,u,0,1,v,0,3pi)',
   '3/2*pi*log(1+2^(1/2))+3*pi/(2^(1/2))',
+
+  // wrong number of arguments
+  'defint(x,x,0)',
+  'Stop: defint: expected f,x,a,b[,y,c,d...], got 3 arguments',
+
+  'defint(x*y,x,0,1,y)',
+  'Stop: defint: expected f,x,a,b[,y,c,d...], got 5 arguments',
 ]);

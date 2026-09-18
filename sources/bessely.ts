@@ -14,6 +14,7 @@ import { isnegativeterm } from './is';
 import { makeList } from './list';
 import { multiply, negate } from './multiply';
 import { power } from './power';
+import { checkArgCount } from './misc';
 
 /* bessely =====================================================================
 
@@ -32,6 +33,7 @@ Bessel function of second kind.
 
 */
 export function Eval_bessely(p1: U) {
+  checkArgCount(p1, 2);
   return bessely(Eval(cadr(p1)), Eval(caddr(p1)));
 }
 

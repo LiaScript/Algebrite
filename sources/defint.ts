@@ -2,6 +2,8 @@ import { cadr, car, cddr, cdr, iscons, U } from '../runtime/defs';
 import { subtract } from './add';
 import { Eval } from './eval';
 import { integral } from './integral';
+import { length } from './misc';
+import { stop } from '../runtime/run';
 import { subst } from './subst';
 
 /* defint =====================================================================
@@ -24,6 +26,10 @@ example, defint(f,x,a,b,y,c,d).
 
 */
 export function Eval_defint(p1: U) {
+  const n = length(p1) - 1;
+  if (n < 4 || (n - 1) % 3 !== 0) {
+    stop(`defint: expected f,x,a,b[,y,c,d...], got ${n} arguments`);
+  }
   let F = Eval(cadr(p1));
 
   p1 = cddr(p1);

@@ -49,4 +49,8 @@ run_test([
 
   'y=quote(y)',
   '',
+
+  // wrong number of arguments
+  'besselj(x)',
+  'Stop: besselj: expected 2 arguments, got 1',
 ]);

@@ -28,7 +28,7 @@ import { denominator } from './denominator';
 import { zzfloat } from './float';
 import { isnegativenumber, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
-import { equal } from './misc';
+import { checkArgCount, equal } from './misc';
 import { divide, negate } from './multiply';
 import { numerator } from './numerator';
 import { rationalize } from './rationalize';
@@ -72,6 +72,7 @@ function hasPole(p: U): boolean {
 // and the result may be inf or -inf. There is no direction argument, so
 // user-facing one-sided limits and multivariable limits are out of scope.
 export function Eval_limit(p1: U) {
+  checkArgCount(p1, 3, 4);
   const F = Eval(cadr(p1));
   const X = Eval(caddr(p1));
   const A = Eval(cadddr(p1));

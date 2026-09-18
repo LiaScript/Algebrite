@@ -739,4 +739,8 @@ run_test([
 
   "integral(((((x)^(2))^(1/(3))))+(sqrt((x)^(3))),x)",
   "Stop: integral: sorry, could not find a solution",
+
+  // wrong number of arguments
+  'integral()',
+  'Stop: integral: expected at least 1 argument, got 0',
 ]);
