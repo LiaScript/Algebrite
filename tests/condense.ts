@@ -50,4 +50,11 @@ run_test([
 
   'condense(x/y+x/z)',
   '(1/y+1/z)*x',
+
+  // gcd 1.0 must not leave a 1.0*(...) product (arg() recursed on it forever)
+  'condense(1.0+1.0*i)',
+  '1.0+1.0*i',
+
+  'numerator(1.0+1.0*i)',
+  '1.0+1.0*i',
 ]);
