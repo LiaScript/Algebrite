@@ -333,3 +333,52 @@ run_test([
   'all3(eval(integral(sqrt(a*tan(x)),x),a,2),sqrt(2*tan(x)),1/2,1,3/2)',
   '1',
 ]);
+
+// The same gap in results that come straight from the table: a radicand
+// without a linear term. x+sqrt(x^2-4) is negative for x < -2, and
+// log(abs(...)) is the real antiderivative on both branches:
+// d/dx log|x+sqrt(x^2-4)| = 1/sqrt(x^2-4) at x = -3 and at x = 3 (0.447214).
+run_test([
+  'integral(1/sqrt(x^2-4),x)',
+  'log(abs(x+(x^2-4)^(1/2)))',
+
+  // real and with the right slope on the left branch
+  'G=integral(1/sqrt(x^2-4),x)',
+  '',
+
+  'abs(imag(float(eval(G,x,-3))))<10^(-12)',
+  '1',
+
+  'abs(float(eval(d(G,x),x,-3))-1/sqrt(5))<10^(-9)',
+  '1',
+
+  'abs(float(eval(d(G,x),x,3))-1/sqrt(5))<10^(-9)',
+  '1',
+
+  // the integral over the left branch: log((3+sqrt(5))/(4+sqrt(12))) < 0
+  // reversed, mpmath.quad gives 0.354534
+  'abs(float(defint(1/sqrt(x^2-4),x,-4,-3))-0.354534)<10^(-5)',
+  '1',
+
+  'G=integral((2*x-3)*sqrt(x^2-1),x)',
+  '',
+
+  'abs(imag(float(eval(G,x,-2))))<10^(-12)',
+  '1',
+
+  'abs(float(eval(d(G,x)-(2*x-3)*sqrt(x^2-1),x,-2)))<10^(-9)',
+  '1',
+
+  'G=integral(x^2/sqrt(5*x^2-3),x)',
+  '',
+
+  'abs(imag(float(eval(G,x,-2))))<10^(-12)',
+  '1',
+
+  'abs(float(eval(d(G,x)-x^2/sqrt(5*x^2-3),x,-2)))<10^(-9)',
+  '1',
+
+  // a positive radicand needs no abs
+  'integral(1/sqrt(x^2+4),x)',
+  'log(x+(x^2+4)^(1/2))',
+]);
