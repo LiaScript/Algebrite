@@ -244,6 +244,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_solve_general",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/solve_general.ts",
+)
+
+nodejs_test(
     name = "test_solve",
     data = [
         ":tsc",
@@ -343,6 +352,15 @@ nodejs_test(
     ],
     entry_point = ":tests/roots_slow.ts",
     tags = ["manual"],
+)
+
+nodejs_test(
+    name = "test_roots_trig",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/roots_trig.ts",
 )
 
 nodejs_test(
