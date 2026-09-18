@@ -90,6 +90,7 @@ import { Eval_mean, Eval_median, Eval_random, Eval_sd, Eval_ssd, Eval_svariance,
 import { Eval_trigexpand } from '../sources/trigexpand';
 import { Eval_nsolve } from '../sources/nsolve';
 import { Eval_dsolve } from '../sources/dsolve';
+import { Eval_groebner } from '../sources/groebner';
 import { Eval_invlaplace, Eval_laplace } from '../sources/laplace';
 import { Eval_at } from '../sources/at';
 import { Eval_assume, Eval_assumptions, Eval_forget, Eval_isinteger, Eval_isnegative, Eval_isnonzero, Eval_ispositive, Eval_isreal } from '../sources/assume';
@@ -223,6 +224,7 @@ import {
   FUNCTION,
   GAMMA,
   GCD,
+  GROEBNER,
   HERMITE,
   HILBERT,
   IMAG,
@@ -504,6 +506,7 @@ export function defn() {
   std_symbol(FUNCTION, Eval_function_reference);
   std_symbol(GAMMA, Eval_gamma);
   std_symbol(GCD, Eval_gcd);
+  std_symbol(GROEBNER, Eval_groebner);
   std_symbol(HERMITE, Eval_hermite);
   std_symbol(HILBERT, Eval_hilbert);
   std_symbol(IMAG, Eval_imag);

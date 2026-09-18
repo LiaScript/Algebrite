@@ -1222,6 +1222,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_groebner",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/groebner.ts",
+)
+
+nodejs_test(
     name = "test_laplace",
     data = [
         ":tsc",

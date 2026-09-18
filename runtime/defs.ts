@@ -295,6 +295,7 @@ export const FOR = 'for';
 export const FUNCTION = 'function';
 export const GAMMA = 'Gamma';
 export const GCD = 'gcd';
+export const GROEBNER = 'groebner';
 export const HERMITE = 'hermite';
 export const HILBERT = 'hilbert';
 export const IMAG = 'imag';

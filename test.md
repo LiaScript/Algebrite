@@ -962,6 +962,7 @@ rank([[1,2],[2,4]])                   # number of axes, not the matrix rank
 | `coeff(p, x, n)` | Coefficient of `x^n` in polynomial `p` |
 | `deg(p, x)`, `leading(p, x)` | Degree of `p` in `x` / its leading coefficient |
 | `resultant(f, g, x)` | Eliminates `x` from `f=0`, `g=0`: zero exactly when they share a root in `x` |
+| `groebner(polys [,vars, order])` | Reduced Gröbner basis over the rationals, `order` is `lex` (default), `grlex` or `grevlex` |
 | `gcd(a, b, ...)`, `lcm(a, b, ...)` | Greatest common divisor / least common multiple |
 | `binomial(n, k)` / `choose(n, k)` | Binomial coefficient (the two names are equivalent) |
 | `factorial(n)` | `n!` |
@@ -977,6 +978,12 @@ coeff(x^2+3*x+5,x,1)  # coefficient of x^1
 deg(x^3+2*x,x)        # highest power of x
 
 resultant(x^2+y^2-1,x-y,y)  # eliminates y: the circle meets y=x where 2x^2=1
+
+groebner([x*y-1,x-y],[x,y])  # lex: x = y, y^2 = 1
+
+groebner([x^2+y^2+z^2=1,x=y,y=z])  # triangular: last element only in z
+
+groebner([x^3-2*x*y,x^2*y-2*y^2+x],[x,y],grlex)
 
 gcd(12,18)            # greatest common divisor
 
@@ -1566,6 +1573,7 @@ is experimental and may misbehave.
 | `Gamma(x)` | Gamma function |
 | `forget(x)` | Drops the assumptions about `x` (all of them without argument) |
 | `gcd(a, b, ...)` | Greatest common divisor |
+| `groebner(polys, vars, order)` | Reduced Gröbner basis (`lex`, `grlex`, `grevlex`) |
 | `heaviside(x)` | Heaviside step function |
 | `hermite(x, n)` | Physicists' Hermite polynomial |
 | `hilbert(n)` | `n`&times;`n` Hilbert matrix |
