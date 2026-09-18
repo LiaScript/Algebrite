@@ -17,7 +17,8 @@ import { cmp_expr, sign } from '../sources/misc';
 import { add } from './add';
 import { integer, nativeInt } from './bignum';
 import { factor_small_number } from './factor';
-import { isplusone } from './is';
+import { isinteger, isplusone, isZeroAtomOrTensor } from './is';
+import { stop } from '../runtime/run';
 import { inverse, multiply } from './multiply';
 import { power } from './power';
 
@@ -31,6 +32,12 @@ import { power } from './power';
 //
 //-----------------------------------------------------------------------------
 export function divisors(p: U): U {
+  if (isZeroAtomOrTensor(p)) {
+    stop('divisors: every integer divides 0');
+  }
+  if (isNumericAtom(p) && !isinteger(p)) {
+    stop('divisors: integer or polynomial term expected');
+  }
   const values = ydivisors(p);
   const n = values.length;
   values.sort(cmp_expr);
