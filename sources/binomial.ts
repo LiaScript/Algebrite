@@ -1,21 +1,27 @@
-import { caddr, cadr, Constants, isNumericAtom, U } from '../runtime/defs';
-import { lessp } from '../sources/misc';
+import {
+  BINOMIAL,
+  caddr,
+  cadr,
+  Constants,
+  isNumericAtom,
+  U
+} from '../runtime/defs';
+import { symbol } from '../runtime/symbol';
 import { subtract } from './add';
+import { integer, nativeInt } from './bignum';
 import { Eval } from './eval';
 import { factorial } from './factorial';
-import { divide } from './multiply';
+import { isinteger, isnegativenumber } from './is';
+import { makeList } from './list';
+import { divide, multiply } from './multiply';
 
 //  Binomial coefficient
 //
-//  Input:    tos-2    n
-//
-//      tos-1    k
-//
-//  Output:    Binomial coefficient on stack
-//
 //  binomial(n, k) = n! / k! / (n - k)!
 //
-//  The binomial coefficient vanishes for k < 0 or k > n. (A=B, p. 19)
+//  generalized as in Concrete Mathematics (5.1): for integer k >= 0 it is
+//  n (n - 1) ... (n - k + 1) / k!, which also holds for negative and
+//  fractional n, and it vanishes for integer k < 0.
 
 export function Eval_binomial(p1: U) {
   const N = Eval(cadr(p1));
@@ -23,26 +29,24 @@ export function Eval_binomial(p1: U) {
   return binomial(N, K);
 }
 
-function binomial(N: U, K: U): U {
-  return ybinomial(N, K);
-}
-
-function ybinomial(N: U, K: U): U {
-  if (!BINOM_check_args(N, K)) {
+export function binomial(N: U, K: U): U {
+  const k = nativeInt(K);
+  if (k < 0) {
     return Constants.zero;
   }
 
-  return divide(divide(factorial(N), factorial(K)), factorial(subtract(N, K)));
-}
-
-function BINOM_check_args(N: U, K: U): boolean {
-  if (isNumericAtom(N) && lessp(N, Constants.zero)) {
-    return false;
-  } else if (isNumericAtom(K) && lessp(K, Constants.zero)) {
-    return false;
-  } else if (isNumericAtom(N) && isNumericAtom(K) && lessp(N, K)) {
-    return false;
-  } else {
-    return true;
+  if (isNumericAtom(N) && !isNaN(k)) {
+    let result: U = Constants.one;
+    for (let j = 0; j < k; j++) {
+      result = divide(multiply(result, subtract(N, integer(j))), integer(j + 1));
+    }
+    return result;
   }
+
+  // n! has a pole at negative integers, the factorial form is meaningless
+  if (isinteger(N) && isnegativenumber(N)) {
+    return makeList(symbol(BINOMIAL), N, K);
+  }
+
+  return divide(divide(factorial(N), factorial(K)), factorial(subtract(N, K)));
 }
