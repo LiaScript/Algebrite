@@ -71,9 +71,16 @@ export function doubleToReasonableString(d: number) {
     const maxFixedPrintoutDigits = nativeInt(
       get_binding(symbol(MAX_FIXED_PRINTOUT_DIGITS))
     );
-    //console.log "maxFixedPrintoutDigits: " + maxFixedPrintoutDigits
-    //console.log "type: " + typeof(maxFixedPrintoutDigits)
-    //console.log "toFixed: " + d.toFixed(maxFixedPrintoutDigits)
+    // Fixed notation would show fewer than 3 significant digits below
+    // 10^(3-digits) (1e-7 printed as 0.000000..., which reads as zero),
+    // and doubles no longer hold every integer digit from 10^15 on.
+    const abs = Math.abs(d);
+    if (
+      abs !== 0 &&
+      (abs < 10 ** Math.min(3 - maxFixedPrintoutDigits, -1) || abs >= 1e15)
+    ) {
+      return scientificString(d, maxFixedPrintoutDigits);
+    }
 
     stringRepresentation = '' + d.toFixed(maxFixedPrintoutDigits);
 
@@ -99,6 +106,23 @@ export function doubleToReasonableString(d: number) {
   }
 
   return stringRepresentation;
+}
+
+// 1.5*10^(-7) (1.5 \cdot 10^{-7} in LaTeX), with the same number of
+// mantissa decimals and the same "..." marker for rounding as fixed output
+function scientificString(d: number, digits: number): string {
+  const [rounded, exp] = d.toExponential(digits).split('e');
+  let mantissa = rounded
+    .replace(/(\.\d*?[1-9])0+$/, '$1')
+    .replace(/\.0+$/, '.0');
+  if (parseFloat(`${mantissa}e${exp}`) !== d) {
+    mantissa = rounded + '...';
+  }
+  const e = parseInt(exp, 10);
+  if (defs.printMode === PRINTMODE_LATEX) {
+    return `${mantissa} \\cdot 10^{${e}}`;
+  }
+  return `${mantissa}*10^${e < 0 ? `(${e})` : e}`;
 }
 
 // does nothing

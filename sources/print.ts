@@ -82,8 +82,10 @@ import {
   TESTGT,
   TESTLE,
   TESTLT, U,
-  UNIT
+  UNIT,
+  isdouble,
 } from '../runtime/defs';
+import { doubleToReasonableString } from '../runtime/otherCFunctions';
 import { get_binding, get_printname, set_binding, symbol } from '../runtime/symbol';
 import { lessp } from '../sources/misc';
 import { absval } from './abs';
@@ -252,6 +254,11 @@ export function printline(p: BaseAtom): string {
   return accumulator;
 }
 
+// a double printed as 1.5*10^(-7): needs parentheses as a base or exponent
+function isscientific(p: BaseAtom): boolean {
+  return isdouble(p) && /[*^]|\\cdot/.test(doubleToReasonableString(p.d));
+}
+
 function print_base_of_denom(BASE: BaseAtom): string {
   let accumulator = '';
   if (
@@ -259,6 +266,7 @@ function print_base_of_denom(BASE: BaseAtom): string {
     isadd(BASE) ||
     ismultiply(BASE) ||
     ispower(BASE) ||
+    isscientific(BASE) ||
     lessp(BASE as U, Constants.zero)
   ) {
     accumulator += print_char('(');
@@ -1346,7 +1354,7 @@ function print_power(base: BaseAtom, exponent: BaseAtom) {
       }
     } else if (
       isNumericAtom(base) &&
-      (lessp(base, Constants.zero) || isfraction(base))
+      (lessp(base, Constants.zero) || isfraction(base) || isscientific(base))
     ) {
       accumulator += print_str('(');
       accumulator += print_factor(base);
@@ -1379,6 +1387,7 @@ function print_power(base: BaseAtom, exponent: BaseAtom) {
     } else if (
       iscons(exponent) ||
       isfraction(exponent) ||
+      isscientific(exponent) ||
       (isNumericAtom(exponent) && lessp(exponent, Constants.zero))
     ) {
       accumulator += print_str('(');

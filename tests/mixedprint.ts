@@ -22,27 +22,70 @@ run_test([
   '11111111.0 * 11111111.0',
   '123456787654321.0',
 
-  // unfortunately using Numbers
-  // at some point we hit the precision
+  // from 10^15 on, doubles no longer hold every integer digit (the exact
+  // product is 12345678987654321), so these print in scientific notation
   '111111111 * 111111111.0',
-  '12345678987654320.0',
+  '1.234568...*10^16',
 
-  // unfortunately using Numbers
-  // at some point we hit the precision
   '111111111.0 * 111111111',
-  '12345678987654320.0',
+  '1.234568...*10^16',
 
-  // unfortunately using Numbers
-  // at some point we hit the precision
   '111111111.0 * 111111111.0',
-  '12345678987654320.0',
+  '1.234568...*10^16',
+
+  '999999999999999.0',
+  '999999999999999.0',
+
+  '1.0*10^15',
+  '1.0*10^15',
+
+  // below 0.001 fixed notation would show fewer than 3 significant digits
+  // (and 0.000000... looked like zero), so these are scientific too
+  '0.001',
+  '0.001',
+
+  '0.00123',
+  '0.00123',
+
+  '0.000123',
+  '1.23*10^(-4)',
 
   '1.0*10^(-6)',
-  '0.000001',
+  '1.0*10^(-6)',
 
-  // check that this doesn't return 0.0
   '1.0*10^(-7)',
-  '0.000000...',
+  '1.0*10^(-7)',
+
+  '-2.5*10^(-9)',
+  '-2.5*10^(-9)',
+
+  'float(pi)*10^(-8)',
+  '3.141593...*10^(-8)',
+
+  'float(10^25)',
+  '1.0*10^25',
+
+  '-float(2^70)',
+  '-1.180592...*10^21',
+
+  'float(10^(-400))',
+  '0.0',
+
+  'float(1/7*10^(-5))',
+  '1.428571...*10^(-6)',
+
+  // wrapped where the plain notation would be read differently
+  '(1.5*10^(-7))^x',
+  '(1.5*10^(-7))^x',
+
+  'x^(1.5*10^(-7))',
+  'x^(1.5*10^(-7))',
+
+  '2.5*10^(-7)*x',
+  '2.5*10^(-7)*x',
+
+  'printlatex(1.5*10^(-7))',
+  '1.5 \\cdot 10^{-7}',
 
   // ------------------------------------------
   'maxFixedPrintoutDigits',

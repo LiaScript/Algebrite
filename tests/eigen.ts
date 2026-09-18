@@ -29,11 +29,10 @@ run_test([
   // this one takes quite some time to finish because of the
   // "dot(transpose(Q),D,Q))" calculation. Note that since
   // D and Q are matrices of doubles, the whole result is a double.
-  // also note that the result gives "-0.000000...", that's why I put the abs there
-  // Note that this should be really "0" however, because of calculation errors,
-  // it doesn't test equal to "0", so we get to this result
-  'abs(contract(hilbert(20))-contract(dot(transpose(Q),D,Q)))',
-  '0.000000...',
+  // The difference should be 0 but is rounding noise, so check its size
+  // (its exact value would print in scientific notation and vary by platform).
+  'abs(contract(hilbert(20))-contract(dot(transpose(Q),D,Q)))<10^(-10)',
+  '1',
 
   'D=quote(D)',
   '',

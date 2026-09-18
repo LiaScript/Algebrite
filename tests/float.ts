@@ -80,8 +80,10 @@ run_test([
   'float(123456789/1000)',
   '123456.789',
 
+  // a double can't hold all 20 digits: fixed notation printed the wrong
+  // digits 12345678901234567168.0, scientific shows only reliable ones
   'float(12345678901234567890)',
-  '12345678901234567168.0',
+  '1.234568...*10^19',
 
   'float(2^(1/2))',
   '1.414214...',
