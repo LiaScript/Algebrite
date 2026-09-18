@@ -8,7 +8,7 @@ import {
   SYMBOL_X,
   U
 } from '../runtime/defs';
-import { symbol } from "../runtime/symbol";
+import { inChildScope, set_binding, symbol } from "../runtime/symbol";
 import { equal } from '../sources/misc';
 import { subtract } from './add';
 import { Eval } from './eval';
@@ -64,10 +64,13 @@ export function Eval_coeff(p1: U) {
 export function coeff(p: U, x: U): U[] {
   const coefficients = [];
 
-  // each c is evaluated, so p must be too: otherwise p - c may not cancel
+  // each c is evaluated, so p must be too, else p - c may not cancel
   // structurally (-(-1)^(5/6) vs its evaluated rectangular form) and the
-  // loop divides by x until subst(p, x, 0) divides by zero
-  p = Eval(p);
+  // loop divides by x until subst(p, x, 0) divides by zero. x stays free.
+  p = inChildScope(() => {
+    set_binding(x, x);
+    return Eval(p);
+  });
 
   while (true) {
     const c = Eval(subst(p, x, Constants.zero));
