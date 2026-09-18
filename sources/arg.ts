@@ -117,15 +117,37 @@ export function Eval_arg(z: U) {
   return arg(Eval(cadr(z)));
 }
 
-export function arg(z: U): U {
+// upToTurns: the caller only uses the angle under sin, cos or exp(i*...), so
+// a result that is off by a multiple of 2*pi will do (rect, clock)
+export function arg(z: U, upToTurns = false): U {
   if (istensor(z)) {
     const t = copy_tensor(z);
-    t.tensor.elem = t.tensor.elem.map(arg);
+    t.tensor.elem = t.tensor.elem.map((e) => arg(e, upToTurns));
     return t;
   }
+  const q = mapQuantity(z, (m) => arg(m, upToTurns), false);
+  if (q) {
+    return q;
+  }
+  const a = principal(subtract(yyarg(numerator(z)), yyarg(denominator(z))));
+  return upToTurns || staysPrincipal(a) ? a : makeList(symbol(ARG), z);
+}
+
+// The args of the factors add up to arg(z) only up to a multiple of 2*pi,
+// and with an unknown arg(u) in the sum the multiple depends on the value of
+// u: pi+arg(y) is 2*pi for y < 0, where arg(-y) = 0; -arg(y) is -pi, where
+// arg(1/y) = pi. A single c*arg(u) with 0 < c <= 1 and nothing added stays
+// in (-pi, pi]; anything else is returned as arg(z).
+function staysPrincipal(a: U): boolean {
+  if (!Find(a, symbol(ARG)) || car(a) === symbol(ARG)) {
+    return true;
+  }
   return (
-    mapQuantity(z, arg, false) ||
-    principal(subtract(yyarg(numerator(z)), yyarg(denominator(z))))
+    ismultiply(a) &&
+    a.tail().length === 2 &&
+    ispositivenumber(cadr(a)) &&
+    realconstant(cadr(a)) <= 1 &&
+    car(caddr(a)) === symbol(ARG)
   );
 }
 

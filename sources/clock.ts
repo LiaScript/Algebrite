@@ -47,7 +47,7 @@ export function clockform(p1: U): U {
   // that we can't use "power", as "power" evaluates
   // clock forms into rectangular form (see "-1 ^ rational"
   // section in power); an integer exponent is just a sign
-  const n = divide(arg(p1), Constants.Pi());
+  const n = divide(arg(p1, true), Constants.Pi());
   const l = isintegerorintegerfloat(n)
     ? power(Constants.negOne, n)
     : makeList(symbol(POWER), Constants.negOne, n);
@@ -55,8 +55,8 @@ export function clockform(p1: U): U {
 
   if (DEBUG_CLOCKFORM) {
     console.log(`clockform: abs of ${p1} : ${abs(p1)}`);
-    console.log(`clockform: arg of ${p1} : ${arg(p1)}`);
-    console.log(`clockform: divide : ${divide(arg(p1), Constants.Pi())}`);
+    console.log(`clockform: arg of ${p1} : ${arg(p1, true)}`);
+    console.log(`clockform: divide : ${divide(arg(p1, true), Constants.Pi())}`);
     console.log(`clockform: power : ${l}`);
     console.log(`clockform: multiply : ${multiplied}`);
   }

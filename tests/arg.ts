@@ -95,8 +95,14 @@ run_test([
     'arg(-i)',
     '-1/2*pi',
 
+    // arg(a+i*b)-arg(c+i*d) was returned here. It can leave (-pi, pi]:
+    // for a+i*b = -1+i/10 and c+i*d = -1-i/10 it is 2*pi-0.2, the argument of
+    // the quotient is -0.2. Without known signs it stays as it is.
     'arg((a+b*i)/(c+d*i))',
-    'arg(a+i*b)-arg(c+i*d)',
+    'arg(a/(c+i*d)+i*b/(c+i*d))',
+
+    'float(eval(arg((a+b*i)/(c+d*i)),a,-1,b,1/10,c,-1,d,-1/10))',
+    '-0.199337...',
 
     'arg(((-1)^(1/2) / (3^(1/2)))^(1/2))',
     '1/4*pi',
@@ -210,8 +216,8 @@ run_test([
 // arg of a product is the sum of the args only up to a multiple of 2*pi,
 // and which multiple depends on the values: arg(-y) = pi+arg(y) gave 2*pi
 // for y = -3, where arg(-y) = arg(3) = 0. A sum with unknown args in it is
-// only returned when it is a single c*arg(u), 0 < c <= 1, with nothing
-// added, which stays in (-pi, pi]; everything else stays arg(...).
+// only returned when it is a single c*arg(u), 0 < c <= 1, which stays in
+// (-pi, pi]; everything else stays arg(...).
 run_test([
   'arg(-y)',
   'arg(-y)',
@@ -226,12 +232,15 @@ run_test([
   'arg(1/y)',
   'arg(1/y)',
 
-  'eval(arg(1/y),y,-2)',
-  'pi',
-
   // both negative: arg(x)+arg(y) would be 2*pi
   'arg(x*y)',
   'arg(x*y)',
+
+  'eval(arg(x*y),x,-2,y,-3)',
+  '0',
+
+  'eval(arg(1/y),y,-2)',
+  'pi',
 
   'eval(arg(x*y),x,-2,y,-3)',
   '0',
