@@ -349,3 +349,92 @@ run_test([
   'integral(1/(x^2*sqrt(x^2-1)),x)',
   '(x^2-1)^(1/2)/x',
 ]);
+
+// D. Table entries that were right up to a constant but complex on half of
+// the real line: log(.../x) for x < 0, log((s-sqrt(a))/(s+sqrt(a))) with
+// s = sqrt(a+b*x) where s < sqrt(a). log(.../abs(x)) and
+// log((s-sqrt(a))^2/abs(x)) have the same derivative and are real.
+run_test([
+  // -log((1+sqrt(3/4))/(1/2)) = -1.316958 (was -1.316958-3.141593*i)
+  'float(subst(-1/2,x,integral(1/(x*sqrt(1-x^2)),x)))',
+  '-1.316958...',
+
+  // sqrt(6)-sqrt(7)*log(sqrt(7)+sqrt(6)) = -1.858606
+  'float(subst(-1,x,integral(sqrt(7-x^2)/x,x)))',
+  '-1.858606...',
+
+  // -sqrt(6)/2+log(sqrt(7)+sqrt(6))/(2*sqrt(7)) = -0.917024
+  'float(subst(-1,x,integral(sqrt(7-x^2)/x^3,x)))',
+  '-0.917024...',
+
+  // unchanged for x > 0: -log((1+sqrt(3/4))/(1/2))
+  'float(subst(1/2,x,integral(1/(x*sqrt(1-x^2)),x)))',
+  '-1.316958...',
+
+  'float(defint(1/(x*sqrt(1-x^2)),x,-1/2,-1/4))',
+  '-0.746479...',
+
+  'float(defint(sqrt(7-x^2)/x,x,-2,-1))',
+  '-1.517976...',
+
+  'float(defint(sqrt(7-x^2)/x^3,x,-2,-1))',
+  '-0.848566...',
+
+  // the integrand at x = -1/2 is -2/sqrt(3/4) = -2.309401
+  'float(subst(-1/2,x,d(integral(1/(x*sqrt(1-x^2)),x),x)))',
+  '-2.309401...',
+]);
+
+run_test([
+  // 1/(x*sqrt(3-2*x)): sqrt(3-2*x) < sqrt(3) for x > 0
+  'imag(float(subst(1,x,integral(1/(x*sqrt(3-2*x)),x))))',
+  '0.0',
+
+  'imag(float(subst(-1,x,integral(1/(x*sqrt(3-2*x)),x))))',
+  '0.0',
+
+  'imag(float(subst(-1/4,x,integral(1/(x*sqrt(2+3*x)),x))))',
+  '0.0',
+
+  'imag(float(subst(1,x,integral(1/(x*sqrt(2+3*x)),x))))',
+  '0.0',
+
+  // entries 128, 129 and 137 are built on it
+  'imag(float(subst(1,x,integral(sqrt(3-2*x)/x,x))))',
+  '0.0',
+
+  'imag(float(subst(1,x,integral(sqrt(3-2*x)/x^2,x))))',
+  '0.0',
+
+  'imag(float(subst(1,x,integral(1/(x^2*sqrt(3-2*x)),x))))',
+  '0.0',
+
+  // the integrand at x = -1 is -1/sqrt(5), at x = 1/2 it is sqrt(2)
+  'float(subst(-1,x,d(integral(1/(x*sqrt(3-2*x)),x),x)))',
+  '-0.447214...',
+
+  'float(subst(1/2,x,d(integral(1/(x*sqrt(3-2*x)),x),x)))',
+  '1.414214...',
+
+  'float(defint(1/(x*sqrt(3-2*x)),x,-2,-1))',
+  '-0.286734...',
+
+  'float(defint(sqrt(3-2*x)/x,x,-2,-1))',
+  '-1.679569...',
+
+  'float(defint(sqrt(3-2*x)/x^2,x,-2,-1))',
+  '1.199926...',
+
+  'float(defint(1/(x^2*sqrt(3-2*x)),x,-2,-1))',
+  '0.208819...',
+
+  'float(defint(1/(x*sqrt(2+3*x)),x,-1/2,-1/4))',
+  '-0.740542...',
+
+  'float(defint(1/(x*sqrt(2+3*x)),x,1,2))',
+  '0.277457...',
+
+  // the arctan entry for a < 0 is untouched: 2/sqrt(3)*arctan(sqrt((2*x-3)/3))
+  'integral(1/(x*sqrt(2*x-3)),x)',
+  '2*arctan((2/3*x-1)^(1/2))/(3^(1/2))',
+]);
