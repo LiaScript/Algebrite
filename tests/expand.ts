@@ -167,4 +167,17 @@ run_test([
 
   'expand((2*i-1/2)/(-x))',
   '1/(2*x)-2*i/x',
+
+  // non-polynomial numerator or denominator: left alone (was Stop: divide by zero)
+  'expand(sin(x)/(x^2-1))',
+  'sin(x)/(x^2-1)',
+
+  'expand(exp(x)/(x+1))',
+  'exp(x)/(x+1)',
+
+  'expand(x/(x+1)^(3/2))',
+  'x/((x+1)^(3/2))',
+
+  'expand(sin(y)/(x^2-1))',
+  'sin(y)/(2*(x-1))-sin(y)/(2*(x+1))',
 ]);
