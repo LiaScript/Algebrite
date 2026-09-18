@@ -793,7 +793,11 @@ limit(log(x),x,0)    # log is undefined for x < 0
 
 With a symbolic bound, `sum` returns a formula when every term is polynomial or
 geometric in the index. The result is in expanded form, and `factor` turns it
-into the familiar textbook form. Any other sum stays unevaluated.
+into the familiar textbook form. Other terms go to Gosper's algorithm, which
+finds the closed form of a sum of hypergeometric terms (polynomials times
+powers, factorials and binomial coefficients of the index) or shows that there
+is none. Whole rows of binomial coefficients are known too. Any other sum stays
+unevaluated.
 
 ```Maxima
 sum(k,k,1,n)              # closed form, expanded
@@ -810,13 +814,26 @@ sum(x^k,k,0,n)            # geometric sum with a symbolic ratio
 
 sum(2^k+k,k,1,n)          # geometric plus polynomial terms
 
+sum(k*2^k,k,1,n)          # polynomial times power: Gosper's algorithm
+
+sum(k*x^k,k,1,n)          # the same with a symbolic ratio
+
+sum(k*k!,k,1,n)           # (n+1)! - 1
+
+sum(binomial(n,k),k,0,n)  # a row of Pascal's triangle: 2^n
+
+sum(k*binomial(n,k),k,0,n)    # n 2^(n-1)
+
+sum(binomial(n,k)*x^k,k,0,n)  # the binomial theorem
+
 sum(1/k,k,1,n)            # harmonic sum, no closed form
 ```
 @Algebrite.pretty
 
-With the upper bound `inf`, geometric series, p-series $\sum 1/k^s$ (through
-`zeta`), alternating p-series, the exponential series and telescoping sums of
-rational terms have closed forms. A series whose terms do not go to zero stops
+With the upper bound `inf`, geometric series, polynomials times a power
+$\sum p(k) r^k$ with $|r| < 1$, p-series $\sum 1/k^s$ (through `zeta`),
+alternating p-series, the Leibniz series and its shifts, the exponential series
+and telescoping sums of rational terms have closed forms. A series whose terms do not go to zero stops
 with `sum: the series diverges`.
 
 ```Maxima
@@ -825,6 +842,10 @@ sum(1/2^k,k,0,inf)           # geometric series
 sum(1/k^2,k,1,inf)           # the Basel problem
 
 sum((-1)^(k+1)/k,k,1,inf)    # alternating harmonic series
+
+sum(k/2^k,k,1,inf)           # polynomial times power: 2
+
+sum((-1)^k/(2*k+1),k,0,inf)  # the Leibniz series: pi/4
 
 sum(x^k/k!,k,0,inf)          # exponential series
 
@@ -912,14 +933,21 @@ returns the right side of `y(x) = ...`, with constants `C1`, `C2`, ... Several
 branches, as for `y' = x/y`, come as a list. Derivatives can be written as
 `d(y(x),x)`, `d(y(x),x,2)` or `y'(x)`. It covers:
 
-- first order, `y' = f(x,y)`: linear (integrating factor), separable and
-  Bernoulli equations
-- any order: linear equations with constant coefficients, including a right
-  side that `laplace` can transform
+- first order, `y' = f(x,y)`: linear (integrating factor), separable,
+  Bernoulli, homogeneous `y' = F(y/x)` and exact equations
+- any order: linear equations with constant coefficients (a right side that
+  `laplace` cannot transform goes to variation of parameters for order 2),
+  Euler-Cauchy equations `a x^2 y'' + b x y' + c y = g(x)` and equations
+  without `y`, such as `y'' = f(x, y')`
+- systems `dsolve([eq1, eq2], [x(t), y(t)])` of linear equations with constant
+  coefficients; the constants are the values at `t = 0`
 
-`dsolve(ode, y(x), [y(0)=1, y'(0)=0])` fits the constants to initial values.
-A separable equation that can't be solved for `y` stops with the implicit
-solution; other equations stop with an error.
+Conditions follow the function, one by one or as a list: `y(0)=1`, `y'(0)=0`,
+`y''(0)=2`, also at two different points (boundary values). With fewer
+conditions than the order the remaining constants stay. An equation that can't
+be solved for `y` stops with the implicit solution; unsupported equations stop
+with a message that lists the supported classes. Solutions of Euler-Cauchy
+equations are written with `log(x)`, so they are meant for `x > 0`.
 
 ```Maxima
 dsolve(d(y(x),x)=a*y(x),y(x))              # C1 exp(a x)
@@ -935,14 +963,29 @@ dsolve(d(y(x),x,2)+2*d(y(x),x)+5*y(x)=0,y(x))   # damped oscillation
 dsolve(d(y(x),x,2)+y(x)=x,y(x))            # with a particular solution
 
 dsolve(d(y(x),x,2)+y(x)=0,y(x),[y(0)=1,y'(0)=0])
+
+dsolve(d(y(x),x,2)+y(x)=0,y(x),y(0)=0,y(pi/2)=1)   # boundary values
+
+dsolve(d(y(x),x,2)+y(x)=1/cos(x),y(x))     # variation of parameters
+
+dsolve(x^2*d(y(x),x,2)+x*d(y(x),x)-y(x)=0,y(x))    # Euler-Cauchy
+
+dsolve(d(y(x),x)=(y(x)^2+x*y(x)+x^2)/x^2,y(x))     # homogeneous: y = v x
+
+dsolve(2*x*y(x)+1+(x^2+2*y(x))*d(y(x),x)=0,y(x))   # exact, two branches
+
+dsolve([d(x(t),t)=y(t),d(y(t),t)=-x(t)],[x(t),y(t)],x(0)=1,y(0)=0)  # a system
 ```
 @Algebrite.pretty
 
 #### 3.5 Integrals Beyond the Table
 
 `integral` first looks the integrand up in a table and splits rational
-functions into partial fractions. When that fails it tries substitution,
-integration by parts and a few closed forms. Integrals without an elementary
+functions into partial fractions. When that fails it tries completing the
+square, substitution, the substitutions `u = tan(x)` and `t = tan(x/2)` for
+rational functions of `sin`, `cos` and `tan`, integration by parts and a few
+closed forms. Logarithms come as `log(abs(...))` where the argument changes
+sign, so the antiderivative is real on both sides of a pole. Integrals without an elementary
 antiderivative come back as the special function they define, see section 6.
 
 ```Maxima
@@ -956,11 +999,113 @@ integral(sin(x)^2*cos(x)^3,x) # odd power: u = sin(x)
 
 integral(1/(2+cos(x)),x)      # real arctan form
 
+integral(1/sqrt(x^2+2*x+5),x) # completing the square
+
+integral(1/(sin(x)+cos(x)),x) # t = tan(x/2)
+
+integral(1/(1+sin(x)^2),x)    # u = tan(x)
+
+integral(1/(x^3+1),x)         # one log per factor
+
 integral(abs(x),x)            # absolute value of a linear term
 
 integral(sin(x)/x,x)          # the sine integral Si
 
 defint(sin(x)/x,x,0,inf)      # the Dirichlet integral
+```
+@Algebrite.pretty
+
+#### 3.6 Piecewise Functions
+
+`piecewise(value1, condition1, value2, condition2, ..., default)` is a function
+given by cases. The conditions are tested in order and the first true one
+selects its value; the last argument without a condition is the value
+otherwise. With a number for `x` it gives a number, with a symbol it stays as
+it is, and conditions that are decided (by numbers or by assumptions) drop out.
+
+- `d` differentiates every branch and keeps the conditions. Whether the
+  function is differentiable at a break point is not checked.
+- `defint` with numeric bounds splits the interval at the break points.
+  `integral` returns the continuous antiderivative. Both need break points of
+  the form `x < c` with a number `c`; otherwise they stay unevaluated.
+- `limit` at a break point compares both sides; `left` and `right` give the
+  one-sided limits.
+- `aspiecewise(expr)` rewrites `abs`, `sgn`, `heaviside` and `min`/`max` of two
+  arguments as cases.
+
+```Maxima
+f(x)=piecewise(x^2,x<0,x,x<=2,4)   # x^2 left of 0, x up to 2, then 4
+
+[f(-2),f(0),f(2),f(3)]             # values on the branches and at the break points
+
+d(f(x),x)                          # branch by branch
+
+defint(f(x),x,-1,3)                # 1/3 + 2 + 4
+
+integral(f(x),x)                   # continuous antiderivative
+
+limit(f(x),x,2,left)               # 2, from the right it is 4
+
+aspiecewise(abs(x-1))              # absolute value written as cases
+
+p(x)=piecewise(x,and(0<=x,x<=1),2-x,and(1<x,x<=2),0)  # a triangle density
+
+defint(p(x),x,-inf,inf)            # total probability 1
+
+defint(x*p(x),x,0,2)               # mean 1
+```
+@Algebrite.pretty
+
+#### 3.7 Fourier Series and Fourier Transform
+
+`fourierseries(f, x, n)` is the Fourier series of `f` on `[-pi, pi]` up to the
+`n`-th harmonic, with exact coefficients. A fourth argument gives another
+period: a half period `L` for the interval `[-L, L]`, or an interval `[a,b]`.
+`fouriercoeff(f, x, k)` returns the pair `[a_k, b_k]`, also for a symbolic `k`
+after `assume(k,integer)`. Jumps and kinks are written with `abs`, `sgn` and
+`heaviside`.
+
+```Maxima
+fourierseries(x,x,3)               # sawtooth
+
+fourierseries(abs(x),x,3)          # triangle wave: only cosines
+
+fourierseries(sgn(x),x,5)          # square wave: only odd sines
+
+fourierseries(x^2,x,2,1)           # period 2
+
+fourierseries(x,x,2,[0,1])         # on the interval [0,1]
+
+fourierseries(sin(x)^2,x,4)        # a trigonometric polynomial gives itself
+
+assume(k,integer)
+
+fouriercoeff(x^2,x,k)              # [4 (-1)^k / k^2, 0]
+```
+@Algebrite.pretty
+
+`fourier(f, x, w)` is the Fourier transform
+$F(w) = \int_{-\infty}^{\infty} f(x) e^{-i w x} dx$, without a factor
+$1/\sqrt{2\pi}$, and `invfourier(F, w, x)` goes back with the factor
+$1/(2\pi)$. Both work from a table like `laplace`: Gaussians, `exp(-a*abs(x))`,
+rational functions, `heaviside(x)*exp(-a*x)`, pulses made of `heaviside`,
+`dirac`, `sgn`, powers of `x`, `sin` and `cos`, with the shift, modulation,
+scaling and derivative rules. A parameter whose sign matters, as in
+`exp(-a*x^2)`, needs `assume(a,positive)`. What is not covered stays
+unevaluated.
+
+```Maxima
+fourier(exp(-x^2),x,w)                       # a Gaussian stays a Gaussian
+
+fourier(exp(-3*abs(x)),x,w)                  # 6/(9+w^2)
+
+fourier(heaviside(x+1)-heaviside(x-1),x,w)   # rectangle: 2 sin(w)/w
+
+fourier(dirac(x-2),x,w)                      # a shift is a phase
+
+fourier(cos(2*x),x,w)                        # two spectral lines
+
+invfourier(2/(1+w^2),w,x)                    # exp(-abs(x))
 ```
 @Algebrite.pretty
 
@@ -1051,7 +1196,8 @@ rank([[1,2],[2,4]])                   # number of axes, not the matrix rank
 
 | Function | Description |
 |---|---|
-| `factorpoly(p, x)` | Factors polynomial `p` over `x` |
+| `factor(p)`, `factor(p, x)`, `factorpoly(p, x)` | Factors a polynomial over the rationals, completely; also in several variables |
+| `factor(n)` | Prime factors of an integer, ascending |
 | `roots(p, x)`, `nroots(p)` | Exact / numeric roots of polynomial `p` |
 | `coeff(p, x, n)` | Coefficient of `x^n` in polynomial `p` |
 | `deg(p, x)`, `leading(p, x)` | Degree of `p` in `x` / its leading coefficient |
@@ -1067,7 +1213,28 @@ rank([[1,2],[2,4]])                   # number of axes, not the matrix rank
 | `fibonacci(n)`, `harmonic(n)`, `bernoulli(n)` | Fibonacci number / `1+1/2+...+1/n` / Bernoulli number |
 | `cfrac(x)`, `cfrac(x, n)` | Continued fraction of a rational / the first `n` terms for any number |
 
+`factor` finds every irreducible factor with rational coefficients, whatever
+its degree, and also factors polynomials in several variables. Without a
+variable it takes `x`, `y`, `z`, `t` or `s` if present, else the first symbol.
+Integers are split with trial division and Pollard's rho method, which finds
+prime factors of up to about 14 digits within seconds; beyond that the time
+limit (section 10) stops the attempt.
+
 ```Maxima
+factor(x^10-1)                # cyclotomic factors of degree 4
+
+factor(x^6+x^5+x^4+3*x^3+x^2+x+1)   # two cubic factors
+
+factor(x^4+4)                 # Sophie Germain
+
+factor(x^2+2*x*y+y^2-z^2)     # several variables
+
+factor(x^3+y^3+z^3-3*x*y*z)
+
+factor(a^2-b^2)               # no x, y, z: the first symbol is the variable
+
+factor(2^67-1)                # 193707721 * 761838257287
+
 factorpoly(x^2-1,x)   # factors in x
 
 roots(x^2-5*x+6,x)    # exact roots
@@ -1198,6 +1365,8 @@ solve(x^2-5*x+6,x)         # roots 2 and 3
 solve(x^2-2,x)             # irrational roots
 
 solve(x^3-6*x^2+11*x-6,x)  # cubic with three integer roots
+
+solve(x^3-3*x+1,x)         # three real irrational roots: cosines, no complex detour
 ```
 @Algebrite.pretty
 
@@ -1326,8 +1495,16 @@ solve([sin(x)=y,x=y],[x,y])     # sin(x) is not a polynomial
 
 `for`'s first argument is the loop body, not the loop variable — the
 example below sums `1..5` into `s`. Wildcards in a `pattern()` template
-end with an underscore, e.g. `x_`. A comparison that cannot be decided is
-shown as written, `x>1`. A semicolon separates statements like a line break.
+end with an underscore, e.g. `x_`. A semicolon separates statements like a
+line break.
+
+A comparison that cannot be decided stays a comparison, in its simplest form:
+common terms cancel and numeric factors are divided out, `x+y>y` is `x>0`. A
+symbolic factor is divided out only when its sign is known (section 13).
+`and`, `or` and `not` reason about the number line for each real variable:
+`and(x>1,x<0)` is `0`, `or(x<1,x>=1)` is `1`, `and(x>1,x>3)` is `x>3`, and
+`not(x>1)` is `x<=1`. `min` and `max` merge their numbers, `min(3,x,5)` is
+`min(3,x)`, and drop what the assumptions decide.
 
 ```Maxima
 sq(x)=x^2                       # a function of one's own
@@ -1347,6 +1524,21 @@ sg(x)=if(x>0,1,x<0,-1,0)        # conditions and values in pairs, then a default
 map(sg,[-2,0,3])                # piecewise function on a list
 
 a=2; b=3; a^b                   # three statements on one line
+```
+@Algebrite.eval
+
+```Maxima
+x+y>y                           # common terms cancel: x>0
+
+and(x>1,x<5,x<3)                # the tighter bound stays
+
+and(x>1,x<0)                    # never true: 0
+
+or(x<1,x>=1)                    # always true: 1
+
+not(and(x>1,y<2))               # De Morgan
+
+min(3,x,5)                      # numbers are merged
 ```
 @Algebrite.eval
 
@@ -1427,6 +1619,25 @@ clearall                        # reset all variables and settings
 | `print(...)`, `printhuman(expr)`, `printcomputer(expr)` | Prints in default / traditional math / fully explicit notation |
 | `print2dascii(expr)` | Renders an expression as 2D ASCII art (fractions, exponents) |
 | `printlatex(expr)` | Renders an expression as a LaTeX string — this is what powers `@Algebrite.pretty` |
+
+`timelimit` is the number of seconds one statement may run, 20 by default. A
+computation that takes longer stops with `Stop: time limit of 20 s exceeded,
+see timelimit` instead of freezing the browser tab, and the next statement
+works normally. `timelimit=60` allows more, `timelimit=0` switches the limit
+off, `clearall` restores the default. The clock cannot interrupt a single step
+of big number arithmetic, such as `isprime` of a number with thousands of
+digits.
+
+```Maxima
+timelimit=1          # one second per statement
+
+factor(2^128+1)      # the smallest prime factor has 17 digits: stops
+
+factor(2^64+1)       # fine
+
+timelimit=20
+```
+@Algebrite.eval
 
 Floating point numbers are shown with 6 decimals. Below 0.001 and from 10^15 on
 they switch to scientific notation, `1.5*10^(-7)` (`1.5 \cdot 10^{-7}` in LaTeX),
@@ -1733,6 +1944,7 @@ is experimental and may misbehave.
 | `arctan(x)` | Inverse tangent |
 | `arctanh(x)` | Inverse hyperbolic tangent |
 | `arg(z)` | Argument (angle) of a complex number |
+| `aspiecewise(expr)` | Rewrites `abs`, `sgn`, `heaviside`, `min`, `max` as `piecewise` |
 | `assume(x, property)` | Assumes `x` real, positive, negative, nonzero, integer or complex |
 | `assumptions()` | Lists the assumptions |
 | `at(f, x, a)` | `f` at `x = a`, e.g. a derivative at a point; `y'(a)` for a function of one variable |
@@ -1812,6 +2024,9 @@ is experimental and may misbehave.
 | `fresnels(x)` | Fresnel integral of `sin(pi*t^2/2)` |
 | `Gamma(x)` | Gamma function |
 | `forget(x)` | Drops the assumptions about `x` (all of them without argument) |
+| `fourier(f, x, w)`, `invfourier(F, w, x)` | Fourier transform and its inverse, see section 3.7 |
+| `fouriercoeff(f, x, k [,L])` | Fourier coefficients `[a_k, b_k]` |
+| `fourierseries(f, x, n [,L])` | Fourier series up to the `n`-th harmonic |
 | `gcd(a, b, ...)` | Greatest common divisor |
 | `gradient(f, vars)` | Vector of the first derivatives of `f` |
 | `groebner(polys, vars, order)` | Reduced Gröbner basis (`lex`, `grlex`, `grevlex`) |
@@ -1873,6 +2088,7 @@ is experimental and may misbehave.
 | `partfrac(f, x)` | Alias for `apart` |
 | `pattern(from, to)` | Defines a rewrite rule used by `simplify()` |
 | `patternsinfo()` | Lists all currently defined patterns |
+| `piecewise(v1, c1, ..., default)` | Function given by cases, see section 3.6 |
 | `polar(z)` | Rewrites a complex number in polar form |
 | `power(a, b)` | `a^b` |
 | `powermod(a, b, m)` | `a^b mod m`, the modular inverse for negative `b` |
