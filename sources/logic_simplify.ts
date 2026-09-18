@@ -61,7 +61,7 @@ const negated = (op: string): string =>
 
 const opName = (p: U): string => (issymbol(car(p)) ? (car(p) as Sym).printname : '');
 const isComparison = (p: U) => flip(opName(p)) !== undefined;
-const isLogical = (p: U) => isComparison(p) || [AND, OR, NOT].includes(opName(p));
+export const isLogical = (p: U) => isComparison(p) || [AND, OR, NOT].includes(opName(p));
 
 export function comparable(...sides: U[]): boolean {
   return sides.every(

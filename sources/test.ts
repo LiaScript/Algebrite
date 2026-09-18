@@ -1,4 +1,4 @@
-import { Facts, facts } from './assume';
+import { constantSign, Facts, facts, hasSymbol } from './assume';
 import {
   caddr,
   cadr,
@@ -24,7 +24,6 @@ import {
 import { symbol } from "../runtime/symbol";
 import { subtract } from './add';
 import { Eval } from './eval';
-import { yyfloat } from './float';
 import {
   isZeroAtomOrTensor,
   isZeroLikeOrNonZeroLikeOrUndetermined
@@ -191,7 +190,6 @@ export function compare(arg1: U, arg2: U): { sign: Sign; known: Facts } {
   ) {
     return { sign: infinite(arg1) > infinite(arg2) ? 1 : -1, known: {} };
   }
-  let t: Sign = 0;
   let p1 = subtract(simplify(arg1), simplify(arg2));
 
   // same-dimension quantities subtract to a quantity (incompatible ones
@@ -200,43 +198,25 @@ export function compare(arg1: U, arg2: U): { sign: Sign; known: Facts } {
     p1 = cadr(p1);
   }
 
-  const difference = p1;
-
-  // try floating point if necessary
-  if (p1.k !== NUM && p1.k !== DOUBLE) {
-    p1 = Eval(yyfloat(p1));
-  }
-
-  //console.log "comparison: " + p1.toString()
-
   if (isZeroAtomOrTensor(p1)) {
-    //console.log "comparison isZero "
     return { sign: 0, known: {} };
   }
-
-  switch (p1.k) {
-    case NUM:
-      if (MSIGN(p1.q.a) === -1) {
-        t = -1;
-      } else {
-        t = 1;
-      }
-      break;
-    case DOUBLE:
-      //console.log "comparison p1.d: " + p1.d
-      if (p1.d < 0.0) {
-        t = -1;
-      } else {
-        t = 1;
-      }
-      break;
-    default: {
-      // the sign may be known from the assumptions
-      const known = facts(difference);
-      t = known.positive ? 1 : known.negative ? -1 : known.zero ? 0 : null;
-      return { sign: t, known };
-    }
+  if (p1.k === NUM) {
+    return { sign: MSIGN(p1.q.a) === -1 ? -1 : 1, known: {} };
+  }
+  if (p1.k === DOUBLE) {
+    return { sign: p1.d < 0.0 ? -1 : 1, known: {} };
   }
 
-  return { sign: t, known: {} };
+  // the sign may be known from the assumptions
+  const known = facts(p1);
+  let t: Sign = known.positive ? 1 : known.negative ? -1 : known.zero ? 0 : null;
+  // Two constants: by the certified sign of the difference, never by its
+  // double (sqrt(10^20+1)-10^10 is 0.0 there; facts() only asks for it when
+  // the rules say real, arccos(1/3)-1 is not among those). Equal only with a
+  // proof, the difference simplifies to 0; what is neither stays undecided.
+  if (t === null && !hasSymbol(p1)) {
+    t = (constantSign(p1) || (isZeroAtomOrTensor(simplify(p1)) ? 0 : null)) as Sign;
+  }
+  return { sign: t, known };
 }
