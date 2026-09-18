@@ -48,6 +48,7 @@ function softBuiltin(name) {
             if: test_1.Eval_test
         };
         Object.keys(special_1.SPECIAL).forEach((name) => (table[name] = special_1.evalSpecial(name)));
+        table.lambertw = special_1.Eval_lambertw; // takes a branch as 2nd argument
     }
     return Object.prototype.hasOwnProperty.call(table, name) ? table[name] : undefined;
 }

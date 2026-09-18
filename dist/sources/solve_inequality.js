@@ -20,7 +20,6 @@ const numerator_1 = require("./numerator");
 const rationalize_1 = require("./rationalize");
 const solve_transcendental_1 = require("./solve_transcendental");
 const subst_1 = require("./subst");
-const defs_2 = require("../runtime/defs");
 // solve(lhs < rhs, x) for a real x: the line is cut at the real roots of
 // numerator and denominator of lhs-rhs, at the roots of every log or even
 // radical argument (where the expression stops being real) and at 0, the
@@ -60,28 +59,44 @@ function solveInequalities(rels, x) {
     if (active.some(({ E }) => hasTrig(E, x))) {
         run_1.stop('solve: periodic inequalities are not supported');
     }
-    const cutsOf = (E) => {
+    // per relation: the zeros of the numerator, and every other cut (poles and
+    // the ends of the real domain)
+    const cutSets = active.map(({ E }) => {
         const R = rationalize_1.rationalize(E);
-        return [numerator_1.numerator(R), denominator_1.denominator(R), ...domainArgs(E, x)].reduce((acc, p) => acc.concat(realRoots(p, x)), []);
-    };
-    const cuts = active
-        .reduce((acc, { E }) => acc.concat(cutsOf(E)), [])
+        return {
+            zeros: realRoots(numerator_1.numerator(R), x),
+            others: [denominator_1.denominator(R), ...domainArgs(E, x)].reduce((acc, p) => acc.concat(realRoots(p, x)), [])
+        };
+    });
+    const cuts = cutSets
+        .reduce((acc, c) => acc.concat(c.zeros, c.others), [])
         .concat([defs_1.Constants.zero]);
+    const isAmong = (v, list) => list.some((q) => Math.abs(toNumber(q) - toNumber(v)) <= 1e-12 * Math.max(1, Math.abs(toNumber(v))));
     const pts = cuts
         .filter((p, i) => cuts.findIndex((q) => toNumber(q) === toNumber(p)) === i)
         .sort((a, b) => toNumber(a) - toNumber(b));
     const n = pts.length;
     // segments alternate: interval before pts[0], pts[0], interval, ..., after
+    let parametric = false;
     const holdsAt = (v) => {
         try {
             if (assume_1.violatesAssumptions(v, x)) {
                 return false;
             }
-            return active.every(({ op, E }) => {
+            return active.every(({ op, E }, i) => {
+                // at a zero of E the value is exactly 0, whatever rounding says
+                // about 3^x - 7^15 there: only <= and >= hold
+                if (isAmong(v, cutSets[i].zeros) && !isAmong(v, cutSets[i].others)) {
+                    return op === symbol_1.symbol(defs_1.TESTLE) || op === symbol_1.symbol(defs_1.TESTGE);
+                }
                 const value = eval_1.Eval(subst_1.subst(E, x, v));
                 const f = float_1.zzfloat(value);
-                if (defs_2.isdouble(f) && !Number.isFinite(f.d)) {
+                if (defs_1.isdouble(f) && !Number.isFinite(f.d)) {
                     return false; // log(0) and the like
+                }
+                // symbols left over: the sign depends on a parameter
+                if (!isNumberLike(f)) {
+                    parametric = true;
                 }
                 return truth(op, value) === true;
             });
@@ -98,6 +113,9 @@ function solveInequalities(rels, x) {
         if (i < n) {
             segments.push(holdsAt(pts[i]));
         }
+    }
+    if (parametric) {
+        run_1.stop('solve: inequalities with parameters are not supported');
     }
     const pieces = [];
     let start = -1;
@@ -132,8 +150,8 @@ function linearWithParameters(op, E, x) {
         return undefined;
     }
     const root = simplify_1.simplify(multiply_1.negate(multiply_1.divide(eval_1.Eval(subst_1.subst(E, x, defs_1.Constants.zero)), slope)));
-    if (defs_2.isdouble(float_1.zzfloat(root))) {
-        return undefined; // a number: the general method handles it
+    if (defs_1.isdouble(float_1.zzfloat(root)) && isNumberLike(float_1.zzfloat(slope))) {
+        return undefined; // all numbers: the general method handles it
     }
     const sign = assume_1.facts(slope);
     if (!sign.positive && !sign.negative) {
@@ -180,7 +198,7 @@ function truth(op, v) {
         if (is_1.isone(r)) {
             return true;
         }
-        return defs_1.isrational(r) || defs_2.isdouble(r) ? false : undefined;
+        return defs_1.isrational(r) || defs_1.isdouble(r) ? false : undefined;
     }
     catch (e) {
         return false;
@@ -188,7 +206,7 @@ function truth(op, v) {
 }
 function toNumber(p) {
     const f = float_1.zzfloat(p);
-    return defs_2.isdouble(f) ? f.d : NaN;
+    return defs_1.isdouble(f) ? f.d : NaN;
 }
 // The real roots of p in x as exact values; a root with other symbols in it
 // has no place on the line and stops.
@@ -205,7 +223,7 @@ function realRoots(p, x) {
     }
     return sols.filter((s) => {
         const f = float_1.zzfloat(s);
-        if (defs_2.isdouble(f)) {
+        if (defs_1.isdouble(f)) {
             return true;
         }
         if (!find_1.Find(f, x) && isNumberLike(f)) {

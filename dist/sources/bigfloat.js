@@ -12,6 +12,7 @@ const is_1 = require("./is");
 const tensor_1 = require("./tensor");
 const zeta_1 = require("./zeta");
 const GUARD = 25;
+const MAX_ATTEMPTS = 6; // the precision doubles each time
 exports.MAX_DIGITS = 1000;
 class Fixed {
     constructor(P) {
@@ -21,14 +22,14 @@ class Fixed {
     fromRatio(a, b) {
         return a.multiply(this.S).divide(b);
     }
+    // the decimal a double prints as (0.1, not 0.1000000000000000055...)
     fromNumber(d) {
-        // 17 significant digits hold every double exactly enough
-        const [mant, exp] = d.toExponential(16).split('e');
-        const digits = big_integer_1.default(mant.replace('.', ''));
-        const e = parseInt(exp, 10) - 16 + this.P;
-        return e >= 0
-            ? digits.multiply(big_integer_1.default(10).pow(e))
-            : digits.divide(big_integer_1.default(10).pow(-e));
+        const [mant, exp = '0'] = String(d).toLowerCase().split('e');
+        const [int, frac = ''] = mant.replace('-', '').split('.');
+        const digits = big_integer_1.default(int + frac);
+        const e = parseInt(exp, 10) - frac.length + this.P;
+        const value = e >= 0 ? digits.multiply(big_integer_1.default(10).pow(e)) : digits.divide(big_integer_1.default(10).pow(-e));
+        return d < 0 ? value.negate() : value;
     }
     // leading digits only: good enough for starting values and reductions
     toNumber(a) {
@@ -369,10 +370,17 @@ function bigFloat(p, n) {
             return run_1.stop(`float: cannot evaluate ${p} to ${n} digits`);
         }
         const text = format(high, P + GUARD, n);
-        if (format(low, P, n) === text || attempt === 6) {
+        const last = attempt === MAX_ATTEMPTS;
+        // two zeros are no agreement, a tiny value underflows at both precisions;
+        // only an exact zero is still zero at the last attempt
+        const agree = format(low, P, n) === text && (!high.isZero() || last);
+        if (agree) {
             const d = new defs_1.Double(fine.toNumber(high));
             d.bigRepr = text;
             return d;
+        }
+        if (last) {
+            return run_1.stop(`float: the precision needed for ${n} digits is out of reach`);
         }
         P *= 2;
     }

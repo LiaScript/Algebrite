@@ -4419,6 +4419,7 @@
       var tensor_1 = require_tensor();
       var zeta_1 = require_zeta();
       var GUARD = 25;
+      var MAX_ATTEMPTS = 6;
       exports.MAX_DIGITS = 1e3;
       var Fixed = class {
         constructor(P) {
@@ -4429,10 +4430,12 @@
           return a.multiply(this.S).divide(b);
         }
         fromNumber(d) {
-          const [mant, exp] = d.toExponential(16).split("e");
-          const digits = big_integer_1.default(mant.replace(".", ""));
-          const e = parseInt(exp, 10) - 16 + this.P;
-          return e >= 0 ? digits.multiply(big_integer_1.default(10).pow(e)) : digits.divide(big_integer_1.default(10).pow(-e));
+          const [mant, exp = "0"] = String(d).toLowerCase().split("e");
+          const [int, frac = ""] = mant.replace("-", "").split(".");
+          const digits = big_integer_1.default(int + frac);
+          const e = parseInt(exp, 10) - frac.length + this.P;
+          const value = e >= 0 ? digits.multiply(big_integer_1.default(10).pow(e)) : digits.divide(big_integer_1.default(10).pow(-e));
+          return d < 0 ? value.negate() : value;
         }
         toNumber(a) {
           const s = a.abs().toString();
@@ -4740,10 +4743,15 @@
             return run_1.stop(`float: cannot evaluate ${p} to ${n} digits`);
           }
           const text = format(high, P + GUARD, n);
-          if (format(low, P, n) === text || attempt === 6) {
+          const last = attempt === MAX_ATTEMPTS;
+          const agree = format(low, P, n) === text && (!high.isZero() || last);
+          if (agree) {
             const d = new defs_1.Double(fine.toNumber(high));
             d.bigRepr = text;
             return d;
+          }
+          if (last) {
+            return run_1.stop(`float: the precision needed for ${n} digits is out of reach`);
           }
           P *= 2;
         }
@@ -8757,7 +8765,7 @@ FACTOR=${p8}`);
     "bazel-out/k8-fastbuild/bin/sources/special.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.Eval_cfrac = exports.evalChebyshev = exports.Eval_beta = exports.specialDerivative = exports.evalSpecial = exports.SPECIAL = void 0;
+      exports.Eval_cfrac = exports.evalChebyshev = exports.Eval_beta = exports.Eval_lambertw = exports.specialDerivative = exports.evalSpecial = exports.SPECIAL = void 0;
       var defs_1 = require_defs();
       var symbol_1 = require_symbol();
       var add_1 = require_add();
@@ -8776,8 +8784,7 @@ FACTOR=${p8}`);
       exports.SPECIAL = {
         lambertw: {
           exact: lambertExact,
-          numeric: lambertW,
-          derivative: (x) => multiply_1.divide(call("lambertw", x), multiply_1.multiply(x, add_1.add(defs_1.Constants.one, call("lambertw", x))))
+          numeric: lambertW
         },
         Si: {
           odd: true,
@@ -8840,6 +8847,9 @@ FACTOR=${p8}`);
         if (name === defs_1.GAMMA) {
           return multiply_1.multiply(multiply_1.multiply(p, call("digamma", defs_1.cadr(p))), dx(defs_1.cadr(p)));
         }
+        if (name === "lambertw") {
+          return multiply_1.multiply(multiply_1.divide(p, multiply_1.multiply(defs_1.cadr(p), add_1.add(defs_1.Constants.one, p))), dx(defs_1.cadr(p)));
+        }
         const f = exports.SPECIAL[name];
         if (!f || !f.derivative) {
           return void 0;
@@ -8847,6 +8857,49 @@ FACTOR=${p8}`);
         return multiply_1.multiply(eval_1.Eval(f.derivative(defs_1.cadr(p))), dx(defs_1.cadr(p)));
       }
       exports.specialDerivative = specialDerivative;
+      function Eval_lambertw(p1) {
+        misc_1.checkArgCount(p1, 1, 2);
+        const x = eval_1.Eval(defs_1.cadr(p1));
+        const branch = defs_1.caddr(p1) === symbol_1.symbol("nil") ? defs_1.Constants.zero : eval_1.Eval(defs_1.caddr(p1));
+        const k = bignum_1.nativeInt(branch);
+        if (k === 0) {
+          return special("lambertw", x);
+        }
+        if (k === -1) {
+          if (defs_1.isdouble(x)) {
+            const v = lambertWm1(x.d);
+            if (v !== void 0) {
+              return bignum_1.double(v);
+            }
+          } else if (misc_1.equal(x, multiply_1.negate(misc_1.exponential(defs_1.Constants.negOne)))) {
+            return defs_1.Constants.negOne;
+          }
+        }
+        return call("lambertw", x, isNaN(k) ? branch : bignum_1.integer(k));
+      }
+      exports.Eval_lambertw = Eval_lambertw;
+      function lambertWm1(x) {
+        if (x < -1 / Math.E || x >= 0) {
+          return void 0;
+        }
+        let w = Math.log(-x) - Math.log(-Math.log(-x));
+        if (x < -0.3) {
+          w = -1 - Math.sqrt(2 * (Math.E * x + 1));
+        }
+        for (let i = 0; i < 100; i++) {
+          const ew = Math.exp(w);
+          const f = w * ew - x;
+          const step = f / (ew * (w + 1) - (w + 2) * f / (2 * w + 2));
+          if (!Number.isFinite(step)) {
+            break;
+          }
+          w -= step;
+          if (Math.abs(step) < 1e-15 * (1 + Math.abs(w))) {
+            break;
+          }
+        }
+        return w;
+      }
       function lambertExact(x) {
         if (is_1.isZeroAtomOrTensor(x)) {
           return defs_1.Constants.zero;
@@ -12068,6 +12121,7 @@ FACTOR=${p8}`);
             if: test_1.Eval_test
           };
           Object.keys(special_1.SPECIAL).forEach((name2) => table[name2] = special_1.evalSpecial(name2));
+          table.lambertw = special_1.Eval_lambertw;
         }
         return Object.prototype.hasOwnProperty.call(table, name) ? table[name] : void 0;
       }
@@ -17645,9 +17699,13 @@ FACTOR=${p8}`);
         if (find_1.Find(a, u) || find_1.Find(c, u) || find_1.Find(c, x) || is_1.isZeroAtomOrTensor(a)) {
           return void 0;
         }
-        const W = (v) => call("lambertw", v);
+        const W = (z) => {
+          const f = float_1.zzfloat(z);
+          const two = defs_1.isdouble(f) && f.d < 0 && f.d > -1 / Math.E;
+          return (two ? [call("lambertw", z, defs_1.Constants.negOne)] : []).concat([call("lambertw", z)]);
+        };
         if (defs_1.ispower(k) && misc_1.equal(defs_1.cadr(k), x) && misc_1.equal(defs_1.caddr(k), x)) {
-          return find_1.Find(a, x) ? void 0 : [misc_1.exponential(W(call(defs_1.LOG, multiply_1.divide(multiply_1.negate(c), a))))];
+          return find_1.Find(a, x) ? void 0 : W(call(defs_1.LOG, multiply_1.divide(multiply_1.negate(c), a))).map((w) => misc_1.exponential(w));
         }
         const alpha = multiply_1.divide(a, x);
         if (find_1.Find(alpha, x)) {
@@ -17655,15 +17713,17 @@ FACTOR=${p8}`);
         }
         const r = multiply_1.divide(multiply_1.negate(c), alpha);
         if (kinds[0] === "log" && misc_1.equal(defs_1.cadr(k), x)) {
-          return [misc_1.exponential(W(r))];
+          return W(r).map((w) => misc_1.exponential(w));
         }
         if (kinds[0] === "exp") {
-          const beta = multiply_1.divide(defs_1.caddr(k), x);
-          if (find_1.Find(beta, x)) {
+          const beta = derivative_1.derivative(defs_1.caddr(k), x);
+          const gamma = eval_1.Eval(add_1.subtract(defs_1.caddr(k), multiply_1.multiply(beta, x)));
+          if (find_1.Find(beta, x) || find_1.Find(gamma, x) || is_1.isZeroAtomOrTensor(beta)) {
             return void 0;
           }
           const B = defs_1.cadr(k) === symbol_1.symbol(defs_1.YYE) ? beta : multiply_1.multiply(beta, call(defs_1.LOG, defs_1.cadr(k)));
-          return [multiply_1.divide(W(multiply_1.multiply(r, B)), B)];
+          const shifted = multiply_1.divide(r, power_1.power(defs_1.cadr(k), gamma));
+          return W(multiply_1.multiply(shifted, B)).map((w) => multiply_1.divide(w, B));
         }
         return void 0;
       }
@@ -17886,7 +17946,14 @@ FACTOR=${p8}`);
             return true;
           }
           const m = float_1.zzfloat(abs_1.absval(v));
-          return !defs_1.isdouble(m) || Math.abs(m.d) < 1e-9;
+          if (!defs_1.isdouble(m)) {
+            return true;
+          }
+          const scale = (defs_1.isadd(E) ? E.tail() : [E]).reduce((max, t) => {
+            const size = float_1.zzfloat(abs_1.absval(eval_1.Eval(subst_1.subst(t, x, c))));
+            return defs_1.isdouble(size) && size.d > max ? size.d : max;
+          }, 1);
+          return Math.abs(m.d) < 1e-9 * scale;
         } catch (e) {
           return false;
         }
@@ -17928,7 +17995,6 @@ FACTOR=${p8}`);
       var rationalize_1 = require_rationalize();
       var solve_transcendental_1 = require_solve_transcendental();
       var subst_1 = require_subst();
-      var defs_2 = require_defs();
       function solveInequality(rel, x) {
         return solveInequalities([rel], x);
       }
@@ -17961,23 +18027,34 @@ FACTOR=${p8}`);
         if (active.some(({ E }) => hasTrig(E, x))) {
           run_1.stop("solve: periodic inequalities are not supported");
         }
-        const cutsOf = (E) => {
+        const cutSets = active.map(({ E }) => {
           const R = rationalize_1.rationalize(E);
-          return [numerator_1.numerator(R), denominator_1.denominator(R), ...domainArgs(E, x)].reduce((acc, p) => acc.concat(realRoots(p, x)), []);
-        };
-        const cuts = active.reduce((acc, { E }) => acc.concat(cutsOf(E)), []).concat([defs_1.Constants.zero]);
+          return {
+            zeros: realRoots(numerator_1.numerator(R), x),
+            others: [denominator_1.denominator(R), ...domainArgs(E, x)].reduce((acc, p) => acc.concat(realRoots(p, x)), [])
+          };
+        });
+        const cuts = cutSets.reduce((acc, c) => acc.concat(c.zeros, c.others), []).concat([defs_1.Constants.zero]);
+        const isAmong = (v, list) => list.some((q) => Math.abs(toNumber(q) - toNumber(v)) <= 1e-12 * Math.max(1, Math.abs(toNumber(v))));
         const pts = cuts.filter((p, i) => cuts.findIndex((q) => toNumber(q) === toNumber(p)) === i).sort((a, b) => toNumber(a) - toNumber(b));
         const n = pts.length;
+        let parametric = false;
         const holdsAt = (v) => {
           try {
             if (assume_1.violatesAssumptions(v, x)) {
               return false;
             }
-            return active.every(({ op, E }) => {
+            return active.every(({ op, E }, i) => {
+              if (isAmong(v, cutSets[i].zeros) && !isAmong(v, cutSets[i].others)) {
+                return op === symbol_1.symbol(defs_1.TESTLE) || op === symbol_1.symbol(defs_1.TESTGE);
+              }
               const value = eval_1.Eval(subst_1.subst(E, x, v));
               const f = float_1.zzfloat(value);
-              if (defs_2.isdouble(f) && !Number.isFinite(f.d)) {
+              if (defs_1.isdouble(f) && !Number.isFinite(f.d)) {
                 return false;
+              }
+              if (!isNumberLike(f)) {
+                parametric = true;
               }
               return truth(op, value) === true;
             });
@@ -17993,6 +18070,9 @@ FACTOR=${p8}`);
           if (i < n) {
             segments.push(holdsAt(pts[i]));
           }
+        }
+        if (parametric) {
+          run_1.stop("solve: inequalities with parameters are not supported");
         }
         const pieces = [];
         let start = -1;
@@ -18023,7 +18103,7 @@ FACTOR=${p8}`);
           return void 0;
         }
         const root = simplify_1.simplify(multiply_1.negate(multiply_1.divide(eval_1.Eval(subst_1.subst(E, x, defs_1.Constants.zero)), slope)));
-        if (defs_2.isdouble(float_1.zzfloat(root))) {
+        if (defs_1.isdouble(float_1.zzfloat(root)) && isNumberLike(float_1.zzfloat(slope))) {
           return void 0;
         }
         const sign = assume_1.facts(slope);
@@ -18065,14 +18145,14 @@ FACTOR=${p8}`);
           if (is_1.isone(r)) {
             return true;
           }
-          return defs_1.isrational(r) || defs_2.isdouble(r) ? false : void 0;
+          return defs_1.isrational(r) || defs_1.isdouble(r) ? false : void 0;
         } catch (e) {
           return false;
         }
       }
       function toNumber(p) {
         const f = float_1.zzfloat(p);
-        return defs_2.isdouble(f) ? f.d : NaN;
+        return defs_1.isdouble(f) ? f.d : NaN;
       }
       function realRoots(p, x) {
         if (!find_1.Find(p, x)) {
@@ -18086,7 +18166,7 @@ FACTOR=${p8}`);
         }
         return sols.filter((s) => {
           const f = float_1.zzfloat(s);
-          if (defs_2.isdouble(f)) {
+          if (defs_1.isdouble(f)) {
             return true;
           }
           if (!find_1.Find(f, x) && isNumberLike(f)) {
@@ -19457,22 +19537,20 @@ FACTOR=${p8}`);
       var denominator_1 = require_denominator();
       var numerator_1 = require_numerator();
       var log_1 = require_log();
-      var misc_1 = require_misc();
       var derivative_1 = require_derivative();
       var float_1 = require_float();
-      var misc_2 = require_misc();
       var zeta_1 = require_zeta();
       var multiply_1 = require_multiply();
       var power_1 = require_power();
       var simplify_1 = require_simplify();
       var subst_1 = require_subst();
-      var misc_3 = require_misc();
+      var misc_1 = require_misc();
       function Eval_sum(p1) {
         return float_1.evalExactly(evalSum, p1);
       }
       exports.Eval_sum = Eval_sum;
       function evalSum(p1) {
-        misc_3.checkArgCount(p1, 4);
+        misc_1.checkArgCount(p1, 4);
         const body = defs_1.cadr(p1);
         const indexVariable = defs_1.caddr(p1);
         if (!defs_1.issymbol(indexVariable)) {
@@ -19606,7 +19684,7 @@ FACTOR=${p8}`);
         const q = simplify_1.simplify(multiply_1.multiply(r, add_1.add(x, defs_1.Constants.one)));
         if (!find_1.Find(q, x)) {
           const head = skipped(0);
-          return head && add_1.subtract(multiply_1.multiply(at(defs_1.Constants.zero), misc_2.exponential(q)), head);
+          return head && add_1.subtract(multiply_1.multiply(at(defs_1.Constants.zero), misc_1.exponential(q)), head);
         }
         const alternating = findSign(t, x);
         if (alternating !== void 0) {

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_cfrac = exports.evalChebyshev = exports.Eval_beta = exports.specialDerivative = exports.evalSpecial = exports.SPECIAL = void 0;
+exports.Eval_cfrac = exports.evalChebyshev = exports.Eval_beta = exports.Eval_lambertw = exports.specialDerivative = exports.evalSpecial = exports.SPECIAL = void 0;
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
 const add_1 = require("./add");
@@ -21,8 +21,7 @@ exports.SPECIAL = {
     lambertw: {
         exact: lambertExact,
         numeric: lambertW,
-        // W' = W/(x*(1+W))
-        derivative: (x) => multiply_1.divide(call('lambertw', x), multiply_1.multiply(x, add_1.add(defs_1.Constants.one, call('lambertw', x))))
+        // W' = W/(x*(1+W)), see specialDerivative: the same on every branch
     },
     Si: {
         odd: true,
@@ -86,6 +85,9 @@ function specialDerivative(p, dx) {
     if (name === defs_1.GAMMA) {
         return multiply_1.multiply(multiply_1.multiply(p, call('digamma', defs_1.cadr(p))), dx(defs_1.cadr(p)));
     }
+    if (name === 'lambertw') {
+        return multiply_1.multiply(multiply_1.divide(p, multiply_1.multiply(defs_1.cadr(p), add_1.add(defs_1.Constants.one, p))), dx(defs_1.cadr(p)));
+    }
     const f = exports.SPECIAL[name];
     if (!f || !f.derivative) {
         return undefined;
@@ -93,7 +95,52 @@ function specialDerivative(p, dx) {
     return multiply_1.multiply(eval_1.Eval(f.derivative(defs_1.cadr(p))), dx(defs_1.cadr(p)));
 }
 exports.specialDerivative = specialDerivative;
-// ---- Lambert W, principal branch
+// ---- Lambert W: lambertw(x) is the principal branch W0, lambertw(x, -1)
+// the other real branch W-1, defined for -1/e <= x < 0
+function Eval_lambertw(p1) {
+    misc_1.checkArgCount(p1, 1, 2);
+    const x = eval_1.Eval(defs_1.cadr(p1));
+    const branch = defs_1.caddr(p1) === symbol_1.symbol('nil') ? defs_1.Constants.zero : eval_1.Eval(defs_1.caddr(p1));
+    const k = bignum_1.nativeInt(branch);
+    if (k === 0) {
+        return special('lambertw', x);
+    }
+    if (k === -1) {
+        if (defs_1.isdouble(x)) {
+            const v = lambertWm1(x.d);
+            if (v !== undefined) {
+                return bignum_1.double(v);
+            }
+        }
+        else if (misc_1.equal(x, multiply_1.negate(misc_1.exponential(defs_1.Constants.negOne)))) {
+            return defs_1.Constants.negOne;
+        }
+    }
+    return call('lambertw', x, isNaN(k) ? branch : bignum_1.integer(k));
+}
+exports.Eval_lambertw = Eval_lambertw;
+function lambertWm1(x) {
+    if (x < -1 / Math.E || x >= 0) {
+        return undefined;
+    }
+    let w = Math.log(-x) - Math.log(-Math.log(-x));
+    if (x < -0.3) {
+        w = -1 - Math.sqrt(2 * (Math.E * x + 1)); // near the branch point
+    }
+    for (let i = 0; i < 100; i++) {
+        const ew = Math.exp(w);
+        const f = w * ew - x;
+        const step = f / (ew * (w + 1) - ((w + 2) * f) / (2 * w + 2));
+        if (!Number.isFinite(step)) {
+            break;
+        }
+        w -= step;
+        if (Math.abs(step) < 1e-15 * (1 + Math.abs(w))) {
+            break;
+        }
+    }
+    return w;
+}
 // W(0) = 0, W(e) = 1, W(-1/e) = -1, W(k*log(k)) = log(k) for k >= 1 and
 // W(log(k^k)) = log(k)
 function lambertExact(x) {

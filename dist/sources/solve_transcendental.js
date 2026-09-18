@@ -139,7 +139,8 @@ function solveInKernel(E, x, depth) {
     return viaKernel(subst_1.subst(E, ks[i], u), u, ks[i], x, depth);
 }
 // Equations that need the Lambert W function, W(z)*exp(W(z)) = z:
-//   alpha*x*b^(beta*x) + c = 0   x = W(r*B)/B, r = -c/alpha, B = beta*log(b)
+//   alpha*x*b^(beta*x+gamma) + c = 0   x = W(r*B/b^gamma)/B, r = -c/alpha,
+//                                      B = beta*log(b)
 //   alpha*x*log(x) + c = 0       x = exp(W(r))
 //   a*x^x + c = 0                x = exp(W(log(-c/a)))
 // undefined for any other shape.
@@ -155,11 +156,16 @@ function lambertForm(E, ks, kinds, x) {
     if (find_1.Find(a, u) || find_1.Find(c, u) || find_1.Find(c, x) || is_1.isZeroAtomOrTensor(a)) {
         return undefined;
     }
-    const W = (v) => call('lambertw', v);
+    // W0(z), and W-1(z) as well for -1/e < z < 0, where both are real
+    const W = (z) => {
+        const f = float_1.zzfloat(z);
+        const two = defs_1.isdouble(f) && f.d < 0 && f.d > -1 / Math.E;
+        return (two ? [call('lambertw', z, defs_1.Constants.negOne)] : []).concat([call('lambertw', z)]);
+    };
     if (defs_1.ispower(k) && misc_1.equal(defs_1.cadr(k), x) && misc_1.equal(defs_1.caddr(k), x)) {
         return find_1.Find(a, x)
             ? undefined
-            : [misc_1.exponential(W(call(defs_1.LOG, multiply_1.divide(multiply_1.negate(c), a))))];
+            : W(call(defs_1.LOG, multiply_1.divide(multiply_1.negate(c), a))).map((w) => misc_1.exponential(w));
     }
     const alpha = multiply_1.divide(a, x);
     if (find_1.Find(alpha, x)) {
@@ -167,16 +173,19 @@ function lambertForm(E, ks, kinds, x) {
     }
     const r = multiply_1.divide(multiply_1.negate(c), alpha);
     if (kinds[0] === 'log' && misc_1.equal(defs_1.cadr(k), x)) {
-        return [misc_1.exponential(W(r))];
+        return W(r).map((w) => misc_1.exponential(w));
     }
     if (kinds[0] === 'exp') {
-        const beta = multiply_1.divide(defs_1.caddr(k), x);
-        if (find_1.Find(beta, x)) {
+        // b^(beta*x+gamma) = b^gamma * exp(B*x): x*exp(B*x) = r/b^gamma
+        const beta = derivative_1.derivative(defs_1.caddr(k), x);
+        const gamma = eval_1.Eval(add_1.subtract(defs_1.caddr(k), multiply_1.multiply(beta, x)));
+        if (find_1.Find(beta, x) || find_1.Find(gamma, x) || is_1.isZeroAtomOrTensor(beta)) {
             return undefined;
         }
         // (E is the equation in here, YYE the number e)
         const B = defs_1.cadr(k) === symbol_1.symbol(defs_1.YYE) ? beta : multiply_1.multiply(beta, call(defs_1.LOG, defs_1.cadr(k)));
-        return [multiply_1.divide(W(multiply_1.multiply(r, B)), B)];
+        const shifted = multiply_1.divide(r, power_1.power(defs_1.cadr(k), gamma));
+        return W(multiply_1.multiply(shifted, B)).map((w) => multiply_1.divide(w, B));
     }
     return undefined;
 }
@@ -422,7 +431,15 @@ function holds(E, x, c) {
             return true;
         }
         const m = float_1.zzfloat(abs_1.absval(v));
-        return !defs_1.isdouble(m) || Math.abs(m.d) < 1e-9;
+        if (!defs_1.isdouble(m)) {
+            return true;
+        }
+        // relative to the largest term: 3^x - 7^15 is off by rounding of 7^15
+        const scale = (defs_1.isadd(E) ? E.tail() : [E]).reduce((max, t) => {
+            const size = float_1.zzfloat(abs_1.absval(eval_1.Eval(subst_1.subst(t, x, c))));
+            return defs_1.isdouble(size) && size.d > max ? size.d : max;
+        }, 1);
+        return Math.abs(m.d) < 1e-9 * scale;
     }
     catch (e) {
         return false;

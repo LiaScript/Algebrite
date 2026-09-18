@@ -14,16 +14,14 @@ const expand_1 = require("./expand");
 const denominator_1 = require("./denominator");
 const numerator_1 = require("./numerator");
 const log_1 = require("./log");
-const misc_1 = require("./misc");
 const derivative_1 = require("./derivative");
 const float_1 = require("./float");
-const misc_2 = require("./misc");
 const zeta_1 = require("./zeta");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
 const simplify_1 = require("./simplify");
 const subst_1 = require("./subst");
-const misc_3 = require("./misc");
+const misc_1 = require("./misc");
 // 'sum' function
 //define A p3
 //define B p4
@@ -36,7 +34,7 @@ function Eval_sum(p1) {
 }
 exports.Eval_sum = Eval_sum;
 function evalSum(p1) {
-    misc_3.checkArgCount(p1, 4);
+    misc_1.checkArgCount(p1, 4);
     // 1st arg
     const body = defs_1.cadr(p1);
     // 2nd arg (index)
@@ -199,7 +197,7 @@ function infiniteTerm(t, x, a) {
     const q = simplify_1.simplify(multiply_1.multiply(r, add_1.add(x, defs_1.Constants.one)));
     if (!find_1.Find(q, x)) {
         const head = skipped(0);
-        return head && add_1.subtract(multiply_1.multiply(at(defs_1.Constants.zero), misc_2.exponential(q)), head);
+        return head && add_1.subtract(multiply_1.multiply(at(defs_1.Constants.zero), misc_1.exponential(q)), head);
     }
     // (-1)^x*c/x^s = -c*eta(s), eta(1) = log(2), eta(s) = (1-2^(1-s))*zeta(s)
     // the factor (-1)^(x+c), c an integer, is (-1)^c*(-1)^x
