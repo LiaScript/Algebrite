@@ -23,4 +23,31 @@ run_test([
 
   'condense(7208+2736*5^(1/2))',
   '8*(901+342*5^(1/2))',
+
+  'condense(0)',
+  '0',
+
+  'condense(x)',
+  'x',
+
+  'condense(a*b+a*c)',
+  'a*(b+c)',
+
+  'condense(2*x+4*y)',
+  '2*(x+2*y)',
+
+  'condense(6*x+9)',
+  '3*(2*x+3)',
+
+  'condense(1/2*x+1/2*y)',
+  '1/2*(x+y)',
+
+  'condense(a*x^2+a*x)',
+  'a*x*(x+1)',
+
+  'condense(x^2*y+x*y^2)',
+  'x*y*(x+y)',
+
+  'condense(x/y+x/z)',
+  '(1/y+1/z)*x',
 ]);

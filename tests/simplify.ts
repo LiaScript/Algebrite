@@ -627,4 +627,57 @@ run_test([
   'simplify(1/(x+1)-2/((x+1)^2)-3/((x+1)^3))',
   '(x^2-4)/((x+1)^3)',
 
+  'simplify(0)',
+  '0',
+
+  'simplify(1/2)',
+  '1/2',
+
+  'simplify(0.5)',
+  '0.5',
+
+  'simplify(i)',
+  'i',
+
+  'simplify((a+b)/(a+b))',
+  '1',
+
+  'simplify((x^2-1)/(x+1))',
+  'x-1',
+
+  'simplify((x^3-1)/(x-1))',
+  'x^2+x+1',
+
+  'simplify((x^2+2*x+1)/(x+1))',
+  'x+1',
+
+  'simplify((x-1)/(1-x))',
+  '-1',
+
+  'simplify(1-1/(1-x))',
+  'x/(x-1)',
+
+  'simplify((a*b+a*c)/a)',
+  'b+c',
+
+  'simplify(exp(x)*exp(-x))',
+  '1',
+
+  'simplify((x+1)^2-(x^2+2*x+1))',
+  '0',
+
+  'simplify([(x^2-1)/(x-1),x/x])',
+  '[1+x,1]',
+
+  'simplify((1+i)/(1-i))',
+  'i',
+
+  'simplify(1.5*x+0.5*x)',
+  '2.0*x',
+
+  'simplify(cos(x)^2-sin(x)^2)',
+  '-1+2*cos(x)^2',
+
+  'simplify(binomial(n,2))',
+  '1/2*n*(-1+n)',
 ]);
