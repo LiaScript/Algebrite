@@ -210,7 +210,18 @@ function productFacts(factors: Facts[]): Facts {
     const negatives = factors.filter((t) => t.negative).length;
     f[negatives % 2 ? 'negative' : 'positive'] = true;
   }
+  Object.assign(f, productSignBound(factors));
   return close(f) ?? {};
+}
+
+// real factors each known >= 0 or <= 0: the product is >= 0 for an even
+// number of factors <= 0, else <= 0 (so -a^2 <= 0 for real a)
+function productSignBound(factors: Facts[]): Facts {
+  if (!factors.every((t) => t.real && (t.negative === false || t.positive === false))) {
+    return {};
+  }
+  const nonpositive = factors.filter((t) => t.negative !== false).length;
+  return nonpositive % 2 ? { positive: false } : { negative: false };
 }
 
 function powerFacts(base: U, exponent: U): Facts {
