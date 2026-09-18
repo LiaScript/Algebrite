@@ -45,10 +45,12 @@ For m > 0
 */
 function Eval_legendre(p1) {
     misc_1.checkArgCount(p1, 2, 3);
-    const X = eval_1.Eval(defs_1.cadr(p1));
-    const N = eval_1.Eval(defs_1.caddr(p1));
-    const p2 = eval_1.Eval(defs_1.cadddr(p1));
-    const M = p2 === symbol_1.symbol(defs_1.NIL) ? defs_1.Constants.zero : p2;
+    // legendre(n, x) or legendre(n, m, x): the argument comes last, as in
+    // Maxima, Mathematica and SymPy
+    const N = eval_1.Eval(defs_1.cadr(p1));
+    const three = defs_1.cadddr(p1) !== symbol_1.symbol(defs_1.NIL);
+    const M = three ? eval_1.Eval(defs_1.caddr(p1)) : defs_1.Constants.zero;
+    const X = eval_1.Eval(three ? defs_1.cadddr(p1) : defs_1.caddr(p1));
     return legendre(X, N, M);
 }
 exports.Eval_legendre = Eval_legendre;
@@ -60,7 +62,7 @@ function __legendre(X, N, M) {
     let m = bignum_1.nativeInt(M);
     // tensors: x^2 would be a dot product, so they are not mapped over
     if (n < 0 || isNaN(n) || m < 0 || isNaN(m) || defs_1.istensor(X)) {
-        return list_1.makeList(symbol_1.symbol(defs_1.LEGENDRE), X, N, M);
+        return list_1.makeList(symbol_1.symbol(defs_1.LEGENDRE), N, M, X);
     }
     let result;
     if (defs_1.issymbol(X)) {

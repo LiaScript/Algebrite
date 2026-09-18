@@ -28,7 +28,7 @@ function yyhermite(X, N) {
     const n = bignum_1.nativeInt(N);
     // tensors: x^2 would be a dot product, so they are not mapped over
     if (n < 0 || isNaN(n) || defs_1.istensor(X)) {
-        return list_1.makeList(symbol_1.symbol(defs_1.HERMITE), X, N);
+        return list_1.makeList(symbol_1.symbol(defs_1.HERMITE), N, X);
     }
     if (defs_1.issymbol(X)) {
         return yyhermite2(n, X);

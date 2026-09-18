@@ -19,7 +19,7 @@ scripting, JS, internal, treenode, general concept
 
 Parameters
 ----------
-x,n
+n,x
 
 General description
 -------------------

@@ -378,9 +378,11 @@ function dsgn(p1, p2) {
     const deriv = derivative(defs_1.cadr(p1), p2);
     return multiply_1.multiply(multiply_1.multiply(deriv, dirac_1.dirac(defs_1.cadr(p1))), bignum_1.integer(2));
 }
+// hermite(n, x): H_n' = 2*n*H_(n-1)
 function dhermite(p1, p2) {
-    const deriv = derivative(defs_1.cadr(p1), p2);
-    return multiply_1.multiply(multiply_1.multiply(deriv, multiply_1.multiply(bignum_1.integer(2), defs_1.caddr(p1))), hermite_1.hermite(defs_1.cadr(p1), add_1.add(defs_1.caddr(p1), defs_1.Constants.negOne)));
+    const n = defs_1.cadr(p1);
+    const x = defs_1.caddr(p1);
+    return multiply_1.multiply(multiply_1.multiply(derivative(x, p2), multiply_1.multiply(bignum_1.integer(2), n)), hermite_1.hermite(x, add_1.add(n, defs_1.Constants.negOne)));
 }
 function derf(p1, p2) {
     const deriv = derivative(defs_1.cadr(p1), p2);

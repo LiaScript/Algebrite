@@ -8640,7 +8640,7 @@ FACTOR=${p8}`);
       function yyhermite(X, N) {
         const n = bignum_1.nativeInt(N);
         if (n < 0 || isNaN(n) || defs_1.istensor(X)) {
-          return list_1.makeList(symbol_1.symbol(defs_1.HERMITE), X, N);
+          return list_1.makeList(symbol_1.symbol(defs_1.HERMITE), N, X);
         }
         if (defs_1.issymbol(X)) {
           return yyhermite2(n, X);
@@ -9093,11 +9093,11 @@ FACTOR=${p8}`);
       function evalChebyshev(name) {
         return (p1) => {
           misc_1.checkArgCount(p1, 2);
-          const x = eval_1.Eval(defs_1.cadr(p1));
-          const N = eval_1.Eval(defs_1.caddr(p1));
+          const N = eval_1.Eval(defs_1.cadr(p1));
+          const x = eval_1.Eval(defs_1.caddr(p1));
           const n = bignum_1.nativeInt(N);
           if (isNaN(n) || n < 0) {
-            return call(name, x, N);
+            return call(name, N, x);
           }
           let prev = defs_1.Constants.one;
           let cur = name === "chebyshevt" ? x : multiply_1.multiply(bignum_1.integer(2), x);
@@ -11209,8 +11209,9 @@ FACTOR=${p8}`);
         return multiply_1.multiply(multiply_1.multiply(deriv, dirac_1.dirac(defs_1.cadr(p1))), bignum_1.integer(2));
       }
       function dhermite(p1, p2) {
-        const deriv = derivative(defs_1.cadr(p1), p2);
-        return multiply_1.multiply(multiply_1.multiply(deriv, multiply_1.multiply(bignum_1.integer(2), defs_1.caddr(p1))), hermite_1.hermite(defs_1.cadr(p1), add_1.add(defs_1.caddr(p1), defs_1.Constants.negOne)));
+        const n = defs_1.cadr(p1);
+        const x = defs_1.caddr(p1);
+        return multiply_1.multiply(multiply_1.multiply(derivative(x, p2), multiply_1.multiply(bignum_1.integer(2), n)), hermite_1.hermite(x, add_1.add(n, defs_1.Constants.negOne)));
       }
       function derf(p1, p2) {
         const deriv = derivative(defs_1.cadr(p1), p2);
@@ -12366,9 +12367,9 @@ FACTOR=${p8}`);
       exports.Eval_factorpoly = Eval_factorpoly;
       function Eval_hermite(p1) {
         misc_1.checkArgCount(p1, 2);
-        const arg2 = Eval(defs_1.caddr(p1));
-        const arg1 = Eval(defs_1.cadr(p1));
-        return hermite_1.hermite(arg1, arg2);
+        const n = Eval(defs_1.cadr(p1));
+        const x = Eval(defs_1.caddr(p1));
+        return hermite_1.hermite(x, n);
       }
       exports.Eval_hermite = Eval_hermite;
       function Eval_hilbert(p1) {
@@ -16857,17 +16858,17 @@ FACTOR=${p8}`);
       var misc_1 = require_misc();
       function Eval_laguerre(p1) {
         misc_1.checkArgCount(p1, 2, 3);
-        const X = eval_1.Eval(defs_1.cadr(p1));
-        const N = eval_1.Eval(defs_1.caddr(p1));
-        const p2 = eval_1.Eval(defs_1.cadddr(p1));
-        const K = p2 === symbol_1.symbol(defs_1.NIL) ? defs_1.Constants.zero : p2;
+        const N = eval_1.Eval(defs_1.cadr(p1));
+        const three = defs_1.cadddr(p1) !== symbol_1.symbol(defs_1.NIL);
+        const K = three ? eval_1.Eval(defs_1.caddr(p1)) : defs_1.Constants.zero;
+        const X = eval_1.Eval(three ? defs_1.cadddr(p1) : defs_1.caddr(p1));
         return laguerre(X, N, K);
       }
       exports.Eval_laguerre = Eval_laguerre;
       function laguerre(X, N, K) {
         let n = bignum_1.nativeInt(N);
         if (n < 0 || isNaN(n) || defs_1.istensor(X)) {
-          return list_1.makeList(symbol_1.symbol(defs_1.LAGUERRE), X, N, K);
+          return list_1.makeList(symbol_1.symbol(defs_1.LAGUERRE), N, K, X);
         }
         if (defs_1.issymbol(X)) {
           return laguerre2(n, X, K);
@@ -16937,10 +16938,10 @@ FACTOR=${p8}`);
       var subst_1 = require_subst();
       function Eval_legendre(p1) {
         misc_1.checkArgCount(p1, 2, 3);
-        const X = eval_1.Eval(defs_1.cadr(p1));
-        const N = eval_1.Eval(defs_1.caddr(p1));
-        const p2 = eval_1.Eval(defs_1.cadddr(p1));
-        const M = p2 === symbol_1.symbol(defs_1.NIL) ? defs_1.Constants.zero : p2;
+        const N = eval_1.Eval(defs_1.cadr(p1));
+        const three = defs_1.cadddr(p1) !== symbol_1.symbol(defs_1.NIL);
+        const M = three ? eval_1.Eval(defs_1.caddr(p1)) : defs_1.Constants.zero;
+        const X = eval_1.Eval(three ? defs_1.cadddr(p1) : defs_1.caddr(p1));
         return legendre(X, N, M);
       }
       exports.Eval_legendre = Eval_legendre;
@@ -16951,7 +16952,7 @@ FACTOR=${p8}`);
         let n = bignum_1.nativeInt(N);
         let m = bignum_1.nativeInt(M);
         if (n < 0 || isNaN(n) || m < 0 || isNaN(m) || defs_1.istensor(X)) {
-          return list_1.makeList(symbol_1.symbol(defs_1.LEGENDRE), X, N, M);
+          return list_1.makeList(symbol_1.symbol(defs_1.LEGENDRE), N, M, X);
         }
         let result;
         if (defs_1.issymbol(X)) {

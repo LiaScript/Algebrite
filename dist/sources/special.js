@@ -353,16 +353,16 @@ function Eval_beta(p1) {
     return multiply_1.divide(multiply_1.multiply(g(a), g(b)), g(add_1.add(a, b)));
 }
 exports.Eval_beta = Eval_beta;
-// chebyshevt(x,n) and chebyshevu(x,n), in the argument order of hermite and
+// chebyshevt(n,x) and chebyshevu(n,x), the degree first like hermite and
 // legendre: T0 = U0 = 1, T1 = x, U1 = 2x, P(n+1) = 2x*P(n) - P(n-1)
 function evalChebyshev(name) {
     return (p1) => {
         misc_1.checkArgCount(p1, 2);
-        const x = eval_1.Eval(defs_1.cadr(p1));
-        const N = eval_1.Eval(defs_1.caddr(p1));
+        const N = eval_1.Eval(defs_1.cadr(p1));
+        const x = eval_1.Eval(defs_1.caddr(p1));
         const n = bignum_1.nativeInt(N);
         if (isNaN(n) || n < 0) {
-            return call(name, x, N);
+            return call(name, N, x);
         }
         let prev = defs_1.Constants.one;
         let cur = name === 'chebyshevt' ? x : multiply_1.multiply(bignum_1.integer(2), x);

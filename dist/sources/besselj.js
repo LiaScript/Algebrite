@@ -22,7 +22,7 @@ scripting, JS, internal, treenode, general concept
 
 Parameters
 ----------
-x,n
+n,x
 
 General description
 -------------------
@@ -31,25 +31,25 @@ Returns a solution to the Bessel differential equation (Bessel function of first
 
 Recurrence relation:
 
-  besselj(x,n) = (2/x) (n-1) besselj(x,n-1) - besselj(x,n-2)
+  besselj(n,x) = (2/x) (n-1) besselj(n-1,x) - besselj(n-2,x)
 
-  besselj(x,1/2) = sqrt(2/pi/x) sin(x)
+  besselj(1/2,x) = sqrt(2/pi/x) sin(x)
 
-  besselj(x,-1/2) = sqrt(2/pi/x) cos(x)
+  besselj(-1/2,x) = sqrt(2/pi/x) cos(x)
 
 For negative n, reorder the recurrence relation as:
 
-  besselj(x,n-2) = (2/x) (n-1) besselj(x,n-1) - besselj(x,n)
+  besselj(n-2,x) = (2/x) (n-1) besselj(n-1,x) - besselj(n,x)
 
 Substitute n+2 for n to obtain
 
-  besselj(x,n) = (2/x) (n+1) besselj(x,n+1) - besselj(x,n+2)
+  besselj(n,x) = (2/x) (n+1) besselj(n+1,x) - besselj(n+2,x)
 
 Examples:
 
-  besselj(x,3/2) = (1/x) besselj(x,1/2) - besselj(x,-1/2)
+  besselj(3/2,x) = (1/x) besselj(1/2,x) - besselj(-1/2,x)
 
-  besselj(x,-3/2) = -(1/x) besselj(x,-1/2) - besselj(x,1/2)
+  besselj(-3/2,x) = -(1/x) besselj(-1/2,x) - besselj(1/2,x)
 
 */
 function Eval_besselj(p1) {
@@ -69,11 +69,11 @@ function yybesselj(X, N) {
         const d = otherCFunctions_1.jn(n, X.d);
         return bignum_1.double(d);
     }
-    // bessej(0,0) = 1
+    // besselj(0,0) = 1
     if (is_1.isZeroAtomOrTensor(X) && is_1.isZeroAtomOrTensor(N)) {
         return defs_1.Constants.one;
     }
-    // besselj(0,n) = 0 for integer n != 0 and for n > 0
+    // J_n(0) = 0 for integer n != 0 and for n > 0
     if (is_1.isZeroAtomOrTensor(X) && (!isNaN(n) || is_1.ispositivenumber(N))) {
         return defs_1.Constants.zero;
     }
@@ -93,7 +93,7 @@ function yybesselj(X, N) {
                 : multiply_1.divide(bignum_1.integer(2), symbol_1.symbol(defs_1.PI));
             return multiply_1.multiply(power_1.power(multiply_1.divide(twoOverPi, X), bignum_1.rational(1, 2)), cos_1.cosine(X));
         }
-        // besselj(x,n) = (2/x) (n-sgn(n)) besselj(x,n-sgn(n)) - besselj(x,n-2*sgn(n))
+        // J_n(x) = (2/x) (n-sgn(n)) J_(n-sgn(n))(x) - J_(n-2*sgn(n))(x)
         const SGN = bignum_1.integer(defs_1.MSIGN(N.q.a));
         return add_1.subtract(multiply_1.multiply(multiply_1.multiply(multiply_1.divide(bignum_1.integer(2), X), add_1.subtract(N, SGN)), besselj(X, add_1.subtract(N, SGN))), besselj(X, add_1.subtract(N, multiply_1.multiply(bignum_1.integer(2), SGN))));
     }

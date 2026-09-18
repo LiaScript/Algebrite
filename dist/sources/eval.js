@@ -295,9 +295,10 @@ function Eval_factorpoly(p1) {
 exports.Eval_factorpoly = Eval_factorpoly;
 function Eval_hermite(p1) {
     misc_1.checkArgCount(p1, 2);
-    const arg2 = Eval(defs_1.caddr(p1));
-    const arg1 = Eval(defs_1.cadr(p1));
-    return hermite_1.hermite(arg1, arg2);
+    // hermite(n, x): the degree first, as in Maxima, Mathematica and SymPy
+    const n = Eval(defs_1.cadr(p1));
+    const x = Eval(defs_1.caddr(p1));
+    return hermite_1.hermite(x, n);
 }
 exports.Eval_hermite = Eval_hermite;
 function Eval_hilbert(p1) {
