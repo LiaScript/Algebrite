@@ -842,12 +842,19 @@ nodejs_test(
 
 nodejs_test(
     name = "test_fix_sum_dsolve",
-    name = "test_fix_integral_heuristic",
     data = [
         ":tsc",
         "@npm//big-integer",
     ],
     entry_point = ":tests/fix_sum_dsolve.ts",
+)
+
+nodejs_test(
+    name = "test_fix_integral_heuristic",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
     entry_point = ":tests/fix_integral_heuristic.ts",
 )
 
