@@ -9,7 +9,7 @@ import {
   U
 } from '../runtime/defs';
 import { inChildScope, set_binding, symbol } from "../runtime/symbol";
-import { equal } from '../sources/misc';
+import { isZeroAtomOrTensor } from './is';
 import { subtract } from './add';
 import { Eval } from './eval';
 import { filter } from './filter';
@@ -78,7 +78,8 @@ export function coeff(p: U, x: U): U[] {
 
     p = subtract(p, c);
 
-    if (equal(p, Constants.zero)) {
+    // a tensor of zeros too: x-[1,2] is [x-1,x-2], and the loop ran forever
+    if (isZeroAtomOrTensor(p)) {
       return coefficients;
     }
 

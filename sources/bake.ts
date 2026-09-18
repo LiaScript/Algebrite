@@ -8,6 +8,7 @@ import {
   isadd,
   iscons,
   ismultiply,
+  istensor,
   MULTIPLY,
   POWER,
   SYMBOL_S,
@@ -28,6 +29,10 @@ export function bake(p1: U): U {
 }
 
 function _bake(p1: U): U {
+  // x+[3,4]: a tensor among the terms is no polynomial coefficient
+  if (isadd(p1) && p1.tail().some(istensor)) {
+    return p1;
+  }
   const s = ispolyexpandedform(p1, symbol(SYMBOL_S));
   const t = ispolyexpandedform(p1, symbol(SYMBOL_T));
   const x = ispolyexpandedform(p1, symbol(SYMBOL_X));
