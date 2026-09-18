@@ -24,7 +24,7 @@ import {
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
-import { symbol } from '../runtime/symbol';
+import { symbol, usr_symbol } from '../runtime/symbol';
 import { add, subtract } from './add';
 import { isNonzero, isPositive } from './assume';
 import { derivative } from './derivative';
@@ -175,12 +175,16 @@ function interiorJumps(f: U, F: U, X: U, a: U, b: U): U | undefined {
   if (!Number.isFinite(lo) || !Number.isFinite(hi)) {
     return Constants.zero; // also NaN: symbolic bounds stay as they were
   }
-  const points = singularPoints(F, X, lo, hi);
-  // ponytail: every jump costs two limits; beyond the cap unevaluated.
-  // Equal jumps of a periodic F could be computed once if this is too low.
-  if (points.length > MAX_JUMPS) {
+  const { inside, points } = collector(lo, hi);
+  poleIn(F, X, inside);
+  points.sort((u, v) => u.r - v.r);
+  // every jump costs two limits, unless they are all the same one; beyond
+  // the cap unevaluated
+  const same = equalJumps(F, X, points);
+  if (inside.tooMany || (!same && points.length > MAX_JUMPS)) {
     return undefined;
   }
+  let first: U | undefined;
   let total: U = Constants.zero;
   for (const { r, exact } of points) {
     // with other symbols in f there are no numbers to look at; the limits
@@ -202,22 +206,58 @@ function interiorJumps(f: U, F: U, X: U, a: U, b: U): U | undefined {
       }
       continue;
     }
-    let jump: U;
-    try {
-      const at = exact();
-      jump = subtract(limit(F, X, at, [-1]), limit(F, X, at, [1]));
-    } catch (e) {
-      return undefined;
-    }
-    if (Find(jump, symbol(INF))) {
-      stop(poleMessage(X, r)); // F is infinite there, so is its derivative
+    let jump = same ? first : undefined;
+    if (jump === undefined) {
+      try {
+        const at = exact();
+        jump = subtract(limit(F, X, at, [-1]), limit(F, X, at, [1]));
+      } catch (e) {
+        return undefined;
+      }
+      if (Find(jump, symbol(INF))) {
+        stop(poleMessage(X, r)); // F is infinite there, so is its derivative
+      }
+      first = jump;
     }
     total = add(total, jump);
   }
   return total;
 }
 
-const MAX_JUMPS = 100;
+const MAX_JUMPS = 100; // limits taken one by one
+const MAX_POINTS = 2000; // singular points of one sin, cos or tan looked at
+
+// True when F(r-)-F(r+) is provably the same at all points: they are P
+// apart, and F is c*x plus a function of tan(u) alone, each u linear in x
+// with the period P or a fraction of it. Then F(x+P) = F(x)+c*P beside
+// every point. (tan(u) becomes a symbol; what is left must have a constant
+// derivative.)
+function equalJumps(F: U, X: U, points: Point[]): boolean {
+  if (points.length < 3 || points.some((q) => q.exact === undefined)) {
+    return false;
+  }
+  const P = points[1].r - points[0].r;
+  if (points.some((q, i) => i > 0 && Math.abs(q.r - points[i - 1].r - P) > 1e-9 * Math.abs(P))) {
+    return false;
+  }
+  let periodic = true;
+  let count = 0;
+  const tans: U[] = [];
+  const withoutTan = (p: U): U => {
+    if (!iscons(p)) {
+      return p;
+    }
+    if (car(p) === symbol(TAN)) {
+      const periods = numericAt(derivative(cadr(p), X), X, 0) * P / Math.PI;
+      periodic = periodic && Math.abs(periods - Math.round(periods)) < 1e-9 && Math.round(periods) !== 0;
+      tans.push(usr_symbol(`defint_tan${count++}`));
+      return tans[tans.length - 1];
+    }
+    return makeList(...[...p].map(withoutTan));
+  };
+  const slope = derivative(Eval(withoutTan(F)), X);
+  return periodic && !Find(slope, X) && !tans.some((t) => Find(slope, t));
+}
 
 function hasLogOf(p: U, X: U): boolean {
   return iscons(p) && ((car(p) === symbol(LOG) && Find(p, X)) || p.tail().some((q) => hasLogOf(q, X)));
@@ -279,26 +319,21 @@ function jumpsAt(F: U, X: U, r: number): boolean {
 type Point = { r: number; exact?: () => U };
 
 // An Inside that takes every zero strictly inside (lo,hi) down in points
-// (ascending when poleIn is through) and lets poleIn search on.
+// (in no order) and lets poleIn search on.
 function collector(lo: number, hi: number): { inside: Inside; points: Point[] } {
   const points: Point[] = [];
   const inside: Inside = (r, exact) => {
-    const tol = 1e-4 * Math.max(1, Math.abs(r));
+    // a zero known exactly is inside unless it is the bound itself (a jump
+    // 10^(-5) inside counts); a numeric root may be the bound with an error
+    const tol = (exact ? 1e-9 : 1e-4) * Math.max(1, Math.abs(r));
     if (r > lo + tol && r < hi - tol && !points.some((q) => Math.abs(q.r - r) < tol)) {
       points.push({ r, exact });
-      points.sort((u, v) => u.r - v.r);
     }
   };
   if (Number.isFinite(lo) && Number.isFinite(hi)) {
     inside.range = [lo, hi];
   }
   return { inside, points };
-}
-
-function singularPoints(p: U, X: U, lo: number, hi: number): Point[] {
-  const { inside, points } = collector(lo, hi);
-  poleIn(p, X, inside);
-  return points;
 }
 
 // a bound as a JS number: +-Infinity for +-inf, NaN when not numeric
@@ -317,7 +352,7 @@ function toNumber(p: U): number {
 // negative power (<= -1) of something with a real zero there (see zerosIn),
 // or tan of a linear argument. A candidate is confirmed on the simplified
 // integrand, (x^2-1)/(x-1) has no pole, and by the growth of f beside it.
-// ponytail: poles closer than ~1e-4 to a bound are taken as endpoint poles
+// ponytail: numeric roots closer than ~1e-4 to a bound are taken as endpoint poles
 function checkNoInteriorPole(f: U, X: U, a: U, b: U) {
   const [[lo, loU], [hi, hiU]] = [[toNumber(a), a] as const, [toNumber(b), b] as const].sort(
     (u, v) => u[0] - v[0]
@@ -343,6 +378,7 @@ function checkNoInteriorPole(f: U, X: U, a: U, b: U) {
   if (poleIn(simplify(f), X, confirmed.inside) !== undefined && symbolicPole !== undefined) {
     stop(`defint: the integrand has a pole at ${X} = ${symbolicPole} inside the interval`);
   }
+  found.points.sort((u, v) => u.r - v.r);
   const pole = found.points.find(
     (c) =>
       confirmed.points.some((q) => Math.abs(q.r - c.r) < 1e-6 * Math.max(1, Math.abs(c.r))) &&
@@ -375,6 +411,7 @@ function isRemovable(f: U, X: U, r: number): boolean | undefined {
 type Inside = ((r: number, exact?: () => U) => void) & {
   symbolic?: (r: U) => boolean;
   range?: [number, number];
+  tooMany?: boolean;
 };
 
 function poleIn(p: U, X: U, inside: Inside): string | undefined {
@@ -425,7 +462,12 @@ function zerosIn(g: U, X: U, inside: Inside): string | undefined {
       // ponytail: without a finite interval the zeros for |k| <= 1000
       const ends = (inside.range || []).map((x) => (alpha.d * x + beta.d - offset) / Math.PI);
       const from = ends.length ? Math.floor(Math.min(...ends)) : -1000;
-      const to = ends.length ? Math.ceil(Math.max(...ends)) : 1000;
+      let to = ends.length ? Math.ceil(Math.max(...ends)) : 1000;
+      if (to - from > MAX_POINTS) {
+        // poles are still found among the first ones; jumps are not added up
+        inside.tooMany = true;
+        to = from + MAX_POINTS;
+      }
       for (let k = from; k <= to; k++) {
         const kPi = multiply(rational(isCos ? 2 * k + 1 : k, isCos ? 2 : 1), symbol(PI));
         inside((offset + k * Math.PI - beta.d) / alpha.d, () =>

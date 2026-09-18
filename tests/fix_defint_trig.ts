@@ -156,6 +156,10 @@ run_test([
   'defint(1/(2+cos(x)),x,-pi,pi)-2*pi/sqrt(3)',
   '0',
 
+  // 1.81380671064: the jump at pi is 7*10^(-6) inside the bound, it counts
+  'near6(defint(1/(2+cos(x)),x,0,3.1416),1.81380671064)',
+  '1',
+
   // 1.11072073454 = pi/(2*sqrt(2))
   'near6(defint(1/(1+sin(x)^2),x,0,pi/2),1.11072073454)',
   '1',

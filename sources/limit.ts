@@ -61,6 +61,7 @@ import {
   isZeroAtomOrTensor
 } from './is';
 import { add, subtract } from './add';
+import { lcm } from './lcm';
 import { logarithm } from './log';
 import { activeBranch, hasPiecewise, isPiecewise, resolvePiecewise } from './piecewise';
 import { power } from './power';
@@ -386,21 +387,26 @@ function combineLogs(F: U, X: U, A: U, sides: number[]): U | undefined {
   if (!isadd(F)) {
     return undefined;
   }
-  // [n, g] of a term n*log(g) with an integer n
+  // [n, g] of a term n*log(g) with a rational n
   const logPart = (t: U): [U, U] | undefined => {
     if (car(t) === symbol(LOG)) {
       return [Constants.one, cadr(t)];
     }
     const isScaled =
-      ismultiply(t) && t.tail().length === 2 && isinteger(cadr(t)) && car(caddr(t)) === symbol(LOG);
+      ismultiply(t) && t.tail().length === 2 && isrational(cadr(t)) && car(caddr(t)) === symbol(LOG);
     return isScaled ? [cadr(t), cadr(caddr(t))] : undefined;
   };
   const logs = F.tail().filter((t) => Find(t, X) && logPart(t) !== undefined);
   if (logs.length < 2) {
     return undefined;
   }
+  // 1/5*log(a)+1/5*log(b), the antiderivative of 1/(2+tan(x)): the common
+  // denominator d stays outside, the powers inside are integers
+  const d = logs.map((t) => denominator(logPart(t)[0])).reduce(lcm, Constants.one);
   try {
-    const inside = multiply_all(logs.map((t) => power(logPart(t)[1], logPart(t)[0])));
+    const inside = multiply_all(
+      logs.map((t) => power(logPart(t)[1], multiply(logPart(t)[0], d)))
+    );
     const rest = F.tail().filter((t) => !logs.includes(t)).reduce(add, Constants.zero);
     const L = limit(inside, X, A, sides);
     const R = limit(rest, X, A, sides);
@@ -410,7 +416,7 @@ function combineLogs(F: U, X: U, A: U, sides: number[]): U | undefined {
     if (L === symbol(INF) || isZeroAtomOrTensor(L)) {
       return L === symbol(INF) ? L : negate(symbol(INF));
     }
-    return isPositive(L) === true ? add(logarithm(L), R) : undefined;
+    return isPositive(L) === true ? add(divide(logarithm(L), d), R) : undefined;
   } catch (e) {
     return undefined;
   }
