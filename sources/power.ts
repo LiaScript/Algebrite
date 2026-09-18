@@ -1,4 +1,4 @@
-import { isNegative, isReal } from './assume';
+import { isInteger, isNegative, isPositive, isReal } from './assume';
 import {
   ABS,
   ARCTAN,
@@ -276,6 +276,17 @@ function yypower(base: U, exponent: U): U {
     return result;
   }
 
+  // (-1)^k for a symbolic integer k (from the assumptions): 1 when k is
+  // even, -1 when k is odd
+  if (isminusone(base) && !isdouble(base) && !isNumericAtom(exponent)) {
+    if (isInteger(divide(exponent, integer(2)))) {
+      return Constants.one;
+    }
+    if (isInteger(divide(subtract(exponent, Constants.one), integer(2)))) {
+      return Constants.negOne;
+    }
+  }
+
   // if we only assume variables to be real, then |a|^2 = a^2
   // (if x is complex this doesn't hold e.g. i, which makes 1 and -1
   if (
@@ -334,6 +345,7 @@ function yypower(base: U, exponent: U): U {
   if (
     ismultiply(base) &&
     (isinteger(exponent) ||
+      isInteger(exponent) ||
       base.tail().every((f) => isReal(f) && isNegative(f) === false))
   ) {
     base = cdr(base);
@@ -362,9 +374,14 @@ function yypower(base: U, exponent: U): U {
       sign(compare_numbers(cadr(base) as Num | Double, Constants.zero)) > 0;
   }
 
+  // also when c is an integer by the assumptions, or when a > 0 and b is
+  // real (then a^b > 0 and log(a^b) = b*log(a))
   if (
     ispower(base) && // when c is an integer
-    (isinteger(exponent) || is_a_moreThanZero) // when a is >= 0
+    (isinteger(exponent) ||
+      is_a_moreThanZero || // when a is >= 0
+      isInteger(exponent) ||
+      (isPositive(cadr(base)) && isReal(caddr(base))))
   ) {
     const result = power(cadr(base), multiply(caddr(base), exponent));
     if (DEBUG_POWER) {

@@ -1,6 +1,9 @@
+import { isInteger } from './assume';
+import { divide } from './multiply';
 import {
   caddr,
   cadr,
+  Constants,
   isdouble,
   isNumericAtom,
   MOD,
@@ -24,6 +27,11 @@ export function Eval_mod(p1: U) {
 function mod(p1: U, p2: U): U {
   if (isZeroAtomOrTensor(p2)) {
     stop('mod function: divide by zero');
+  }
+
+  // mod(k*m, m) = 0 for integers k and m, with k known from the assumptions
+  if (!isNumericAtom(p1) && isinteger(p2) && isInteger(divide(p1, p2))) {
+    return Constants.zero;
   }
 
   if (!isNumericAtom(p1) || !isNumericAtom(p2)) {
