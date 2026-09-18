@@ -850,12 +850,22 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_fix_limit",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_limit.ts",
+)
+
+nodejs_test(
     name = "test_fix_integral_heuristic",
     data = [
         ":tsc",
         "@npm//big-integer",
     ],
     entry_point = ":tests/fix_integral_heuristic.ts",
+    entry_point = ":tests/fix_limit.ts",
 )
 
 nodejs_test(

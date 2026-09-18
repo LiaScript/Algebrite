@@ -13,12 +13,13 @@ import {
   Num,
   U
 } from '../runtime/defs';
+import { stop } from '../runtime/run';
 import { symbol, usr_symbol } from '../runtime/symbol';
 import { add, subtract } from './add';
 import { double, integer, nativeInt } from './bignum';
 import { Eval } from './eval';
 import { zzfloat } from './float';
-import { isinteger, isnegativeterm, isZeroAtomOrTensor } from './is';
+import { isinteger, isnegativeterm, isposint, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { checkArgCount, equal, exponential, yyexpand } from './misc';
 import { divide, multiply, negate } from './multiply';
@@ -73,6 +74,9 @@ export const SPECIAL: { [name: string]: Special } = {
     derivative: (x) => call('cos', multiply(halfPi(), sq(x)))
   },
   digamma: {
+    // the poles at 0, -1, -2, ...: like gamma there
+    exact: (x) =>
+      isinteger(x) && !isposint(x) ? stop('divide by zero') : undefined,
     numeric: digamma
   }
 };
