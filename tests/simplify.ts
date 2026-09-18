@@ -680,4 +680,24 @@ run_test([
 
   'simplify(binomial(n,2))',
   '1/2*n*(-1+n)',
+
+  // gcd(i*x,-i) was -1, so condense and denominator recursed forever
+  'simplify(i*(x-1)/(x-1))',
+  'i',
+
+  'condense(i*x-i)',
+  'i*(x-1)',
+
+  'denominator(i*x-i)',
+  '1',
+
+  'simplify(i*(x^2-3)/(x-1)*(x-1))',
+  'i*(x^2-3)',
+
+  // factor pulls a common i out before the rational root search
+  'factor(i*x^3-i*x^2-3*i*x+3*i,x)',
+  'i*(x^2-3)*(x-1)',
+
+  'factor(-3*i*x^2+3*i,x)',
+  '-3*i*(x-1)*(x+1)',
 ]);

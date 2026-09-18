@@ -12,6 +12,7 @@ import { denominator } from './denominator';
 import { ydivisors } from './divisors';
 import {
   isfloating,
+  isimaginarynumber,
   isnegativeterm,
   ispolyexpandedform,
   isZeroAtomOrTensor,
@@ -51,6 +52,22 @@ export function factorpoly(POLY: U, X: U): U {
 
   if (!issymbol(X)) {
     return POLY;
+  }
+
+  // i * (real polynomial): the rational root search needs real
+  // coefficients, so factor the real polynomial and put i back in front
+  const cs = coeff(POLY, X);
+  if (cs.every((c) => isZeroAtomOrTensor(c) || isimaginarynumber(c))) {
+    const minusI = negate(Constants.imaginaryunit);
+    const realPoly = cs.reduce(
+      (acc: U, c: U, k: number) =>
+        add(acc, multiply(multiply(c, minusI), power(X, integer(k)))),
+      Constants.zero
+    );
+    return multiply_noexpand(
+      Constants.imaginaryunit,
+      yyfactorpoly(realPoly, X)
+    );
   }
 
   return yyfactorpoly(POLY, X);
