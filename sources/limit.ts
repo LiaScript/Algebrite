@@ -34,7 +34,7 @@ import {
   isadd,
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
-import { facts, isReal, withSign } from './assume';
+import { facts, isNonzero, isReal, withSign } from './assume';
 import { stop } from '../runtime/run';
 import { symbol, usr_symbol } from '../runtime/symbol';
 import { double, integer, rational } from './bignum';
@@ -48,6 +48,7 @@ import {
   isnegativenumber,
   isplusone,
   isposint,
+  ispositivenumber,
   isZeroAtomOrTensor
 } from './is';
 import { add } from './add';
@@ -92,6 +93,20 @@ function hasPole(p: U): boolean {
     return true;
   }
   return p.tail().some(hasPole);
+}
+
+// The pole makes the whole expression infinite: it is the expression, a
+// term, a factor (a zero factor would have evaluated to 0 already) or the
+// base of a positive power. Inside any other function it does not:
+// sin(log(0)) is bounded, 1/log(0) is 0.
+function isInfiniteAtPole(p: U): boolean {
+  if (isadd(p) || ismultiply(p)) {
+    return p.tail().some(isInfiniteAtPole);
+  }
+  if (ispower(p)) {
+    return ispositivenumber(caddr(p)) && isInfiniteAtPole(cadr(p));
+  }
+  return iscons(p) && hasPole(p) && !p.tail().some(hasPole);
 }
 
 // limit(expr, x, point): direct substitution, simplify-then-substitute, and
@@ -144,11 +159,75 @@ export function limit(F: U, X: U, A: U, sides: number[] = [-1, 1]): U {
       termwise(F, X, A, sides) ||
       factorwise(F, X, A, sides) ||
       compose(F, X, A, sides);
-    if (r === undefined) {
-      throw e;
+    if (r !== undefined) {
+      return r;
     }
-    return r;
+    const wave = oscillating(F, X, A, sides);
+    if (wave !== undefined) {
+      stop(`limit: the limit does not exist: ${wave} oscillates`);
+    }
+    // each side on its own: 1/tan(x) at pi/2, where tan has two limits
+    if (sides.length === 2) {
+      let each: U[];
+      try {
+        each = sides.map((side) => limit(F, X, A, [side]));
+      } catch (e2) {
+        throw e;
+      }
+      if (!equal(each[0], each[1])) {
+        stop('limit: left and right limits differ — limit does not exist');
+      }
+      return each[0];
+    }
+    throw e;
   }
+}
+
+// sin(g) or cos(g), also to a positive integer power, with a continuous g
+// that goes to +-inf on one of the sides, takes the values 0 and 1 again and
+// again: no limit. The same holds for it times a factor with a nonzero or
+// infinite limit, and for it plus terms with a finite limit. Returns the
+// sin(g) or cos(g) in question. (Times a factor that goes to 0 the limit
+// is 0, see squeeze.)
+function oscillating(F: U, X: U, A: U, sides: number[]): U | undefined {
+  const limitOf = (f: U, side: number): U | undefined => {
+    try {
+      return limit(f, X, A, [side]);
+    } catch (e) {
+      return undefined;
+    }
+  };
+  const onSide = (f: U, side: number): U | undefined => {
+    if (ispower(f) && isposint(caddr(f))) {
+      return onSide(cadr(f), side);
+    }
+    if (car(f) === symbol(SIN) || car(f) === symbol(COS)) {
+      const g = Find(cadr(f), X) && !hasJump(cadr(f)) && limitOf(cadr(f), side);
+      return g && isInfinite(g) ? f : undefined;
+    }
+    if (!ismultiply(f) && !isadd(f)) {
+      return undefined;
+    }
+    // exactly one part oscillates, the others together have a limit
+    const parts = f.tail();
+    const waves = parts.filter((q) => onSide(q, side) !== undefined);
+    if (waves.length !== 1) {
+      return undefined;
+    }
+    const others = parts.filter((q) => q !== waves[0]);
+    const L = limitOf(ismultiply(f) ? multiply_all(others) : others.reduce(add, Constants.zero), side);
+    const keeps =
+      L !== undefined &&
+      (ismultiply(f) ? isInfinite(L) || isNonzero(L) === true : !Find(L, symbol(INF)));
+    return keeps ? onSide(waves[0], side) : undefined;
+  };
+  for (const side of sides) {
+    const wave = onSide(F, side);
+    if (wave !== undefined) {
+      return wave;
+    }
+  }
+  return undefined;
 }
 
 // f^g with X in base and exponent (1^inf, inf^0, 0^0): exp(limit(g*log(f)))
@@ -219,17 +298,24 @@ function factorwise(F: U, X: U, A: U, sides: number[]): U | undefined {
 
 // f(g(x)) for a function f of one argument: f at the limit of g, itself
 // taken as a limit so that log(0), arctan(inf) and the like are resolved
+// The same for a power with X only in the base or only in the exponent.
 function compose(F: U, X: U, A: U, sides: number[]): U | undefined {
-  if (!iscons(F) || F.tail().length !== 1 || !issymbol(car(F)) || !Find(cadr(F), X)) {
+  if (!iscons(F) || !issymbol(car(F))) {
+    return undefined;
+  }
+  const args = F.tail();
+  const withX = args.filter((a) => Find(a, X));
+  if (withX.length !== 1 || (args.length !== 1 && !ispower(F))) {
     return undefined;
   }
   try {
-    const inner = limit(cadr(F), X, A, sides);
-    if (Find(inner, X) || equal(inner, cadr(F))) {
+    const inner = limit(withX[0], X, A, sides);
+    if (Find(inner, X) || equal(inner, withX[0])) {
       return undefined;
     }
     const y = usr_symbol('limit_y');
-    return limitCore(makeList(car(F), y), y, inner, [-1, 1]);
+    const outer = makeList(car(F), ...args.map((a) => (a === withX[0] ? y : a)));
+    return limitCore(outer, y, inner, [-1, 1]);
   } catch (e) {
     return undefined;
   }
@@ -550,7 +636,14 @@ function limitAt(F: U, X: U, A: U, sides: number[]): U {
 
   let result = tryEvalAt(F, X, A);
   if (result !== INDETERMINATE) {
-    return hasPole(result) ? infiniteLimit(F, X, A, sides) : result;
+    if (!hasPole(result)) {
+      return result;
+    }
+    if (isInfiniteAtPole(result)) {
+      return infiniteLimit(F, X, A, sides);
+    }
+    // sin(log(0)), arctan(log(0)), 1/log(0): the fallbacks of limit() go on
+    stop('limit: could not resolve a pole inside a function');
   }
 
   const simplified = simplify(F);

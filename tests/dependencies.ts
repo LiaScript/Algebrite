@@ -669,8 +669,8 @@ test('46', t => {
   const testResult = computeResultsAndJavaScriptFromAlgebra('PCA = Mᵀ·M');
 
   t.is('PCA = function (M) { return ( cov(M) ); }', testResult.code);
-  t.is('$$PCA(M) = cov(M)$$', testResult.latexResult);
-  t.is('$$PCA(M) = cov(M)$$', testResult.result);
+  t.is('$$PCA(M) = \\operatorname{cov}\\left(M\\right)$$', testResult.latexResult);
+  t.is('$$PCA(M) = \\operatorname{cov}\\left(M\\right)$$', testResult.result);
   t.is('M', testResult.dependencyInfo.affectedBy[0]);
   t.is('PATTERN_DEPENDENCY', testResult.dependencyInfo.affectedBy[1]);
   t.is(1, testResult.dependencyInfo.affectsVariables.length);
@@ -793,7 +793,7 @@ test('53', t => {
   let res = computeResultsAndJavaScriptFromAlgebra(code2);
 
   t.is('PCA = function (M) { return ( cov(M) ); }', res.code);
-  t.is('$$PCA(M) = cov(M)$$', res.latexResult);
+  t.is('$$PCA(M) = \\operatorname{cov}\\left(M\\right)$$', res.latexResult);
   t.is(1, res.dependencyInfo.affectsVariables.length);
   t.is('PCA', res.dependencyInfo.affectsVariables[0]);
   t.is(2, res.dependencyInfo.affectedBy.length);
@@ -858,7 +858,7 @@ test('56', t => {
   );
 
   t.is(
-    '$$f(x) =  \\lceil {x} \\rceil + \\lfloor {x} \\rfloor +round(x)$$',
+    '$$f(x) =  \\lceil {x} \\rceil + \\lfloor {x} \\rfloor +\\operatorname{round}\\left(x\\right)$$',
     res.latexResult
   );
 

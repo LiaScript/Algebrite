@@ -1431,11 +1431,15 @@ clearall                        # reset all variables and settings
 Floating point numbers are shown with 6 decimals. Below 0.001 and from 10^15 on
 they switch to scientific notation, `1.5*10^(-7)` (`1.5 \cdot 10^{-7}` in LaTeX),
 so tiny values no longer look like zero. The output can be typed in again; a
-trailing `...` marks a rounded value.
+trailing `...` marks a rounded value. In LaTeX, function names are set upright:
+`\sin`, `\ln` for `log` (the natural logarithm), `\operatorname{erf}` for names
+without a macro; one-letter names such as `f(x)` stay as they are.
 
 `float(x, n)` first evaluates `x` exactly and then computes `n` significant
 digits. It covers arithmetic, roots, `pi`, `exp`, `log`, the trigonometric and
-hyperbolic functions and their inverses, `Gamma`, `erf` and `erfc`. The digits
+hyperbolic functions and their inverses, `Gamma`, `erf` and `erfc`, `zeta`,
+`digamma`, `Si`, `Ci`, `Ei`, `fresnels`, `fresnelc`, `lambertw` and `besselj` of
+integer order (not `bessely`, which has double precision only). The digits
 are for display: calculating on with the result is double precision again, so
 the whole expression belongs inside `float`.
 

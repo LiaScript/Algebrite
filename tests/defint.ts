@@ -154,7 +154,7 @@ run_test([
   'Stop: indeterminate form: inf-inf',
 
   'defint(sin(x),x,0,inf)',
-  "Stop: limit: could not resolve after repeated L'Hopital iterations",
+  'Stop: limit: the limit does not exist: cos(x) oscillates',
 
   // singular at a bound: one-sided limits
   'defint(log(x),x,0,1)',

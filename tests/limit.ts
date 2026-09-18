@@ -26,8 +26,12 @@ run_test([
   'limit(1/x,x,0)',
   'Stop: limit: left and right limits differ — limit does not exist',
 
-  // the sign cannot be probed at a symbolic point
+  // positive on both sides of the symbolic point
   'limit(1/(x-a)^2,x,a)',
+  'inf',
+
+  // the sign cannot be probed at a symbolic point
+  'limit(b/(x-a)^2,x,a)',
   'Stop: limit: denominator vanishes while numerator does not — limit is infinite or does not exist',
 
   // limits at infinity: x = 1/t with t -> 0 from the right
@@ -261,7 +265,7 @@ run_test([
 
   // no limit
   'limit(sin(x),x,inf)',
-  "Stop: limit: could not resolve after repeated L'Hopital iterations",
+  'Stop: limit: the limit does not exist: sin(x) oscillates',
 
   // 0/0 at a point
   'limit((1-cos(x))/x^2,x,0)',

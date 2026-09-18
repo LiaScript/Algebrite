@@ -271,6 +271,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_small_fixes",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/small_fixes.ts",
+)
+
+nodejs_test(
     name = "test_sinh",
     data = [
         ":tsc",
