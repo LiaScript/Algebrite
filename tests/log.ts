@@ -231,4 +231,11 @@ run_test([
 
   'log2(-1)',
   'i*pi/log(2)',
+
+  // third-quadrant float: arg must stay in (-pi, pi]
+  'log(-1.0-2.0*i)',
+  '0.804719...-2.034444...*i',
+
+  'float(log(-1-2*i))',
+  '0.804719...-2.034444...*i',
 ]);
