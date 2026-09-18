@@ -450,3 +450,78 @@ run_test([
   'abs(float(defint(piecewise(1/(2+cos(x)),x<4,1),x,pi/2,5))-2.98315531518)<10^(-6)',
   '1',
 ]);
+
+// 9. other symbols in the integrand, many periods
+run_test([
+  // no numbers to tell a jump from a pole: the limits of the antiderivative
+  // decide. 2*pi*a/sqrt(3), at a = 1: 3.62759872847
+  'defint(a/(2+cos(x)),x,0,2*pi)-2*pi*a/sqrt(3)',
+  '0',
+
+  // 1.81379936423 = pi/sqrt(3), times the integral of y over [0,1]
+  'defint(y/(2+cos(x)),x,0,2*pi,y,0,1)-pi/sqrt(3)',
+  '0',
+
+  'defint(1/(2+cos(x)),x,0,2*pi,y,0,1)-2*pi/sqrt(3)',
+  '0',
+
+  // a*tan(x/2) is infinite at pi
+  'defint(a/(1+cos(x)),x,0,4)',
+  'Stop: defint: the integrand has a pole at x = 3.14159 inside the interval',
+
+  // 173.509028476 (mpmath.quad over 600 subintervals), 95 jumps
+  'abs(float(defint(1/(2+cos(x)),x,0,300))-173.509028476)<10^(-6)',
+  '1',
+
+  // 159 jumps are over the limit: no result rather than a slow one
+  'defint(1/(2+cos(x)),x,0,1000)',
+  'defint(1/(2+cos(x)),x,0,1000)',
+
+  // log(x) = 0 at 1, found by the scan
+  'defint(1/log(x),x,1/2,2)',
+  'Stop: defint: the integrand has a pole at x = 1 inside the interval',
+
+  // 0.507631758499: exp(x) = 2 is outside the interval
+  'abs(float(defint(1/(exp(x)-2),x,1,2))-0.507631758499)<10^(-6)',
+  '1',
+]);
+
+// 10. a symbolic term makes integral() write a complex log, whose branch cut
+// is another jump: no result then (the defint is evaluated again once a has
+// a value), never a wrong one
+run_test([
+  'near6(u,v)=abs(float(u)-v)<10^(-6)',
+  '',
+
+  // 1.41119117306 = 2*0.705595586530: the cut is crossed at x = 0
+  'near6(eval(defint((a+1)/(2+cos(x)),x,-1,1),a,1),1.41119117306)',
+  '1',
+
+  // 0.985708659418: not crossed
+  'near6(eval(defint((a+1)/(2+cos(x)),x,1,2),a,1),0.985708659418)',
+  '1',
+
+  // 7.25519745694: both bounds are on the cut
+  'near6(eval(defint((a+1)/(2+cos(x)),x,0,2*pi),a,1),7.25519745694)',
+  '1',
+
+  // 9.91078403565 = 2*pi+3.62759872847
+  'near6(eval(defint(a/(2+cos(x))+1,x,0,2*pi),a,1),9.91078403565)',
+  '1',
+
+  // 3.62759872847, sin(x)/(2+cos(x)) has integral 0 over a period
+  'near6(eval(defint((a+sin(x))/(2+cos(x)),x,0,2*pi),a,1),3.62759872847)',
+  '1',
+
+  // 3.62759872847 for b = 2 and 2.22144146908 = 2*pi/sqrt(8) for b = 3;
+  // divergent for abs(b) < 1, so there is no answer for every b
+  'near6(eval(defint(1/(b+cos(x)),x,0,2*pi),b,2),3.62759872847)',
+  '1',
+
+  'near6(eval(defint(1/(b+cos(x)),x,0,2*pi),b,3),2.22144146908)',
+  '1',
+
+  // no singular point of tan(x/2) inside: the formula stays
+  'near6(eval(defint(1/(b+cos(x)),x,0,1),b,2),0.352797793265)',
+  '1',
+]);
