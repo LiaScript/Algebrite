@@ -157,3 +157,18 @@ run_test([
   'forget()',
   '',
 ]);
+
+// in a limit the other symbols are constants: finite, whatever their sign
+run_test([
+  'assume(a>0)',
+  '',
+
+  'limit(log(a*x),x,inf)',
+  'inf',
+
+  'limit(log(x)+b,x,inf)',
+  'inf',
+
+  'limit(log(a)-x,x,inf)',
+  '-inf',
+]);

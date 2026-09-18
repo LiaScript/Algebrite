@@ -25,10 +25,11 @@ import {
   SINH,
   TAN,
   TANH,
-  U
+  U,
+  isadd,
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
-import { facts, withSign } from './assume';
+import { facts, isReal, withSign } from './assume';
 import { stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
 import { double, integer } from './bignum';
@@ -150,6 +151,18 @@ function atInfinity(F: U, X: U, sign: U): U | undefined {
     const v = resolveInf(subst(F, X, multiply(sign, symbol(INF))));
     if (!Find(v, symbol(INF)) || isInfinite(v)) {
       return v;
+    }
+    // +-inf plus real terms without inf: in a limit the other symbols are
+    // constants, so those terms are finite (log(a)+inf is inf for a > 0)
+    if (isadd(v)) {
+      const infinite = v.tail().filter(isInfinite);
+      const rest = v.tail().filter((t) => !isInfinite(t));
+      if (
+        infinite.length === 1 &&
+        rest.every((t) => !Find(t, symbol(INF)) && isReal(t) === true)
+      ) {
+        return infinite[0];
+      }
     }
     // inf times a nonzero constant, e.g. inf*pi
     const f = zzfloat(v);
