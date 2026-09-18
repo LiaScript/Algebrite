@@ -485,9 +485,27 @@ run_test([
   'abs(float(defint(1/(2+cos(x)),x,0,300))-173.509028476)<10^(-6)',
   '1',
 
-  // 159 jumps are over the limit: no result rather than a slow one
-  'defint(1/(2+cos(x)),x,0,1000)',
-  'defint(1/(2+cos(x)),x,0,1000)',
+  // 577.130623162 (mpmath.quad over 2000 subintervals), 159 jumps: the
+  // antiderivative is a function of tan(x/2) alone, so every jump is the
+  // same and is computed once
+  'abs(float(defint(1/(2+cos(x)),x,0,1000))-577.130623162)<10^(-6)',
+  '1',
+
+  // 3535.50205677, 1591 jumps; a term linear in x beside the tan changes
+  // nothing (1/(1+4*tan(x)^2) has -x/3): pi/3*100 = 104.719755120
+  'abs(float(defint(1/(1+sin(x)^2),x,0,5000))-3535.50205677)<10^(-5)',
+  '1',
+
+  'defint(1/(1+4*tan(x)^2),x,0,100*pi)',
+  '100/3*pi',
+
+  // 35.5723906478: two periods, tan(x/2) and tan(x/6), every jump on its own
+  'abs(float(defint(1/(2+cos(x))+1/(2+cos(x/3)),x,0,30))-35.5723906478)<10^(-6)',
+  '1',
+
+  // and then 212 jumps are over the limit: no result rather than a slow one
+  'defint(1/(2+cos(x))+1/(2+cos(x/3)),x,0,1000)',
+  'defint(1/(2+cos(x))+1/(2+cos(1/3*x)),x,0,1000)',
 
   // in float mode every product has the factor 1.0: taking constant factors
   // out of the integrand must not go round in circles (no result here, the
