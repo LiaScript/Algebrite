@@ -329,9 +329,12 @@ run_test([
   'simplify(d(s,x,2)+s-1/x)',
   '0',
 
-  // the integral of sin(x)^2/cos(x) is not found
+  // variation of parameters needs the integral of sin(x)*tan(x), found since
+  // the integration package; -cos(x)*log|1/cos(x)+tan(x)| is the textbook
+  // particular solution, and log|tan(x/2+pi/4)| = log|1/cos(x)+tan(x)|; dsolve
+  // drops the abs inside logs
   'dsolve(d(y(x),x,2)+y(x)=tan(x),y(x))',
-  'Stop: dsolve: no particular solution for the right side tan(x)',
+  'C1*cos(x)+C2*sin(x)-cos(x)*log(tan(1/2*x+1/4*pi))',
 
   'dsolve(x^2*d(y(x),x,2)+x*d(y(x),x)-y(x)=sin(x),y(x))',
   'Stop: dsolve: no particular solution for the right side sin(x)',

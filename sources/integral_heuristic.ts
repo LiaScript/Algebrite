@@ -54,6 +54,8 @@ import {
 import { makeList } from './list';
 import { logarithm } from './log';
 import { divide, multiply, negate } from './multiply';
+import { sine } from './sin';
+import { cosine } from './cos';
 import { numerator } from './numerator';
 import { partition } from './partition';
 import { power } from './power';
@@ -90,6 +92,7 @@ export function heuristicIntegral(F: U, X: U, depth: number): U | undefined {
     hyperbolicToExp(G, X, depth) ||
     tanSquared(G, X, depth) ||
     bySubstitution(G, X, depth) ||
+    tanWithSinCos(G, X, depth) ||
     tanSubstitution(G, X, depth) ||
     weierstrass(G, X, depth) ||
     byParts(G, X, depth);
@@ -406,6 +409,22 @@ function lowestTerms(N: U, D: U, u: U): U | undefined {
 // has the period pi), q linear in X: u = tan(q), sin = u*c, cos = c,
 // c^2 = 1/(1+u^2), dX = du/(q'*(1+u^2)). Numerator and denominator are
 // either both even or both odd in c; if odd, both are multiplied by c.
+// sin(x)*tan(x), tan(x)/cos(x): tan next to sin or cos is written as
+// sin/cos, which the table and the substitutions above integrate in short
+// form. tan alone stays for the tan substitution.
+function tanWithSinCos(F: U, X: U, depth: number): U | undefined {
+  const tan = findWhere(F, (p) => isFn(p, TAN) && Find(cadr(p), X));
+  if (!tan || !findWhere(F, (p) => isFn(p, SIN) || isFn(p, COS))) {
+    return;
+  }
+  const q = cadr(tan);
+  return tryIntegral(
+    subst(F, tan, divide(sine(q), cosine(q))),
+    X,
+    depth
+  );
+}
+
 function tanSubstitution(F: U, X: U, depth: number): U | undefined {
   const q = trigArgument(F, X);
   if (!q) {

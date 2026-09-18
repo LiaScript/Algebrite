@@ -685,3 +685,43 @@ run_test([
   'integral(1/sqrt(x^3+2*x+5),x)',
   'Stop: integral: sorry, could not find a solution',
 ]);
+
+// tan next to sin or cos: tan = sin/cos first, the half-angle substitution
+// gave correct but long results (-2*cos(x/2)^2 for the second one).
+// Checked by differentiating: d/dx log|tan(x/2+pi/4)| = 1/cos(x), so the
+// first derivative is 1/cos(x)-cos(x) = sin(x)^2/cos(x) = sin(x)*tan(x).
+run_test([
+  'integral(sin(x)*tan(x),x)',
+  'log(abs(tan(1/2*x+1/4*pi)))-sin(x)',
+
+  'integral(tan(x)*cos(x),x)',
+  '-cos(x)',
+
+  'integral(tan(x)/cos(x),x)',
+  '1/(cos(x))',
+
+  'integral(tan(2*x)*sin(2*x),x)',
+  '1/2*log(abs(tan(x+1/4*pi)))-1/2*sin(2*x)',
+
+  // the differential equation that uses the first one: particular solution
+  // -cos(x)*log|1/cos(x)+tan(x)|. dsolve drops the abs inside logs (the sign
+  // is constant where the solution lives, see dsolve.ts)
+  'dsolve(d(y(x),x,2)+y(x)=tan(x),y(x))',
+  'C1*cos(x)+C2*sin(x)-cos(x)*log(tan(1/2*x+1/4*pi))',
+
+  'y=dsolve(d(y(x),x,2)+y(x)=tan(x),y(x))',
+  '',
+
+  'abs(float(eval(d(y,x,2)+y-tan(x),x,0.7,C1,1.3,C2,-0.4)))<10^(-9)',
+  '1',
+
+  'y=quote(y)',
+  '',
+
+  // tan alone keeps the tan substitution
+  'integral(1/(1+tan(x)),x)',
+  '1/2*x+1/2*log(abs(1+tan(x)))+1/2*log(abs(cos(x)))',
+
+  'integral(tan(x)^4,x)',
+  'x+1/3*tan(x)^3-tan(x)',
+]);
