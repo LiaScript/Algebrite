@@ -148,4 +148,23 @@ run_test([
 
   'expand(exp(x+y))',
   'exp(x+y)',
+
+  // constant factors of a single-term denominator must not be counted twice
+  'expand(1/(x*y))',
+  '1/(x*y)',
+
+  'expand((1/2)/x)',
+  '1/(2*x)',
+
+  'expand((x+1)/(2*x))',
+  '1/2+1/(2*x)',
+
+  'expand((x-1)/(x*y))',
+  '1/y-1/(x*y)',
+
+  'expand((x-1)/(x*y*z))',
+  '-1/(x*y*z)+1/(y*z)',
+
+  'expand((2*i-1/2)/(-x))',
+  '1/(2*x)-2*i/x',
 ]);

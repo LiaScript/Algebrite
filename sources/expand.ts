@@ -392,7 +392,13 @@ function expand_get_B(p3: U, p4: U, p9: U): U {
 // Returns the expansion fractions in A.
 function expand_get_A(p2: U, p4: U, p9: U, factored: boolean): U {
   if (!istensor(p4)) {
-    return reciprocate(p2);
+    // only the factor F with X in it: C = A/F already holds the constant
+    // factors, so 1/A would count them twice (1/(x*y) became 1/(x*y^2))
+    return reciprocate(
+      ismultiply(p2)
+        ? multiply_all(p2.tail().filter((p5) => Find(p5, p9)))
+        : p2
+    );
   }
   let elements: U[] = [];
   if (ismultiply(p2)) {
