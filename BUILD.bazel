@@ -1230,3 +1230,12 @@ nodejs_test(
     ],
     entry_point = ":tests/logic.ts",
 )
+
+nodejs_test(
+    name = "test_quote",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/quote.ts",
+)
