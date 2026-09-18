@@ -14,8 +14,7 @@ import { Eval } from './eval';
 import { iscomplexnumber, isnegativeterm } from './is';
 import { makeList } from './list';
 import { mmul } from './mmul';
-import { multiply, negate } from './multiply';
-import { power } from './power';
+import { divide, multiply, negate } from './multiply';
 import { mapQuantity } from './quantity';
 
 //-----------------------------------------------------------------------------
@@ -37,7 +36,7 @@ export function sgn(X: U): U {
       return Constants.one;
     }
     if (X.d === 0) {
-      return Constants.one;
+      return Constants.zero;
     }
     return Constants.negOne;
   }
@@ -53,7 +52,8 @@ export function sgn(X: U): U {
   }
 
   if (iscomplexnumber(X)) {
-    return multiply(power(Constants.negOne, absval(X)), X);
+    // sgn(z) = z/|z| for complex z
+    return divide(X, absval(X));
   }
 
   if (isnegativeterm(X)) {
