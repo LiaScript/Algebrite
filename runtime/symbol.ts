@@ -57,8 +57,10 @@ class Scope {
     this.bindings.clear();
   }
 
+  // Removes the binding only: the symbol itself stays, since expressions
+  // and builtins (symbol('y'), keywords like sin, units like m) still
+  // refer to it.
   delete(s:Sym) {
-    this.symbols.delete(s.printname);
     this.bindings.delete(s.printname);
     this.parent?.delete(s);
   }
