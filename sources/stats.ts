@@ -86,9 +86,9 @@ export function Eval_random(p1: Cons): U {
   if (args.length === 0) {
     return double(Math.random());
   }
-  const a = nativeInt(args[0]);
-  const b = nativeInt(args[1]);
-  if (args.length !== 2 || isNaN(a) || isNaN(b) || a > b) {
+  const a = args.length === 2 ? nativeInt(args[0]) : NaN;
+  const b = args.length === 2 ? nativeInt(args[1]) : NaN;
+  if (isNaN(a) || isNaN(b) || a > b) {
     stop('random: use random() or random(a,b) with integers a <= b');
   }
   return integer(a + Math.floor(Math.random() * (b - a + 1)));
