@@ -12,29 +12,34 @@ run_test([
   'nroots(sqrt(2)*exp(i*pi/4)*x^2+1)',
   '[-0.321797...-0.776887...*i,0.321797...+0.776887...*i]',
 
-  // complex leading coefficient: x = 1/i = -i
-  'nroots(i*x-1)',
-  '-i',
+  // Roots are irrational on purpose: the iteration starts at random
+  // values and may hit an integer root exactly, printed 2.0 not 2.000000...
+  // Conjugate pairs with equal real parts are left out as well: their
+  // order depends on those random start values.
 
-  'nroots(1.5*x-3)',
-  '2.0',
+  // complex leading coefficient: x = 2^(1/2)/i
+  'nroots(i*x-sqrt(2))',
+  '-1.414214...*i',
+
+  'nroots(1.5*x-2)',
+  '1.333333...',
 
   'nroots(x^2-2)',
   '[-1.414214...,1.414214...]',
 
-  'nroots(x^2-3*x+2,x)',
-  '[1.000000...,2.000000...]',
+  // (3+-5^(1/2))/2
+  'nroots(x^2-3*x+1,x)',
+  '[0.381966...,2.618034...]',
 
-  'nroots(y^2-4,y)',
-  '[-2.000000...,2.000000...]',
+  'nroots(y^2-5,y)',
+  '[-2.236068...,2.236068...]',
 
-  'nroots(x^2+1)',
-  '[-1.000000...*i,1.000000...*i]',
+  'nroots(x^2+2)',
+  '[-1.414214...*i,1.414214...*i]',
 
-  // conjugate pairs with equal real parts are left out: their order
-  // depends on the random start values of the iteration
-  'nroots(x^3-6*x^2+11*x-6)',
-  '[1.000000...,2.000000...,3.000000...]',
+  // 2*cos(2/9*pi), 2*cos(4/9*pi), 2*cos(8/9*pi)
+  'nroots(x^3-3*x+1)',
+  '[-1.879385...,0.347296...,1.532089...]',
 
   'nroots(5)',
   'Stop: nroots: polynomial?',
