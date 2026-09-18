@@ -3,6 +3,8 @@ import { symbol } from "../runtime/symbol";
 import { abs } from './abs';
 import { arg } from './arg';
 import { Eval } from './eval';
+import { isintegerorintegerfloat } from './is';
+import { power } from './power';
 import { makeList } from './list';
 import { divide, multiply } from './multiply';
 
@@ -38,12 +40,11 @@ export function clockform(p1: U): U {
   // pushing the expression (-1)^... but note
   // that we can't use "power", as "power" evaluates
   // clock forms into rectangular form (see "-1 ^ rational"
-  // section in power)
-  const l = makeList(
-    symbol(POWER),
-    Constants.negOne,
-    divide(arg(p1), Constants.Pi())
-  );
+  // section in power); an integer exponent is just a sign
+  const n = divide(arg(p1), Constants.Pi());
+  const l = isintegerorintegerfloat(n)
+    ? power(Constants.negOne, n)
+    : makeList(symbol(POWER), Constants.negOne, n);
   const multiplied = multiply(abs(p1), l);
 
   if (DEBUG_CLOCKFORM) {

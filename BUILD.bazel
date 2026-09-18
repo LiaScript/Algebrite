@@ -1212,3 +1212,12 @@ nodejs_test(
     ],
     entry_point = ":tests/laplace.ts",
 )
+
+nodejs_test(
+    name = "test_conj",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/conj.ts",
+)
