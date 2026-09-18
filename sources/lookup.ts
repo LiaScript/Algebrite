@@ -1,4 +1,4 @@
-import { cadr, iscons, SYM, U } from '../runtime/defs';
+import { cadr, issymbol, U } from '../runtime/defs';
 import { get_binding } from '../runtime/symbol';
 
 // now this might be a little confusing, so a
@@ -116,7 +116,7 @@ import { get_binding } from '../runtime/symbol';
 //       => gives z
 export function Eval_lookup(p1: U) {
   p1 = cadr(p1);
-  if (!iscons(p1) && cadr(p1).k === SYM) {
+  if (issymbol(p1)) {
     p1 = get_binding(p1);
   }
   return p1;
