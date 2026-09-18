@@ -27,7 +27,12 @@ import { filter } from './filter';
 import { guess } from './guess';
 import { inner } from './inner';
 import { inv } from './inv';
-import { isone, ispolyexpandedform, isZeroAtomOrTensor } from './is';
+import {
+  isone,
+  ispolyexpandedform,
+  ispolyfactoredorexpandedform,
+  isZeroAtomOrTensor,
+} from './is';
 import { divide, multiply, multiply_all, reciprocate } from './multiply';
 import { numerator } from './numerator';
 import { power } from './power';
@@ -99,6 +104,14 @@ function expand(F: U, X: U, factored = false): U {
     if (!ispolyexpandedform(A, X) || isone(A)) {
       return F;
     }
+  }
+
+  // not a rational function of X, e.g. sin(x)/(x^2-1)
+  if (
+    !ispolyfactoredorexpandedform(A, X) ||
+    !ispolyfactoredorexpandedform(B, X)
+  ) {
+    return F;
   }
 
   // Q = quotient
