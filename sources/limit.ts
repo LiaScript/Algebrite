@@ -39,6 +39,7 @@ import { stop } from '../runtime/run';
 import { symbol, usr_symbol } from '../runtime/symbol';
 import { double, integer, rational } from './bignum';
 import { cosine } from './cos';
+import { sine } from './sin';
 import { Eval } from './eval';
 import { derivative } from './derivative';
 import { denominator } from './denominator';
@@ -156,9 +157,11 @@ export function limit(F: U, X: U, A: U, sides: number[] = [-1, 1]): U {
   } catch (e) {
     const r =
       squeeze(F, X, A, sides) ||
+      mergedLogs(F, X, A, sides) ||
       termwise(F, X, A, sides) ||
       factorwise(F, X, A, sides) ||
-      compose(F, X, A, sides);
+      compose(F, X, A, sides) ||
+      tanAsQuotient(F, X, A, sides);
     if (r !== undefined) {
       return r;
     }
@@ -260,6 +263,84 @@ function squeeze(F: U, X: U, A: U, sides: number[]): U | undefined {
   try {
     const rest = multiply_all(factors.filter((f) => !bounded.includes(f)));
     return isZeroAtomOrTensor(limit(rest, X, A, sides)) ? Constants.zero : undefined;
+  } catch (e) {
+    return undefined;
+  }
+}
+
+// tan(u) as sin(u)/cos(u) everywhere in p, as one fraction. Numerator and
+// denominator are rationalized separately, the whole quotient would keep
+// nested fractions.
+function tanAsSinByCos(p: U): U {
+  const q = tanToSinCos(p);
+  return divide(rationalize(numerator(q)), rationalize(denominator(q)));
+}
+
+function tanToSinCos(p: U): U {
+  if (!iscons(p)) {
+    return p;
+  }
+  if (car(p) === symbol(TAN)) {
+    const u = tanToSinCos(cadr(p));
+    return divide(sine(u), cosine(u));
+  }
+  return Eval(makeList(car(p), ...p.tail().map(tanToSinCos)));
+}
+
+// inf/inf where tan is singular: tan(x)/(3+tan(x)^2) at pi/2 is
+// sin(x)*cos(x)/(3*cos(x)^2+sin(x)^2)
+function tanAsQuotient(F: U, X: U, A: U, sides: number[]): U | undefined {
+  if (!Find(F, symbol(TAN))) {
+    return undefined;
+  }
+  try {
+    return limitCore(tanAsSinByCos(F), X, A, sides);
+  } catch (e) {
+    return undefined;
+  }
+}
+
+// inf-inf between logs: c*log(abs(g))+c*log(abs(h)) = c*log(abs(g*h)) and
+// c*log(abs(g))-c*log(abs(h)) = c*log(abs(g/h)) for real g and h, as in the
+// antiderivatives log(abs(2+tan(x)))+log(abs(cos(x))) at pi/2. Logs without
+// abs are left alone (log(g)+log(h) = log(g*h) needs g, h > 0).
+function mergedLogs(F: U, X: U, A: U, sides: number[]): U | undefined {
+  if (!isadd(F)) {
+    return undefined;
+  }
+  // a term as [c, g] when it is c*log(abs(g)) with c free of X
+  const split = (t: U): [U, U] | undefined => {
+    const factors = ismultiply(t) ? t.tail() : [t];
+    const logs = factors.filter((f) => Find(f, X));
+    const arg = logs.length === 1 && car(logs[0]) === symbol(LOG) ? cadr(logs[0]) : undefined;
+    return arg !== undefined && car(arg) === symbol(ABS)
+      ? [multiply_all(factors.filter((f) => f !== logs[0])), cadr(arg)]
+      : undefined;
+  };
+  const terms = F.tail();
+  const first = terms.map(split).find((cg) => cg !== undefined);
+  if (first === undefined) {
+    return undefined;
+  }
+  let product: U = Constants.one;
+  let merged = 0;
+  const rest = terms.filter((t) => {
+    const cg = split(t);
+    const power = cg && (equal(cg[0], first[0]) ? 1 : equal(cg[0], negate(first[0])) ? -1 : 0);
+    if (!cg || !power) {
+      return true;
+    }
+    product = power > 0 ? multiply(product, cg[1]) : divide(product, cg[1]);
+    merged++;
+    return false;
+  });
+  if (merged < 2) {
+    return undefined;
+  }
+  try {
+    const inner = tanAsSinByCos(product);
+    const log = multiply(first[0], logarithm(makeList(symbol(ABS), inner)));
+    return limit(add(rest.reduce(add, Constants.zero), log), X, A, sides);
   } catch (e) {
     return undefined;
   }
@@ -538,6 +619,14 @@ function infiniteLimit(F: U, X: U, A: U, sides: number[]): U {
   const eps = 1e-6 * Math.max(1, Math.abs(a.d));
   const positive = sides.map((side) => {
     const v = zzfloat(subst(F, X, double(a.d + side * eps)));
+    // inf-inf or inf/inf: log(abs(2+tan(x)))+log(abs(cos(x))) at pi/2 and
+    // tan(x)/(3+tan(x)^2) have poles in their parts and a finite limit.
+    // Something infinite still grows a hundred times closer to the point
+    // (log(log(1/x)) by a tenth); the fallbacks of limit() go on.
+    const closer = zzfloat(subst(F, X, double(a.d + (side * eps) / 100)));
+    if (isdouble(v) && isdouble(closer) && !(Math.abs(closer.d) > 1.001 * Math.abs(v.d))) {
+      stop('limit: the poles of the parts cancel');
+    }
     // symbolic: the sign may be known from the assumptions (a/x, a > 0)
     const known = isdouble(v) ? undefined : facts(v);
     if (known?.positive || known?.negative) {
@@ -648,8 +737,8 @@ function limitAt(F: U, X: U, A: U, sides: number[]): U {
 
   const simplified = simplify(F);
   result = tryEvalAt(simplified, X, A);
-  if (result !== INDETERMINATE) {
-    return result;
+  if (result !== INDETERMINATE && !hasPole(result)) {
+    return result; // sin(x)/cos(x) simplifies to tan(x), tan(1/2*pi) is no value
   }
 
   let N = numerator(F);

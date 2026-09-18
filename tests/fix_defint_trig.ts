@@ -477,6 +477,12 @@ run_test([
   'defint(1/(2+cos(x)),x,0,1000)',
   'defint(1/(2+cos(x)),x,0,1000)',
 
+  // in float mode every product has the factor 1.0: taking constant factors
+  // out of the integrand must not go round in circles (no result here, the
+  // condition abs(x)<1/2 is not linear)
+  'float(defint(x*piecewise(1/(x^2+1),abs(x)<1/2,2),x,-5/2,7/2))',
+  'defint(1.0*x*piecewise(1/(1.0+x^2.0),abs(x)<0.5,2.0),x,-2.5,3.5)',
+
   // log(x) = 0 at 1, found by the scan
   'defint(1/log(x),x,1/2,2)',
   'Stop: defint: the integrand has a pole at x = 1 inside the interval',
@@ -521,7 +527,20 @@ run_test([
   'near6(eval(defint(1/(b+cos(x)),x,0,2*pi),b,3),2.22144146908)',
   '1',
 
-  // no singular point of tan(x/2) inside: the formula stays
-  'near6(eval(defint(1/(b+cos(x)),x,0,1),b,2),0.352797793265)',
+  // 0.183787207891: no singular point of tan(x/2) inside, the formula stays
+  'near6(eval(defint(1/(b+cos(x)),x,1/2,1),b,2),0.183787207891)',
+  '1',
+
+  // a factor beside it stays in the unevaluated integral
+  'defint(a/(b+cos(x)),x,0,2*pi)',
+  'defint(a/(b+cos(x)),x,0,2*pi)',
+
+  // an unevaluated piece inside a result: float() used to evaluate it
+  // again without end
+  'float(defint(piecewise(1/(b+cos(x)),x<7,1),x,0,8))',
+  '1.0+defint(1/(b+cos(x)),x,0.0,7.0)',
+
+  // 4.87353490846 = 1+integral of 1/(2+cos(x)) over [0,7]
+  'near6(eval(defint(piecewise(1/(b+cos(x)),x<7,1),x,0,8),b,2),4.87353490846)',
   '1',
 ]);

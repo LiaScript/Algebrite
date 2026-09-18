@@ -73,9 +73,11 @@ function checkFloatHasWorkedOutCompletely(nodeToCheck) {
 export function evalExactly(f: (p1: U) => U, p1: U): U {
   const asFloats = defs.evaluatingAsFloats;
   const result = noFloats(f, p1);
-  // an unevaluated call comes back as it is: converting it would evaluate
-  // it again, without end
-  if (!asFloats || (iscons(result) && car(result) === car(p1))) {
+  // an unevaluated call comes back as it is, also inside the result
+  // (a*defint(...)): converting it would evaluate it again, without end
+  const unevaluated = (p: U): boolean =>
+    iscons(p) && (car(p) === car(p1) || p.tail().some(unevaluated));
+  if (!asFloats || unevaluated(result)) {
     return result;
   }
   return zzfloat(result);
