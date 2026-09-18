@@ -266,7 +266,7 @@ run_test([
 
   // = -1/sin(x)^2
   'd(cot(x),x)',
-  '-1/(cos(x)^2*tan(x)^2)',
+  '-1-cos(x)^2/(sin(x)^2)',
 
   // higher derivatives
   'd(x^3,x,3)',
