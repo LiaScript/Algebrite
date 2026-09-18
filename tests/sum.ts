@@ -200,8 +200,12 @@ run_test([
   'sum(binomial(n,k),k,0,n)',
   'sum(binomial(n,k),k,0,n)',
 
+  // telescopes: 1/k - 1/(k+1), see round2.ts
   'sum(1/(k*(k+1)),k,1,n)',
-  'sum(1/(k*(k+1)),k,1,n)',
+  '1-1/(1+n)',
+
+  'sum(sin(k),k,1,n)',
+  'sum(sin(k),k,1,n)',
 
   // non-integer numeric bounds: the closed form would give 49/8 and 5.625,
   // but k takes the values 1/2, 3/2, 5/2 (and 1.5, 2.5)

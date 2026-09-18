@@ -346,11 +346,11 @@ run_test([
   '[2*x,2*y]',
 
   // special functions
-  'd(besselj(x,n),x)',
-  'besselj(x,-1+n)-n*besselj(x,n)/x',
+  'd(besselj(n,x),x)',
+  'besselj(-1+n,x)-n*besselj(n,x)/x',
 
   'd(Gamma(x),x)',
-  'd(Gamma(x),x)',
+  'Gamma(x)*digamma(x)',
 
   // wrong number of arguments
   'd()',

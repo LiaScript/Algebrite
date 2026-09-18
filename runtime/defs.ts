@@ -161,6 +161,8 @@ export class Num extends BaseAtom {
 
 export class Double extends BaseAtom {
   public k: typeof DOUBLE = DOUBLE;
+  // the digits of float(x, n), printed instead of d (see bigfloat.ts)
+  public bigRepr?: string;
   constructor(public d: number) {
     super();
   }
@@ -398,6 +400,8 @@ export const TRANSPOSE = 'transpose';
 export const UNIT = 'unit';
 export const UNITS = 'units';
 export const ZERO = 'zero';
+export const ZETA = 'zeta';
+export const BERNOULLI = 'bernoulli';
 
 // ALL THE SYMBOLS ABOVE NIL ARE KEYWORDS,
 // WHICH MEANS THAT USER CANNOT REDEFINE THEM
@@ -837,6 +841,20 @@ export function evalPolar<T extends any[], V>(
 }
 
 // Call a function temporarily setting "evaluatingAsFloats" to true
+// runs f with float evaluation off, for code that needs exact coefficients
+export function noFloats<T extends any[], V>(
+  func: (...args: T) => V,
+  ...args: T
+): V {
+  const prev_evaluatingAsFloats = defs.evaluatingAsFloats;
+  defs.evaluatingAsFloats = false;
+  try {
+    return func(...args);
+  } finally {
+    defs.evaluatingAsFloats = prev_evaluatingAsFloats;
+  }
+}
+
 export function evalFloats<T extends any[], V>(
   func: (...args: T) => V,
   ...args: T

@@ -57,7 +57,12 @@ genrule(
 
 genrule(
     name = "copy-to-dist-index-runtime-sources",
-    srcs = ["index.js"],
+    # :tsc as well: with index.js alone the copy is skipped when only
+    # runtime/ or sources/ changed, and dist/ goes stale
+    srcs = [
+        "index.js",
+        ":tsc",
+    ],
     outs = ["copy-to-dist-index-runtime-sources.txt"],
     cmd = "echo 'done' > $(OUTS) ; cd dist ; rm -rf index.js ; rm -rf runtime ; rm -rf sources ; cp bin/index.js index.js ; cp -r bin/runtime . ; cp -r bin/sources .",
     local = 1,  # required
@@ -185,6 +190,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_series_sums",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/series_sums.ts",
+)
+
+nodejs_test(
     name = "test_sum",
     data = [
         ":tsc",
@@ -212,6 +226,24 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_solve_transcendental",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/solve_transcendental.ts",
+)
+
+nodejs_test(
+    name = "test_solve_inequality",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/solve_inequality.ts",
+)
+
+nodejs_test(
     name = "test_solve",
     data = [
         ":tsc",
@@ -236,6 +268,15 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/sin.ts",
+)
+
+nodejs_test(
+    name = "test_simplify_more",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/simplify_more.ts",
 )
 
 nodejs_test(
@@ -281,6 +322,24 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/round.ts",
+)
+
+nodejs_test(
+    name = "test_round2",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/round2.ts",
+)
+
+nodejs_test(
+    name = "test_round3",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/round3.ts",
 )
 
 nodejs_test(
@@ -458,6 +517,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_naming",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/naming.ts",
+)
+
+nodejs_test(
     name = "test_mod",
     data = [
         ":tsc",
@@ -521,6 +589,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_limit_more",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/limit_more.ts",
+)
+
+nodejs_test(
     name = "test_limit",
     data = [
         ":tsc",
@@ -572,6 +649,15 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/inv.ts",
+)
+
+nodejs_test(
+    name = "test_integral_heuristic",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/integral_heuristic.ts",
 )
 
 nodejs_test(
@@ -653,6 +739,24 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/floor.ts",
+)
+
+nodejs_test(
+    name = "test_bigfloat",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/bigfloat.ts",
+)
+
+nodejs_test(
+    name = "test_float_exact",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/float_exact.ts",
 )
 
 nodejs_test(
@@ -1318,6 +1422,15 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/factorial.ts",
+)
+
+nodejs_test(
+    name = "test_special",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/special.ts",
 )
 
 nodejs_test(

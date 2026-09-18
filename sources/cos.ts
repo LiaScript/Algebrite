@@ -18,7 +18,7 @@ import { isnegative, isnpi } from './is';
 import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
-import { integerTimesPi, sine } from './sin';
+import { integerTimesPi, sine, specialSine } from './sin';
 import { requireDimensionless } from './quantity';
 
 /* cos =====================================================================
@@ -143,6 +143,7 @@ function cosine_of_angle(p1: U): U {
     case 180:
       return Constants.negOne;
     default:
-      return makeList(symbol(COS), p1);
+      // cos(n) = sin(90-n)
+      return specialSine((((90 - n) % 360) + 360) % 360) || makeList(symbol(COS), p1);
   }
 }

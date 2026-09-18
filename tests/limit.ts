@@ -81,7 +81,7 @@ run_test([
   'inf',
 
   'limit(1/x,x,0,0)',
-  'Stop: limit: 4th argument must be a positive or negative number',
+  'Stop: limit: 4th argument must be left, right or a positive or negative number',
 
   // poles of tan and log: substitution gives tan(1/2*pi) or log(0), which
   // is detected and resolved by the sign beside the point
@@ -246,9 +246,9 @@ run_test([
   'limit(x/(x+exp(-x)),x,inf)',
   '1',
 
-  // 1^inf, inf^0, 0^0 are indeterminate (not 1): e, 1, e^-1 here
+  // 1^inf, inf^0, 0^0 are indeterminate (not 1): exp(limit(x*log(1+1/x)))
   'limit((1+1/x)^x,x,inf)',
-  "Stop: limit: could not resolve after repeated L'Hopital iterations",
+  'e',
 
   // x^(1/x) = exp(log(x)/x) -> exp(0) = 1, solvable now that x > 0 is known
   // near inf

@@ -312,6 +312,14 @@ function yypower(base: U, exponent: U): U {
     return result;
   }
 
+  // e^(k*log(m)+rest) = m^k*e^rest, valid for every k and m
+  if (base === symbol(E) && Find(exponent, symbol(LOG))) {
+    const result = expOfLogTerms(exponent);
+    if (result !== undefined) {
+      return result;
+    }
+  }
+
   // complex number in exponential form, get it to rectangular
   // but only if we are not in the process of calculating a polar form,
   // otherwise we'd just undo the work we want to do
@@ -715,4 +723,30 @@ function simplify_polar(exponent: U): U | undefined {
   }
 
   return undefined;
+}
+
+// exp(s) where terms of s of the shape k*log(m) (one log factor) turn into
+// the factors m^k; undefined when s has no such term.
+function expOfLogTerms(s: U): U | undefined {
+  const terms = isadd(s) ? s.tail() : [s];
+  let product: U = Constants.one;
+  let rest: U = Constants.zero;
+  let found = false;
+  for (const t of terms) {
+    const factors = ismultiply(t) ? t.tail() : [t];
+    const logs = factors.filter((f) => car(f) === symbol(LOG));
+    if (logs.length !== 1) {
+      rest = add(rest, t);
+      continue;
+    }
+    found = true;
+    const k = factors
+      .filter((f) => f !== logs[0])
+      .reduce((acc: U, f: U) => multiply(acc, f), Constants.one);
+    product = multiply(product, power(cadr(logs[0]), k));
+  }
+  if (!found) {
+    return undefined;
+  }
+  return multiply(product, power(symbol(E), rest));
 }

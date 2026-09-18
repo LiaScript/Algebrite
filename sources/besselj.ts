@@ -64,7 +64,8 @@ Examples:
 */
 export function Eval_besselj(p1: U) {
   checkArgCount(p1, 2);
-  return besselj(Eval(cadr(p1)), Eval(caddr(p1)));
+  // besselj(n, x): order first, then the argument
+  return besselj(Eval(caddr(p1)), Eval(cadr(p1)));
 }
 
 export function besselj(p1: U, p2: U): U {
@@ -124,16 +125,16 @@ function yybesselj(X: U, N: U): U {
   if (isnegativeterm(X)) {
     return multiply(
       multiply(power(negate(X), N), power(X, negate(N))),
-      makeList(symbol(BESSELJ), negate(X), N)
+      makeList(symbol(BESSELJ), N, negate(X))
     );
   }
 
   if (isnegativeterm(N)) {
     return multiply(
       power(Constants.negOne, N),
-      makeList(symbol(BESSELJ), X, negate(N))
+      makeList(symbol(BESSELJ), negate(N), X)
     );
   }
 
-  return makeList(symbol(BESSELJ), X, N);
+  return makeList(symbol(BESSELJ), N, X);
 }

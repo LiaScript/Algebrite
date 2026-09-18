@@ -57,12 +57,13 @@ run_test([
   'product(k,k,4,3)',
   '1',
 
-  // symbolic or non-integer bounds stay unevaluated
+  // symbolic bounds have closed forms (see series_sums.ts), non-integer
+  // numeric bounds stay unevaluated
   'product(k,k,1,n)',
-  'product(k,k,1,n)',
+  'n!',
 
   'product(x,k,1,n)',
-  'product(x,k,1,n)',
+  'x^n',
 
   'product(k,k,1/2,3)',
   'product(k,k,1/2,3)',

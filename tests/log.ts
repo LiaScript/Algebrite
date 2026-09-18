@@ -132,8 +132,9 @@ run_test([
   'log(2.0*i)',
   '0.693147...+1.570796...*i',
 
+  // exp(log(z)) = z exactly, then converted
   'float(exp(log(-1-i)))',
-  '-1.0-1.000000...*i',
+  '-1.0-i',
 
   'log(4,2)',
   '2',

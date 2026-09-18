@@ -16,6 +16,7 @@ import {
   FUNCTION,
   INTEGRAL,
   isadd,
+  isdouble,
   iscons,
   issymbol,
   isinnerordot,
@@ -70,10 +71,17 @@ import { polar } from './polar';
 import { power } from './power';
 import { rationalize } from './rationalize';
 import { real } from './real';
+import { coeff } from './coeff';
+import { imag } from './imag';
 import { rect } from './rect';
 import { roots } from './roots';
 import { subst } from './subst';
 import { simfac } from './simfac';
+import {
+  simplify_hyperbolic,
+  simplify_logs,
+  simplify_quotients
+} from './simplify_rewrites';
 import { check_tensor_dimensions } from './tensor';
 import { transform } from './transform';
 import { trigexpand } from './trigexpand';
@@ -252,6 +260,9 @@ export function simplify(p1: U): U {
   p1 = simplify_rectToClock(p1);
   p1 = simplify_rational_expressions(p1);
   p1 = rationalize_sqrt_denominator(p1);
+  p1 = simplify_logs(p1);
+  p1 = simplify_hyperbolic(p1);
+  p1 = simplify_quotients(p1);
 
   return p1;
 }
@@ -614,6 +625,65 @@ function take_care_of_nested_radicals(p1: U): [U, boolean] {
   return [p1, false];
 }
 
+// Whether a numeric root of the polynomial in SECRETX has real and
+// imaginary parts that are rational with a small denominator. True when the
+// numeric roots cannot be had, so that nothing is skipped by mistake.
+function hasRationalLookingRoot(poly: U): boolean {
+  // p/q with q <= 100, to 11 digits: a looser test passes by chance
+  const nearRational = (x: number): boolean => {
+    for (let q = 1; q <= 100; q++) {
+      if (Math.abs(x * q - Math.round(x * q)) < 1e-11 * q * Math.max(1, Math.abs(x))) {
+        return true;
+      }
+    }
+    return false;
+  };
+  try {
+    // Durand-Kerner on the complex coefficients: nroots does not converge
+    // for coefficients as large as these get
+    const k = coeff(poly, symbol(SECRETX)).map((c): [number, number] => {
+      const re = yyfloat(real(c));
+      const im = yyfloat(imag(c));
+      if (!isdouble(re) || !isdouble(im)) {
+        throw new Error('symbolic coefficient');
+      }
+      return [re.d, im.d];
+    });
+    const n = k.length - 1;
+    const mul = (x: number[], y: number[]) => [x[0] * y[0] - x[1] * y[1], x[0] * y[1] + x[1] * y[0]];
+    const div = (x: number[], y: number[]) => {
+      const m = y[0] * y[0] + y[1] * y[1];
+      return [(x[0] * y[0] + x[1] * y[1]) / m, (x[1] * y[0] - x[0] * y[1]) / m];
+    };
+    const monic = k.map((c) => div(c, k[n]));
+    const bound = 1 + Math.max(...monic.slice(0, n).map((c) => Math.hypot(c[0], c[1])));
+    let z = monic.slice(0, n).map((_, i) => {
+      const angle = (2 * Math.PI * i) / n + 0.4;
+      return [bound * Math.cos(angle), bound * Math.sin(angle)];
+    });
+    for (let iter = 0; iter < 500; iter++) {
+      z = z.map((zi, i) => {
+        let value = [1, 0];
+        for (let j = n - 1; j >= 0; j--) {
+          value = mul(value, zi);
+          value = [value[0] + monic[j][0], value[1] + monic[j][1]];
+        }
+        let denom = [1, 0];
+        z.forEach((zj, j) => {
+          if (j !== i) {
+            denom = mul(denom, [zi[0] - zj[0], zi[1] - zj[1]]);
+          }
+        });
+        const step = div(value, denom);
+        return [zi[0] - step[0], zi[1] - step[1]];
+      });
+    }
+    return z.some((zi) => nearRational(zi[0]) && nearRational(zi[1]));
+  } catch (e) {
+    return true;
+  }
+}
+
 function _nestedPowerSymbol(p1: U): [U, boolean] {
     //console.log("ok it's a power ")
     const base = cadr(p1);
@@ -704,6 +774,13 @@ function _nestedPowerSymbol(p1: U): [U, boolean] {
             )
         );
       }
+
+  // Only a root without radicals is of use below. Solving temp exactly is
+  // expensive (Cardano plus simplify), so a numeric look comes first: no
+  // root close to a rational number, no denesting.
+  if (!hasRationalLookingRoot(temp)) {
+    return [p1, false];
+  }
 
       defs.recursionLevelNestedRadicalsRemoval++;
   const r = roots(temp, symbol(SECRETX));

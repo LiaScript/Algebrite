@@ -315,7 +315,7 @@ run_test([
   'sgn(z)',
 
   'z>0',
-  'testgt(z,0)',
+  'z>0',
 
   'arg(z)',
   'arg(z)',

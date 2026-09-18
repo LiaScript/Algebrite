@@ -34,7 +34,8 @@ Bessel function of second kind.
 */
 export function Eval_bessely(p1: U) {
   checkArgCount(p1, 2);
-  return bessely(Eval(cadr(p1)), Eval(caddr(p1)));
+  // bessely(n, x): order first, then the argument
+  return bessely(Eval(caddr(p1)), Eval(cadr(p1)));
 }
 
 export function bessely(p1: U, p2: U): U {
@@ -52,9 +53,9 @@ function yybessely(X: U, N: U): U {
   if (isnegativeterm(N)) {
     return multiply(
       power(Constants.negOne, N),
-      makeList(symbol(BESSELY), X, negate(N))
+      makeList(symbol(BESSELY), negate(N), X)
     );
   }
 
-  return makeList(symbol(BESSELY), X, N);
+  return makeList(symbol(BESSELY), N, X);
 }

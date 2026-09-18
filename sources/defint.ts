@@ -23,11 +23,13 @@ import { subtract } from './add';
 import { isNonzero, isPositive } from './assume';
 import { derivative } from './derivative';
 import { Eval } from './eval';
-import { zzfloat } from './float';
+import { evalExactly, zzfloat } from './float';
 import { imag } from './imag';
 import { integral } from './integral';
 import { ispolyfactoredorexpandedform } from './is';
 import { limit } from './limit';
+import { double } from './bignum';
+import { absval } from './abs';
 import { makeList } from './list';
 import { equal, length } from './misc';
 import { divide, negate } from './multiply';
@@ -55,6 +57,10 @@ example, defint(f,x,a,b,y,c,d).
 
 */
 export function Eval_defint(p1: U) {
+  return evalExactly(evalDefint, p1);
+}
+
+function evalDefint(p1: U) {
   const n = length(p1) - 1;
   if (n < 4 || (n - 1) % 3 !== 0) {
     stop(`defint: expected f,x,a,b[,y,c,d...], got ${n} arguments`);
@@ -143,8 +149,39 @@ function checkNoInteriorPole(f: U, X: U, a: U, b: U) {
     (lo === -Infinity || isPositive(subtract(r, loU)) === true) &&
     (hi === Infinity || isPositive(subtract(hiU, r)) === true);
   const pole = poleIn(f, X, inside);
-  if (pole !== undefined && poleIn(simplify(f), X, inside) !== undefined) {
+  if (
+    pole !== undefined &&
+    poleIn(simplify(f), X, inside) !== undefined &&
+    !isRemovable(f, X, lastZero)
+  ) {
     stop(`defint: the integrand has a pole at ${X} = ${pole} inside the interval`);
+  }
+}
+
+// the unrounded position of the zero that zerosIn reported last, NaN for a
+// symbolic one
+let lastZero = NaN;
+
+// sin(x)/x at 0: the denominator vanishes but f stays bounded. Near a pole
+// abs(f) grows about tenfold when the distance shrinks tenfold, at a
+// removable singularity it does not.
+function isRemovable(f: U, X: U, r: number): boolean {
+  if (Number.isNaN(r)) {
+    return false;
+  }
+  const at = (x: number) => {
+    const v = zzfloat(absval(Eval(subst(f, X, double(x)))));
+    return isdouble(v) ? v.d : NaN;
+  };
+  const eps = 1e-4 * Math.max(1, Math.abs(r));
+  try {
+    return [-1, 1].every((side) => {
+      const far = at(r + side * eps);
+      const near = at(r + (side * eps) / 100);
+      return Number.isFinite(far) && Number.isFinite(near) && near < 2 * far + 1e-9;
+    });
+  } catch (e) {
+    return false;
   }
 }
 
@@ -195,6 +232,7 @@ function zerosIn(g: U, X: U, inside: Inside): string | undefined {
     for (let k = -1000; k <= 1000; k++) {
       const r = (offset + k * Math.PI - beta.d) / alpha.d;
       if (inside(r)) {
+        lastZero = r;
         return `${Number(r.toPrecision(6))}`;
       }
     }
@@ -218,6 +256,7 @@ function zerosIn(g: U, X: U, inside: Inside): string | undefined {
       Math.abs(im.d) < 1e-4 * Math.max(1, Math.abs(re.d)) &&
       inside(re.d)
     ) {
+      lastZero = re.d;
       return `${Number(re.d.toPrecision(6))}`;
     }
   }
@@ -231,5 +270,6 @@ function symbolicLinearZeroIn(g: U, X: U, inside: Inside): string | undefined {
     return undefined;
   }
   const r = negate(divide(subst(g, X, Constants.zero), alpha));
+  lastZero = NaN;
   return inside.symbolic?.(r) ? `${r}` : undefined;
 }

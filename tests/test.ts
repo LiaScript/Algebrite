@@ -80,7 +80,7 @@ run_test([
   'C',
 
   'test(x<3,-x-4,3<=x,x*x+7,120/x+5)',
-  'test(testlt(x,3),-x-4,testle(3,x),x^2+7,120/x+5)',
+  'test(x<3,-x-4,3<=x,x^2+7,120/x+5)',
 
   'x = -1',
   '',
@@ -581,7 +581,7 @@ run_test([
   '1',
 
   '[1,2]==[a,2]',
-  'testeq([1,2],[a,2])',
+  '[1,2]==[a,2]',
 
   '[1,2]==[3,4]',
   '0',
@@ -608,22 +608,22 @@ run_test([
   '1',
 
   'x + x > x',
-  'testgt(2*x,x)',
+  '2*x>x',
 
   'a > x',
-  'testgt(a,x)',
+  'a>x',
 
   'a >= x',
-  'testge(a,x)',
+  'a>=x',
 
   'a == x',
-  'testeq(a,x)',
+  'a==x',
 
   'a < x',
-  'testlt(a,x)',
+  'a<x',
 
   'a <= x',
-  'testle(a,x)',
+  'a<=x',
 
   // clean up -----------------
 

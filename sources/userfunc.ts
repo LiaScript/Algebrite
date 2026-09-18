@@ -16,6 +16,7 @@ import {
 import { stop } from '../runtime/run';
 import { get_binding, symbol } from '../runtime/symbol';
 import { Eval_derivative } from './derivative';
+import { softBuiltin } from './soft_builtins';
 import { Eval, evalList } from './eval';
 import { makeList } from './list';
 import { check_tensor_dimensions, copy_tensor } from './tensor';
@@ -60,6 +61,16 @@ export function Eval_user_function(p1: U): U {
     get_binding(symbol(SYMBOL_D)) === symbol(SYMBOL_D)
   ) {
     return Eval_derivative(p1);
+  }
+
+  // soft builtins (gamma, zeta, laplacian, map, ...) apply unless the user
+  // bound the name to something of their own, see soft_builtins.ts
+  const fn = car(p1);
+  if (issymbol(fn) && get_binding(fn) === fn) {
+    const soft = softBuiltin(fn.printname);
+    if (soft) {
+      return soft(p1);
+    }
   }
 
   // normally car(p1) is a symbol with the function name

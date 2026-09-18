@@ -8,6 +8,7 @@ import {
   car,
   CEILING,
   Constants,
+  COS,
   E,
   ERF,
   ERFC,
@@ -18,10 +19,14 @@ import {
   isdouble,
   ismultiply,
   isNumericAtom,
+  ispower,
+  isrational,
+  issymbol,
   LOG,
   NIL,
   POWER,
   SGN,
+  SIN,
   SINH,
   TAN,
   TANH,
@@ -31,16 +36,25 @@ import {
 import { Find } from '../runtime/find';
 import { facts, isReal, withSign } from './assume';
 import { stop } from '../runtime/run';
-import { symbol } from '../runtime/symbol';
-import { double, integer } from './bignum';
+import { symbol, usr_symbol } from '../runtime/symbol';
+import { double, integer, rational } from './bignum';
 import { cosine } from './cos';
 import { Eval } from './eval';
 import { derivative } from './derivative';
 import { denominator } from './denominator';
 import { zzfloat } from './float';
-import { isnegativenumber, isplusone, isZeroAtomOrTensor } from './is';
+import {
+  isinteger,
+  isnegativenumber,
+  isplusone,
+  isposint,
+  isZeroAtomOrTensor
+} from './is';
+import { add } from './add';
+import { logarithm } from './log';
+import { power } from './power';
 import { makeList } from './list';
-import { checkArgCount, equal } from './misc';
+import { checkArgCount, equal, exponential, yyexpand } from './misc';
 import { divide, multiply, multiply_all, negate } from './multiply';
 import { numerator } from './numerator';
 import { rationalize } from './rationalize';
@@ -92,10 +106,16 @@ export function Eval_limit(p1: U) {
   // optional 4th arg: a positive number for the limit from the right,
   // a negative one for the limit from the left
   let sides = [-1, 1];
-  if (caddddr(p1) !== symbol(NIL)) {
-    const direction = Eval(caddddr(p1));
+  const side = caddddr(p1);
+  const sideName = issymbol(side) ? side.printname : '';
+  if (sideName === 'left' || sideName === 'right') {
+    sides = [sideName === 'left' ? -1 : 1];
+  } else if (side !== symbol(NIL)) {
+    const direction = Eval(side);
     if (!isNumericAtom(direction) || isZeroAtomOrTensor(direction)) {
-      stop('limit: 4th argument must be a positive or negative number');
+      stop(
+        'limit: 4th argument must be left, right or a positive or negative number'
+      );
     }
     sides = [isnegativenumber(direction) ? -1 : 1];
   }
@@ -106,6 +126,110 @@ const VANISHING_DENOMINATOR =
   'limit: denominator vanishes while numerator does not — limit is infinite or does not exist';
 
 export function limit(F: U, X: U, A: U, sides: number[] = [-1, 1]): U {
+  const viaExp = powerLimit(F, X, A, sides);
+  if (viaExp !== undefined) {
+    return viaExp;
+  }
+  try {
+    return limitCore(F, X, A, sides);
+  } catch (e) {
+    const r =
+      squeeze(F, X, A, sides) ||
+      termwise(F, X, A, sides) ||
+      factorwise(F, X, A, sides) ||
+      compose(F, X, A, sides);
+    if (r === undefined) {
+      throw e;
+    }
+    return r;
+  }
+}
+
+// f^g with X in base and exponent (1^inf, inf^0, 0^0): exp(limit(g*log(f)))
+function powerLimit(F: U, X: U, A: U, sides: number[]): U | undefined {
+  if (!ispower(F) || !Find(cadr(F), X) || !Find(caddr(F), X)) {
+    return undefined;
+  }
+  try {
+    const L = limit(multiply(caddr(F), logarithm(cadr(F))), X, A, sides);
+    if (L === symbol(INF)) {
+      return L;
+    }
+    return isInfinite(L) ? Constants.zero : exponential(L);
+  } catch (e) {
+    return undefined;
+  }
+}
+
+// a bounded factor (sin, cos or a positive power of one) times a rest that
+// goes to 0: sin(x)/x at inf, x*sin(1/x) at 0
+function squeeze(F: U, X: U, A: U, sides: number[]): U | undefined {
+  const factors = ismultiply(F) ? F.tail() : [F];
+  const isBounded = (f: U): boolean =>
+    (car(f) === symbol(SIN) || car(f) === symbol(COS)) ||
+    (ispower(f) && isposint(caddr(f)) && isBounded(cadr(f)));
+  const bounded = factors.filter((f) => Find(f, X) && isBounded(f));
+  if (bounded.length === 0 || bounded.length === factors.length) {
+    return undefined;
+  }
+  try {
+    const rest = multiply_all(factors.filter((f) => !bounded.includes(f)));
+    return isZeroAtomOrTensor(limit(rest, X, A, sides)) ? Constants.zero : undefined;
+  } catch (e) {
+    return undefined;
+  }
+}
+
+// the sum of the limits of the expanded terms, when each one exists
+function termwise(F: U, X: U, A: U, sides: number[]): U | undefined {
+  const expanded = yyexpand(F);
+  if (!isadd(expanded)) {
+    return undefined;
+  }
+  try {
+    const parts = expanded.tail().map((t) => limit(t, X, A, sides));
+    const infinite = parts.filter(isInfinite);
+    if (infinite.some((p) => !equal(p, infinite[0]))) {
+      return undefined; // inf - inf
+    }
+    return infinite.length > 0 ? infinite[0] : parts.reduce(add, Constants.zero);
+  } catch (e) {
+    return undefined;
+  }
+}
+
+// the product of the limits of the factors, when all are finite
+function factorwise(F: U, X: U, A: U, sides: number[]): U | undefined {
+  if (!ismultiply(F)) {
+    return undefined;
+  }
+  try {
+    const parts = F.tail().map((f) => (Find(f, X) ? limit(f, X, A, sides) : f));
+    return parts.some((p) => Find(p, symbol(INF))) ? undefined : multiply_all(parts);
+  } catch (e) {
+    return undefined;
+  }
+}
+
+// f(g(x)) for a function f of one argument: f at the limit of g, itself
+// taken as a limit so that log(0), arctan(inf) and the like are resolved
+function compose(F: U, X: U, A: U, sides: number[]): U | undefined {
+  if (!iscons(F) || F.tail().length !== 1 || !issymbol(car(F)) || !Find(cadr(F), X)) {
+    return undefined;
+  }
+  try {
+    const inner = limit(cadr(F), X, A, sides);
+    if (Find(inner, X) || equal(inner, cadr(F))) {
+      return undefined;
+    }
+    const y = usr_symbol('limit_y');
+    return limitCore(makeList(car(F), y), y, inner, [-1, 1]);
+  } catch (e) {
+    return undefined;
+  }
+}
+
+function limitCore(F: U, X: U, A: U, sides: number[]): U {
   if (A === symbol(INF)) {
     return limitAtInfinity(F, X, Constants.one);
   }
@@ -132,11 +256,24 @@ function limitAtInfinity(F: U, X: U, sign: U): U {
       return lhopital;
     }
     return withSign(X, 'positive', () => {
-      const at = (p: U) => rationalize(Eval(subst(p, X, divide(sign, X))));
+      const at = (p: U) =>
+        rationalize(splitRadicals(Eval(subst(p, X, divide(sign, X))), X));
       const G = divide(at(numerator(F)), at(denominator(F)));
       return limitAt(G, X, Constants.zero, [1]);
     });
   });
+}
+
+// (N/t^2)^(1/2) = N^(1/2)/t for t > 0: the radicand is put over one
+// denominator, then the power splits over its positive factors
+function splitRadicals(p: U, X: U): U {
+  if (!iscons(p) || !Find(p, X)) {
+    return p;
+  }
+  if (ispower(p) && isrational(caddr(p)) && !isinteger(caddr(p))) {
+    return power(rationalize(splitRadicals(cadr(p), X)), caddr(p));
+  }
+  return Eval(makeList(car(p), ...p.tail().map((q) => splitRadicals(q, X))));
 }
 
 const isInfinite = (p: U) =>
@@ -238,6 +375,22 @@ function resolveInf(p: U): U {
         if (arg === inf) {
           return inf;
         }
+    }
+    // Si(+-inf) = +-pi/2, the Fresnel integrals +-1/2, Ci(inf) = 0,
+    // Ei(inf) = inf, Ei(-inf) = 0
+    switch (issymbol(head) ? head.printname : '') {
+      case 'Si':
+        return multiply(s, divide(Constants.Pi(), integer(2)));
+      case 'fresnels':
+      case 'fresnelc':
+        return multiply(s, rational(1, 2));
+      case 'Ci':
+        if (arg === inf) {
+          return Constants.zero;
+        }
+        break;
+      case 'Ei':
+        return arg === inf ? inf : Constants.zero;
     }
   }
   return signedInf(Eval(makeList(head, ...args)));
@@ -412,8 +565,9 @@ function limitAt(F: U, X: U, A: U, sides: number[]): U {
       return infiniteLimit(F, X, A, sides);
     }
 
-    N = derivative(N, X);
-    D = derivative(D, X);
+    const G = divide(derivative(N, X), derivative(D, X));
+    N = numerator(G);
+    D = denominator(G);
   }
 
   stop("limit: could not resolve after repeated L'Hopital iterations");

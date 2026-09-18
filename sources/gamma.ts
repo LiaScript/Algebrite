@@ -106,7 +106,7 @@ const LANCZOS = [
   -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7,
 ];
 
-function lanczos(x: number): number {
+export function lanczos(x: number): number {
   if (Number.isInteger(x) && x > 0 && x < 172) {
     let f = 1;
     for (let i = 2; i < x; i++) {

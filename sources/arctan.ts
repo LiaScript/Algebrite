@@ -21,7 +21,8 @@ import { double, integer, rational } from './bignum';
 import { denominator } from './denominator';
 import { Eval } from './eval';
 import { equaln, equalq, isnegative, isZeroAtomOrTensor, realconstant } from './is';
-import { subtract } from './add';
+import { add, subtract } from './add';
+import { power } from './power';
 import { makeList } from './list';
 import { multiply, negate } from './multiply';
 import { numerator } from './numerator';
@@ -97,6 +98,20 @@ export function arctan(x: U): U {
   // arctan(sqrt(3)) -> pi/3
   if (ispower(x) && equaln(cadr(x), 3) && equalq(caddr(x), 1, 2)) {
     return multiply(rational(1, 3), Constants.Pi());
+  }
+
+  // arctan(2-sqrt(3)) -> pi/12, arctan(2+sqrt(3)) -> 5*pi/12
+  const sqrt3 = power(integer(3), rational(1, 2));
+  for (const [value, twelfths] of [
+    [subtract(integer(2), sqrt3), 1],
+    [add(integer(2), sqrt3), 5]
+  ] as [U, number][]) {
+    if (equal(x, value)) {
+      return multiply(rational(twelfths, 12), Constants.Pi());
+    }
+    if (equal(x, negate(value))) {
+      return multiply(rational(-twelfths, 12), Constants.Pi());
+    }
   }
 
   return makeList(symbol(ARCTAN), x);

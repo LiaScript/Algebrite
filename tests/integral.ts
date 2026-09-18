@@ -199,15 +199,15 @@ run_test([
   '0',
 
   //124
-  'integral(sqrt(A+B*X),X)-2/3/B*sqrt((A+B*X)^3)',
+  'integral(sqrt(A+B*X),X)-2/3/B*(A+B*X)^(3/2)',
   '0',
 
   //125
-  'integral(X*sqrt(A+B*X),X)+2*(2*A-3*B*X)*sqrt((A+B*X)^3)/15*B^(-2)',
+  'integral(X*sqrt(A+B*X),X)+2*(2*A-3*B*X)*(A+B*X)^(3/2)/15*B^(-2)',
   '0',
 
   //126
-  'integral(X^2*sqrt(A+B*X),X)-2*(8*A^2-12*A*B*X+15*B^2*X^2)*sqrt((A+B*X)^3)/105*B^(-3)',
+  'integral(X^2*sqrt(A+B*X),X)-2*(8*A^2-12*A*B*X+15*B^2*X^2)*(A+B*X)^(3/2)/105*B^(-3)',
   '0',
 
   //128
@@ -271,7 +271,7 @@ run_test([
   '0',
 
   //163
-  'integral(X*sqrt(X^2+A),X)-1/3*sqrt((X^2+A)^3)',
+  'integral(X*sqrt(X^2+A),X)-1/3*(X^2+A)^(3/2)',
   '0',
 
   //164 fails after Jan 2017 changes to abs/mag
@@ -294,15 +294,15 @@ run_test([
   //"0",
 
   //168
-  'integral(X^2*sqrt(X^2+A),X)-1/4*X*sqrt((X^2+A)^3)+1/8*A*X*sqrt(X^2+A)+1/8*A^2*log(X+sqrt(X^2+A))',
+  'integral(X^2*sqrt(X^2+A),X)-1/4*X*(X^2+A)^(3/2)+1/8*A*X*sqrt(X^2+A)+1/8*A^2*log(X+sqrt(X^2+A))',
   '0',
 
   //169
-  'integral(X^3*sqrt(X^2+7),X)-(1/5*X^2-2/15*7)*sqrt((X^2+7)^3)',
+  'integral(X^3*sqrt(X^2+7),X)-(1/5*X^2-2/15*7)*(X^2+7)^(3/2)',
   '0',
 
   //170
-  'integral(X^3*sqrt(X^2-7),X)-(sqrt((X^2-7)^5)/5+7*sqrt((X^2-7)^3)/3)',
+  'simplify(integral(X^3*sqrt(X^2-7),X)-((X^2-7)^(5/2)/5+7*(X^2-7)^(3/2)/3))',
   '0',
 
   //171
@@ -310,7 +310,7 @@ run_test([
   '0',
 
   //172
-  'integral(X^3/sqrt(X^2+A),X)-1/3*sqrt((X^2+A)^3)+A*sqrt(X^2+A)',
+  'simplify(integral(X^3/sqrt(X^2+A),X)-1/3*(X^2+A)^(3/2)+A*sqrt(X^2+A))',
   '0',
 
   //173
@@ -327,30 +327,30 @@ run_test([
 
   //176+
   `integral(X^2*sqrt((X^2+2^2)^3),X)\
--1/6*X*sqrt((X^2+2^2)^5)\
-+1/24*(2^2)*X*sqrt((X^2+2^2)^3)\
+-1/6*X*(X^2+2^2)^(5/2)\
++1/24*(2^2)*X*(X^2+2^2)^(3/2)\
 +1/16*(2^4)X*sqrt(X^2+2^2)\
 +1/16*(2^6)*log(abs(X+sqrt(X^2+2^2)))`,
   '0',
 
   //176-
   `integral(X^2*sqrt((X^2-2^2)^3),X)\
--1/6*X*sqrt((X^2-2^2)^5)\
--1/24*(2^2)*X*sqrt((X^2-2^2)^3)\
+-1/6*X*(X^2-2^2)^(5/2)\
+-1/24*(2^2)*X*(X^2-2^2)^(3/2)\
 +1/16*(2^4)X*sqrt(X^2-2^2)\
 -1/16*(2^6)*log(X+sqrt(X^2-2^2))`,
   '0',
 
   //177+
-  `integral(X^3*sqrt((X^2+7^2)^3),X)\
--1/7*sqrt((X^2+7^2)^7)\
-+1/5*(7^2)*sqrt((X^2+7^2)^5)`,
+  `simplify(integral(X^3*sqrt((X^2+7^2)^3),X)\
+-1/7*(X^2+7^2)^(7/2)\
++1/5*(7^2)*(X^2+7^2)^(5/2))`,
   '0',
 
   //177-
-  `integral(X^3*sqrt((X^2-7^2)^3),X)\
--1/7*sqrt((X^2-7^2)^7)\
--1/5*(7^2)*sqrt((X^2-7^2)^5)`,
+  `simplify(integral(X^3*sqrt((X^2-7^2)^3),X)\
+-1/7*(X^2-7^2)^(7/2)\
+-1/5*(7^2)*(X^2-7^2)^(5/2))`,
   '0',
 
   //196
@@ -389,18 +389,18 @@ run_test([
 
   //205
   `integral(X*sqrt(A-X^2),X)\
-+1/3*sqrt((A-X^2)^3)`,
++1/3*(A-X^2)^(3/2)`,
   '0',
 
   //210
   `integral(X^2*sqrt(7-X^2),X)\
-+1/4*X*sqrt((7-X^2)^3)\
++1/4*X*(7-X^2)^(3/2)\
 -7/8*(X*sqrt(7-X^2)+7*arcsin(X/sqrt(7)))`,
   '0',
 
   //211
   `integral(X^3*sqrt(7-X^2),X)\
--(-1/5*X^2-2/15*7)*sqrt((7-X^2)^3)`,
+-(-1/5*X^2-2/15*7)*(7-X^2)^(3/2)`,
   '0',
 
   //214
@@ -428,7 +428,7 @@ run_test([
 
   //218
   `integral(sqrt(7-X^2)/X^4,X)\
-+1/3*sqrt((7-X^2)^3)/7/X^3`,
++1/3*(7-X^2)^(3/2)/7/X^3`,
   '0',
 
   //273
@@ -860,26 +860,30 @@ run_test([
 
   // (1+x)^(3/2)*(2/5*x-4/15)
   'integral(x*sqrt(1+x),x)',
-  '-4/15*(x^3+3*x^2+3*x+1)^(1/2)+2/5*x*(x^3+3*x^2+3*x+1)^(1/2)',
+  // d/dx: (x+1)^(1/2)*(-2/5+3/5*x+2/5*x+2/5) = x*(x+1)^(1/2)
+  '-4/15*(x+1)^(3/2)+2/5*x*(x+1)^(3/2)',
 
   // sqrt(pi)/2*erfi(x)
   'integral(exp(x^2),x)',
   '-1/2*i*pi^(1/2)*erf(i*x)',
 
-  // no elementary antiderivative: stop rather than return garbage
+  // no elementary antiderivative: the special function that is defined by
+  // the integral (Ei' = exp(x)/x, Si' = sin(x)/x, see special.ts)
   'integral(exp(x)/x,x)',
-  'Stop: integral: sorry, could not find a solution',
+  'Ei(x)',
 
   'integral(sin(x)/x,x)',
-  'Stop: integral: sorry, could not find a solution',
+  'Si(x)',
 
+  // d/dx: sin(pi/2*(2/pi)*x^2) = sin(x^2)
   'integral(sin(x^2),x)',
-  'Stop: integral: sorry, could not find a solution',
-
-  'integral(x^x,x)',
-  'Stop: integral: sorry, could not find a solution',
+  'pi^(1/2)*fresnels(2^(1/2)*x/(pi^(1/2)))/(2^(1/2))',
 
   'integral(1/log(x),x)',
+  'Ei(log(x))',
+
+  // nothing to fall back on: stop rather than return garbage
+  'integral(x^x,x)',
   'Stop: integral: sorry, could not find a solution',
 
   'integral(sqrt(1+x^3),x)',
@@ -889,8 +893,12 @@ run_test([
   'integral(f(x),x)',
   'Stop: integral: sorry, could not find a solution',
 
-  'integral(abs(x),x)',
+  'integral(floor(x),x)',
   'Stop: integral: sorry, could not find a solution',
+
+  // d/dx x*abs(x)/2 = abs(x)/2 + x*sgn(x)/2 = abs(x)
+  'integral(abs(x),x)',
+  '1/2*x*abs(x)',
 
   // wrong number of arguments
   'integral()',

@@ -22,6 +22,7 @@ import { cosine } from './cos';
 import { Eval } from './eval';
 import { isnegative, isnpi } from './is';
 import { makeList } from './list';
+import { equal } from './misc';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { requireDimensionless } from './quantity';
@@ -148,6 +149,42 @@ function sine_of_angle(p1: U): U {
     case 270:
       return Constants.negOne;
     default:
-      return makeList(symbol(SIN), p1);
+      return specialSine(n % 360) || makeList(symbol(SIN), p1);
   }
+}
+
+// sin of n degrees, 0 <= n < 360, for the odd multiples of 15:
+// sin(15) = (6^(1/2)-2^(1/2))/4, sin(75) = (6^(1/2)+2^(1/2))/4 and their
+// mirror images. cos uses it through cos(n) = sin(90-n).
+// ponytail: multiples of 18 degrees (pi/10) are left alone on purpose, their
+// nested radicals make roots of unity and arg() results unreadable.
+export function specialSine(n: number): U | undefined {
+  if (n > 180) {
+    const s = specialSine(n - 180);
+    return s && negate(s);
+  }
+  if (n > 90) {
+    return specialSine(180 - n);
+  }
+  const sqrt = (k: number) => power(integer(k), rational(1, 2));
+  if (n === 15) {
+    return multiply(rational(1, 4), subtract(sqrt(6), sqrt(2)));
+  }
+  if (n === 75) {
+    return multiply(rational(1, 4), add(sqrt(6), sqrt(2)));
+  }
+  return undefined;
+}
+
+// the angle in degrees within [-90, 90] whose sine is the special value x
+export function specialSineAngle(x: U): number | undefined {
+  for (const n of [15, 75]) {
+    if (equal(x, specialSine(n))) {
+      return n;
+    }
+    if (equal(x, negate(specialSine(n)))) {
+      return -n;
+    }
+  }
+  return undefined;
 }

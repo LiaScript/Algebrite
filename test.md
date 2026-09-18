@@ -680,12 +680,12 @@ trigsimp(sin(2*x)/sin(x))             # 2 cos(x)
 | Function | Description |
 |---|---|
 | `derivative(f, x [,n])` | `n`-th derivative of `f` with respect to `x` (default `n=1`) |
-| `integral(f, x)` | Indefinite integral of `f` with respect to `x` |
+| `integral(f, x)` | Indefinite integral of `f` with respect to `x`, see section 3.5 |
 | `defint(f, x, a, b)` | Definite integral of `f` over `x` from `a` to `b` |
 | `limit(f, x, a [,dir])` | Limit of `f` as `x` approaches `a`, see section 3.1 |
-| `taylor(f, x, n, a)` | Taylor series of `f` around `x=a`, up to degree `n` |
+| `taylor(f, x, n, a)` | Taylor series of `f` around `x=a`, up to degree `n`; a Laurent series at a pole |
 | `sum(f, i, a, b)` | Sum of `f` over `i` from `a` to `b`, see section 3.2 |
-| `product(f, i, a, b)` | Product of `f` over `i` from `a` to `b` |
+| `product(f, i, a, b)` | Product of `f` over `i` from `a` to `b`, see section 3.2 |
 | `laplace(f, t, s)` | Laplace transform, see section 3.3 |
 | `invlaplace(F, s, t)` | Inverse Laplace transform, see section 3.3 |
 | `dsolve(ode, y(x) [,ics])` | Solves an ordinary differential equation, see section 3.4 |
@@ -711,14 +711,30 @@ product(i,i,1,5)             # 1 * 2 * ... * 5
 
 | Function | Description |
 |---|---|
-| `inf` | Symbolic infinity, shown as $\infty$ |
+| `inf`, `infinity` | Symbolic infinity, shown as $\infty$ |
 | `limit(f, x, a)` | Two-sided limit, the result may be `inf` or `-inf` |
 | `limit(f, x, inf)` | Limit at infinity, likewise at `-inf` |
-| `limit(f, x, a, 1)` | Limit from the right, `-1` for the limit from the left |
+| `limit(f, x, a, right)` | Limit from the right, `left` for the limit from the left; `1` and `-1` work as well |
 
 Limits can be infinite, can be taken at infinity, and can be one-sided.
 Functions with jumps, such as `abs`, `sgn` and `floor`, are handled on each side
 separately.
+Powers with the variable in base and exponent, roots at infinity and bounded
+factors such as `sin(x)` are resolved too:
+
+```Maxima
+limit((1+1/n)^n,n,inf)          # the definition of e
+
+limit((1+x)^(1/x),x,0)          # the same limit at 0
+
+limit(sqrt(x^2+x)-x,x,inf)      # inf - inf with a root
+
+limit(sin(x)/x,x,inf)           # bounded times vanishing
+
+limit(1/x,x,0,right)            # one side by name
+```
+@Algebrite.pretty
+
 
 ```Maxima
 limit(1/x^2,x,0)                # infinite from both sides
@@ -795,6 +811,51 @@ sum(x^k,k,0,n)            # geometric sum with a symbolic ratio
 sum(2^k+k,k,1,n)          # geometric plus polynomial terms
 
 sum(1/k,k,1,n)            # harmonic sum, no closed form
+```
+@Algebrite.pretty
+
+With the upper bound `inf`, geometric series, p-series $\sum 1/k^s$ (through
+`zeta`), alternating p-series, the exponential series and telescoping sums of
+rational terms have closed forms. A series whose terms do not go to zero stops
+with `sum: the series diverges`.
+
+```Maxima
+sum(1/2^k,k,0,inf)           # geometric series
+
+sum(1/k^2,k,1,inf)           # the Basel problem
+
+sum((-1)^(k+1)/k,k,1,inf)    # alternating harmonic series
+
+sum(x^k/k!,k,0,inf)          # exponential series
+
+sum(1/(k*(k+1)),k,1,inf)     # telescoping
+
+sum(1/(k*(k+1)),k,1,n)       # telescoping with a symbolic bound
+```
+@Algebrite.pretty
+
+`product` with a symbolic bound handles constants, the index, shifts of the
+index and constant powers of those:
+
+```Maxima
+product(k,k,1,n)             # n!
+
+product(2*k,k,1,n)           # 2^n n!
+
+product(k+1,k,1,n)           # (n+1)!
+```
+@Algebrite.pretty
+
+`taylor` also works where the function has a removable singularity or a pole.
+Numerator and denominator are expanded separately and the series are divided,
+which gives the Laurent terms:
+
+```Maxima
+taylor(sin(x)/x,x,4,0)       # removable singularity
+
+taylor(exp(x)/x,x,3,0)       # a pole: the series starts with 1/x
+
+taylor(x/(exp(x)-1),x,4,0)   # generates the Bernoulli numbers
 ```
 @Algebrite.pretty
 
@@ -877,6 +938,32 @@ dsolve(d(y(x),x,2)+y(x)=0,y(x),[y(0)=1,y'(0)=0])
 ```
 @Algebrite.pretty
 
+#### 3.5 Integrals Beyond the Table
+
+`integral` first looks the integrand up in a table and splits rational
+functions into partial fractions. When that fails it tries substitution,
+integration by parts and a few closed forms. Integrals without an elementary
+antiderivative come back as the special function they define, see section 6.
+
+```Maxima
+integral(x*cos(x^2),x)        # substitution u = x^2
+
+integral(x^2*log(x),x)        # by parts
+
+integral(exp(x)*sin(x),x)     # exp times trig
+
+integral(sin(x)^2*cos(x)^3,x) # odd power: u = sin(x)
+
+integral(1/(2+cos(x)),x)      # real arctan form
+
+integral(abs(x),x)            # absolute value of a linear term
+
+integral(sin(x)/x,x)          # the sine integral Si
+
+defint(sin(x)/x,x,0,inf)      # the Dirichlet integral
+```
+@Algebrite.pretty
+
 ### 4. Linear Algebra & Tensors
 
 | Function | Description |
@@ -894,6 +981,13 @@ dsolve(d(y(x),x,2)+y(x)=0,y(x),[y(0)=1,y'(0)=0])
 | `trace(A)` | Sum of the diagonal |
 | `charpoly(A, x)` | Characteristic polynomial `det(A - x I)` |
 | `rref(A)` | Reduced row echelon form |
+| `norm(A)` | Euclidean norm of a vector, Frobenius norm of a matrix |
+| `jacobian(f, vars)`, `gradient(f, vars)` | Derivatives of a vector or scalar `f` with respect to the list `vars` |
+| `hessian(f, vars)`, `laplacian(f, vars)` | Matrix of second derivatives / its trace |
+| `lu(A)` | `[L, U, P]` with `P*A = L*U`, rows are only swapped for a zero pivot |
+| `qr(A)` | `[Q, R]` by Gram-Schmidt, `Q` with orthonormal columns |
+| `cholesky(A)` | Lower triangular `L` with `L*transpose(L) = A` |
+| `exp(A)` | Matrix exponential of a nilpotent or diagonalizable matrix |
 | `nullspace(A)` | Basis of the null space, one vector per row |
 | `matrixrank(A)` | Rank of a matrix, the number of pivots |
 | `hilbert(n)` | `n`&times;`n` Hilbert matrix |
@@ -967,6 +1061,11 @@ rank([[1,2],[2,4]])                   # number of axes, not the matrix rank
 | `binomial(n, k)` / `choose(n, k)` | Binomial coefficient (the two names are equivalent) |
 | `factorial(n)` | `n!` |
 | `isprime(n)`, `prime(n)`, `divisors(n)` | Primality test / the `n`-th prime / all divisors of `n` |
+| `nextprime(n)`, `primes(n)` | The smallest prime above `n` / all primes up to `n` |
+| `totient(n)` | Euler's totient: how many of `1..n` are coprime to `n` |
+| `powermod(a, b, m)` | `a^b mod m`, the modular inverse for `b = -1` |
+| `fibonacci(n)`, `harmonic(n)`, `bernoulli(n)` | Fibonacci number / `1+1/2+...+1/n` / Bernoulli number |
+| `cfrac(x)`, `cfrac(x, n)` | Continued fraction of a rational / the first `n` terms for any number |
 
 ```Maxima
 factorpoly(x^2-1,x)   # factors in x
@@ -1011,10 +1110,16 @@ prime(5)              # the 5th prime number
 | `polar(z)`, `rect(z)` | Rewrites `z` in polar (`exp` form) / rectangular (`a+b*i`) form |
 | `erf(x)`, `erfc(x)` | Error function and its complement |
 | `Gamma(x)` | Gamma function |
-| `besselj(x, n)`, `bessely(x, n)` | Bessel functions of the first / second kind |
+| `besselj(n, x)`, `bessely(n, x)` | Bessel functions of the first / second kind of order `n` |
 | `dirac(x)` | Dirac delta function |
 | `heaviside(x)` | Heaviside step function, `1/2` at `x=0` |
 | `hermite(x, n)`, `laguerre(x, n)`, `legendre(x, n)` | Classical orthogonal polynomials of degree `n` |
+| `chebyshevt(x, n)`, `chebyshevu(x, n)` | Chebyshev polynomials of the first / second kind |
+| `zeta(s)` | Riemann zeta function, exact at even and at negative integers |
+| `beta(a, b)`, `digamma(x)` | Beta function / logarithmic derivative of `Gamma` |
+| `lambertw(x)` | Lambert W, the inverse of `x*exp(x)` |
+| `Si(x)`, `Ci(x)`, `Ei(x)` | Sine, cosine and exponential integral |
+| `fresnels(x)`, `fresnelc(x)` | Fresnel integrals of `sin(pi*t^2/2)` and `cos(pi*t^2/2)` |
 
 ```Maxima
 real(2+3*i)                 # real part
@@ -1033,7 +1138,7 @@ float(erf(1))               # numeric value
 
 Gamma(1/2)                  # exact value
 
-besselj(0,1)                # J_1 at x = 0
+besselj(0,1)                # J_0 at x = 1
 
 dirac(0)                    # delta function at 0
 
@@ -1047,17 +1152,43 @@ legendre(x,2)               # Legendre polynomial of degree 2
 ```
 @Algebrite.pretty
 
+`besselj(n, x)` and `bessely(n, x)` take the order first and the argument second,
+as Maxima, Mathematica and SymPy do. Older versions of this template had the
+two the other way round.
+
+```Maxima
+zeta(2)                     # pi^2/6
+
+float(zeta(3))              # Apery's constant
+
+lambertw(exp(1))            # W(e) = 1
+
+float(Si(1))                # sine integral
+
+derivative(Ei(x),x)         # exp(x)/x
+
+beta(2,3)                   # Gamma(2)*Gamma(3)/Gamma(5)
+
+chebyshevt(x,3)             # 4 x^3 - 3 x
+```
+@Algebrite.pretty
+
+The names added in this group, as well as `gamma`, `norm`, `map`, `length` and
+the other newer helpers, are not reserved: a function or variable of your own
+with the same name takes precedence.
+
 ### 7. Solving Equations
 
 | Function | Description |
 |---|---|
-| `solve(p, x)` | Solves the polynomial equation `p=0` for `x` |
+| `solve(eq, x)` | Solves the equation `eq` for `x`: polynomial, exponential, logarithmic, trigonometric, with roots or `abs` |
+| `solve(eq, x, n)` | Trigonometric equations: all solutions, with `n` for an integer |
+| `solve(f < g, x)`, `solve([f < g, ...], x)` | Solves one or several inequalities in `x` |
 | `solve([p1, p2, ...], [x, y, ...])` | Solves a system of polynomial equations |
 | `nsolve(f, x, x0)`, `nsolve(f, x, [a,b])` | One numeric real root of any equation |
 
-A single equation must be a polynomial in one variable. A system must be
-polynomial, with as many equations as variables. Equations are written as
-expressions equal to zero, or with `=` or `==`.
+A system must be polynomial, with as many equations as variables. Equations
+are written as expressions equal to zero, or with `=` or `==`.
 
 ```Maxima
 solve(x^2-5*x+6,x)         # roots 2 and 3
@@ -1098,6 +1229,51 @@ Without the list of variables, they are taken from the equations in the order
 they first appear. With assumptions about the unknown (section 13), solutions
 that contradict them are dropped.
 
+Equations that are not polynomial are solved through the function they
+contain: `exp`, `log`, `sin`, `cos`, `tan`, a root or `abs`. Every candidate is
+checked in the original equation, so the false roots that squaring produces are
+dropped. Trigonometric equations give the principal solutions; a third argument
+names the integer of the full solution family. `x*exp(x) = c` and `x^x = c` are
+solved with `lambertw`.
+
+```Maxima
+solve(exp(2*x)-3*exp(x)+2,x)   # substitute u = exp(x)
+
+solve(2^x=8,x)                 # exponential with another base
+
+solve(log(x)+log(x-3)=log(10),x)  # x = -2 fails the check
+
+solve(sqrt(x+1)=x-1,x)         # squaring adds x = 0, which is dropped
+
+solve(abs(2*x+1)=x+2,x)        # both branches hold
+
+solve(sin(x)=1/2,x)            # principal solutions
+
+solve(sin(x)=1/2,x,n)          # all solutions, n an integer
+
+solve(x*exp(x)=1,x)            # Lambert W
+```
+@Algebrite.pretty
+
+An inequality is solved on the real line. The answer is a comparison, `and`
+of two for an interval, `or` of several pieces, `1` when it always holds and
+`0` when it never does. Trigonometric inequalities are not supported.
+
+```Maxima
+solve(x^2>1,x)                       # two rays
+
+solve(x^2<=1,x)                      # a closed interval
+
+solve((x-1)*(x-2)*(x-3)>0,x)         # an interval and a ray
+
+solve(1/x<1,x)                       # the pole at 0 is left out
+
+solve(log(x)<0,x)                    # only where log is real
+
+solve([x^2<4,x>=0],x)                # several conditions at once
+```
+@Algebrite.pretty
+
 `nsolve` finds a single real root numerically, also of equations that are not
 polynomial. With a start value it uses Newton's method; with an interval
 `[a,b]` it uses bisection when `f(a)` and `f(b)` have different signs, and the
@@ -1134,6 +1310,11 @@ solve([sin(x)=y,x=y],[x,y])     # sin(x) is not a polynomial
 | `and(a, b, ...)`, `or(a, b, ...)`, `not(a)` | Logical AND / OR / NOT, `1` or `0` |
 | `testeq`, `testgt`, `testge`, `testlt`, `testle` | `1`/`0` comparisons: equal, greater/less (than or equal) |
 | `test(cond, then, else)` | Returns `then` if `cond` is true, `else` otherwise |
+| `if(c1, v1, c2, v2, ..., else)` | The same as `test`, under its usual name |
+| `map(f, list)` | Applies the function `f` to every element |
+| `table(expr, k, a, b)` | The values of `expr` for `k = a..b` as a list |
+| `range(n)`, `range(a, b [,step])` | The list `1..n` / from `a` to `b` |
+| `length(list)`, `append(a, b, ...)`, `sort(list)` | Number of elements / concatenation / ascending order |
 | `for(body, i, a, b)` | Evaluates `body` repeatedly while `i` runs from `a` to `b` |
 | `do(a, b, ...)` | Evaluates a sequence of expressions, returns the last one |
 | `subst(a, x, expr)` | Substitutes `a` for `x` in `expr` |
@@ -1143,7 +1324,29 @@ solve([sin(x)=y,x=y],[x,y])     # sin(x) is not a polynomial
 
 `for`'s first argument is the loop body, not the loop variable — the
 example below sums `1..5` into `s`. Wildcards in a `pattern()` template
-end with an underscore, e.g. `x_`.
+end with an underscore, e.g. `x_`. A comparison that cannot be decided is
+shown as written, `x>1`. A semicolon separates statements like a line break.
+
+```Maxima
+sq(x)=x^2                       # a function of one's own
+
+map(sq,[1,2,3])                 # applied to every element
+
+table(k^2,k,1,5)                # the same values from a formula
+
+range(0,1,1/4)                  # from 0 to 1 in steps of 1/4
+
+sort([pi,3,sqrt(2)])            # by value
+
+append([1,2],[3])               # one list from several
+
+sg(x)=if(x>0,1,x<0,-1,0)        # conditions and values in pairs, then a default
+
+map(sg,[-2,0,3])                # piecewise function on a list
+
+a=2; b=3; a^b                   # three statements on one line
+```
+@Algebrite.eval
 
 ```Maxima
 clearall                        # reset all variables and settings
@@ -1216,7 +1419,8 @@ clearall                        # reset all variables and settings
 |---|---|
 | `numerator(x)`, `denominator(x)` | Numerator / denominator of a rational expression |
 | `round(x)`, `ceiling(x)`, `floor(x)` | Rounds to the nearest / next higher / next lower integer |
-| `mod(a, b)` | Remainder of `a` divided by `b` |
+| `mod(a, b)` | Remainder of `a` divided by `b`, with the sign of `b`: `mod(-7,3)` is `2` |
+| `float(x)`, `float(x, n)` | Numeric value in double precision / to `n` significant digits (up to 1000) |
 | `sgn(x)` | Sign of `x` (`-1`, `0` or `1`) |
 | `print(...)`, `printhuman(expr)`, `printcomputer(expr)` | Prints in default / traditional math / fully explicit notation |
 | `print2dascii(expr)` | Renders an expression as 2D ASCII art (fractions, exponents) |
@@ -1226,6 +1430,23 @@ Floating point numbers are shown with 6 decimals. Below 0.001 and from 10^15 on
 they switch to scientific notation, `1.5*10^(-7)` (`1.5 \cdot 10^{-7}` in LaTeX),
 so tiny values no longer look like zero. The output can be typed in again; a
 trailing `...` marks a rounded value.
+
+`float(x, n)` first evaluates `x` exactly and then computes `n` significant
+digits. It covers arithmetic, roots, `pi`, `exp`, `log`, the trigonometric and
+hyperbolic functions and their inverses, `Gamma`, `erf` and `erfc`. The digits
+are for display: calculating on with the result is double precision again, so
+the whole expression belongs inside `float`.
+
+```Maxima
+float(pi,50)                # 50 digits of pi
+
+float(sqrt(2),40)           # a root
+
+float(exp(pi*sqrt(163)),30) # almost an integer
+
+float(sum(1/k^2,k,1,inf),30) # the exact value pi^2/6 first, then the digits
+```
+@Algebrite.eval
 
 ```Maxima
 numerator(3/7)    # top of the fraction
@@ -1491,6 +1712,7 @@ is experimental and may misbehave.
 | `adj(A)` | Adjugate of a square matrix |
 | `and(a, b, ...)` | Logical AND |
 | `apart(f, x)` | Partial fraction decomposition |
+| `append(a, b, ...)` | One list from several lists or values |
 | `approxratio(x)` | Approximates a float as a rational number |
 | `arccos(x)` | Inverse cosine |
 | `arccosh(x)` | Inverse hyperbolic cosine |
@@ -1509,15 +1731,22 @@ is experimental and may misbehave.
 | `assumptions()` | Lists the assumptions |
 | `at(f, x, a)` | `f` at `x = a`, e.g. a derivative at a point; `y'(a)` for a function of one variable |
 | `atomize(expr)` | Top-level arguments of an expression as a vector |
-| `besselj(x, n)` | Bessel function of the first kind |
-| `bessely(x, n)` | Bessel function of the second kind |
+| `bernoulli(n)` | Bernoulli number, `B1 = -1/2` |
+| `besselj(n, x)` | Bessel function of the first kind of order `n` |
+| `bessely(n, x)` | Bessel function of the second kind of order `n` |
+| `beta(a, b)` | Beta function `Gamma(a)*Gamma(b)/Gamma(a+b)` |
 | `binding(x)` | Current value bound to a symbol |
 | `binomial(n, k)` | Binomial coefficient |
 | `cbrt(x)` | Cube root |
 | `ceiling(x)` | Rounds up to the nearest integer |
+| `cfrac(x [,n])` | Continued fraction of a rational, or the first `n` terms |
 | `charpoly(A, x)` | Characteristic polynomial of a matrix |
+| `chebyshevt(x, n)` | Chebyshev polynomial of the first kind |
+| `chebyshevu(x, n)` | Chebyshev polynomial of the second kind |
 | `check(expr)` | Evaluates a relational expression to `1`/`0` |
+| `cholesky(A)` | Lower triangular `L` with `L*transpose(L) = A` |
 | `choose(n, k)` | Alias for `binomial` |
+| `Ci(x)` | Cosine integral |
 | `circexp(expr)` | Rewrites trig/hyperbolic functions in exponential form |
 | `clear(x)` | Removes the binding of a symbol |
 | `clearall` | Clears all bindings, patterns and settings |
@@ -1543,6 +1772,7 @@ is experimental and may misbehave.
 | `denominator(x)` | Denominator of a rational expression |
 | `det(A)` | Determinant of a square matrix |
 | `derivative(f, x [,n])` | `n`-th derivative of `f`, short form `d(f, x [,n])` |
+| `digamma(x)` | Logarithmic derivative of `Gamma` |
 | `dim(A, n)` | Size of the `n`-th axis of a tensor |
 | `dimensionof(q)` | SI dimension vector of a quantity |
 | `dirac(x)` | Dirac delta function |
@@ -1552,6 +1782,7 @@ is experimental and may misbehave.
 | `dot(A, B)` | Alias for `inner` |
 | `draw(f, x, a, b, options)` | Plots expressions as a chart, see section 11 |
 | `dsolve(ode, y(x) [,ics])` | Solves an ordinary differential equation, see section 3.4 |
+| `Ei(x)` | Exponential integral |
 | `eigen(A)` | Eigenvalues and eigenvectors of a symmetric matrix |
 | `eigenval(A)` | Eigenvalues of a symmetric matrix |
 | `eigenvec(A)` | Eigenvectors of a symmetric matrix |
@@ -1566,18 +1797,25 @@ is experimental and may misbehave.
 | `factor(expr)` | Factors a polynomial or integer |
 | `factorial(n)` | `n!` |
 | `factorpoly(p, x)` | Factors polynomial `p` over `x` |
+| `fibonacci(n)` | Fibonacci number |
 | `filter(expr, x)` | Removes terms containing `x`, or zeroes matching tensor entries |
-| `float(x)` | Numeric (floating point) evaluation |
+| `float(x [,n])` | Numeric (floating point) evaluation |
 | `floor(x)` | Rounds down to the nearest integer |
 | `for(body, i, a, b)` | Repeats `body` while `i` runs from `a` to `b` |
+| `fresnelc(x)` | Fresnel integral of `cos(pi*t^2/2)` |
+| `fresnels(x)` | Fresnel integral of `sin(pi*t^2/2)` |
 | `Gamma(x)` | Gamma function |
 | `forget(x)` | Drops the assumptions about `x` (all of them without argument) |
 | `gcd(a, b, ...)` | Greatest common divisor |
+| `gradient(f, vars)` | Vector of the first derivatives of `f` |
 | `groebner(polys, vars, order)` | Reduced Gröbner basis (`lex`, `grlex`, `grevlex`) |
+| `harmonic(n)` | Harmonic number `1+1/2+...+1/n` |
 | `heaviside(x)` | Heaviside step function |
 | `hermite(x, n)` | Physicists' Hermite polynomial |
+| `hessian(f, vars)` | Matrix of the second derivatives of `f` |
 | `hilbert(n)` | `n`&times;`n` Hilbert matrix |
 | `identity(n)` | `n`&times;`n` identity matrix, same as `unit(n)` |
+| `if(c1, v1, ..., else)` | The same as `test` |
 | `imag(z)` | Imaginary part of a complex number |
 | `component(A, i, ...)` | Accesses a component of a tensor by index |
 | `inf` | Symbolic infinity |
@@ -1592,23 +1830,31 @@ is experimental and may misbehave.
 | `ispositive(x)` | `1`/`0` if the sign is known, else unevaluated |
 | `isprime(n)` | `1` if `n` is prime, else `0` |
 | `isreal(x)` | `1`/`0` if known, else unevaluated |
+| `jacobian(f, vars)` | Matrix of the first derivatives of the vector `f` |
 | `laguerre(x, n)` | Laguerre polynomial |
+| `lambertw(x)` | Lambert W, the inverse of `x*exp(x)` |
 | `laplace(f, t, s)` | Laplace transform |
+| `laplacian(f, vars)` | Sum of the unmixed second derivatives of `f` |
 | `lcm(a, b, ...)` | Least common multiple |
 | `leading(p, x)` | Leading coefficient of polynomial `p` |
 | `legendre(x, n)` | Legendre polynomial |
+| `length(list)` | Number of elements of a list, rows of a matrix |
 | `limit(f, x, a [,dir])` | Limit, also at `inf` and one-sided |
 | `ln(x)` | Natural logarithm, same as `log(x)` |
 | `log(x [,b])` | Natural logarithm, or logarithm to base `b` |
 | `log10(x)` | Logarithm to base 10 |
 | `log2(x)` | Logarithm to base 2 |
+| `lu(A)` | `[L, U, P]` with `P*A = L*U` |
+| `map(f, list)` | Applies `f` to every element |
 | `matrixrank(A)` | Rank of a matrix |
 | `max(a, b, ...)` | Largest argument |
 | `mean(x1, x2, ...)` | Arithmetic mean |
 | `median(x1, x2, ...)` | Median |
 | `min(a, b, ...)` | Smallest argument |
-| `mod(a, b)` | Remainder of `a` divided by `b` |
+| `mod(a, b)` | Remainder of `a` divided by `b`, with the sign of `b` |
 | `multiply(a, b, ...)` | Product of two or more factors |
+| `nextprime(n)` | The smallest prime above `n` |
+| `norm(A)` | Euclidean / Frobenius norm |
 | `not(a)` | Logical negation |
 | `nroots(p)` | All numeric (real and complex) roots of `p` |
 | `nsolve(f, x, x0)` | One numeric real root of an equation |
@@ -1623,7 +1869,9 @@ is experimental and may misbehave.
 | `patternsinfo()` | Lists all currently defined patterns |
 | `polar(z)` | Rewrites a complex number in polar form |
 | `power(a, b)` | `a^b` |
+| `powermod(a, b, m)` | `a^b mod m`, the modular inverse for negative `b` |
 | `prime(n)` | The `n`-th prime number |
+| `primes(n)` | All primes up to `n` |
 | `print(...)` | Prints one or more expressions |
 | `print2dascii(expr)` | Renders an expression as 2D ASCII art |
 | `printcomputer(expr)` | Prints in fully explicit ("computer") notation |
@@ -1631,10 +1879,12 @@ is experimental and may misbehave.
 | `printlist(list)` | Prints a list/tensor entry by entry |
 | `printhuman(expr)` | Prints in traditional human-readable notation |
 | `product(f, i, a, b)` | Product of `f` over `i` from `a` to `b` |
+| `qr(A)` | `[Q, R]` by Gram-Schmidt |
 | `quantity(value, unit)` | Creates a physical quantity with a unit |
 | `quote(expr)` | Returns `expr` unevaluated |
 | `quotient(a, b)` | Quotient of `a` divided by `b` |
 | `random()`, `random(a, b)` | Random float in `[0,1)` / random integer from `a` to `b` |
+| `range(n)`, `range(a, b [,step])` | List of numbers |
 | `rank(A)` | Number of axes of a tensor, see `matrixrank` for matrices |
 | `rationalize(expr)` | Combines terms over a common denominator |
 | `real(z)` | Real part of a complex number |
@@ -1649,11 +1899,13 @@ is experimental and may misbehave.
 | `sech(x)` | Hyperbolic secant |
 | `shape(A)` | Dimensions of a tensor, as a list |
 | `sgn(x)` | Sign of `x` |
+| `Si(x)` | Sine integral |
 | `silentpattern(from, to)` | Like `pattern()`, without a confirmation printout |
 | `simplify(expr)` | General purpose simplification |
 | `sin(x)` | Sine |
 | `sinh(x)` | Hyperbolic sine |
-| `solve(p, x)` | Solves a polynomial equation, or a system of polynomial equations given as lists |
+| `solve(eq, x [,n])` | Solves an equation or inequality, or a system of polynomial equations given as lists |
+| `sort(list)` | Ascending order |
 | `sqrt(x)` | Square root |
 | `ssd(x1, x2, ...)` | Standard deviation of a sample |
 | `stop(msg)` | Aborts evaluation with an error message |
@@ -1661,6 +1913,7 @@ is experimental and may misbehave.
 | `sum(f, i, a, b)` | Sum of `f` over `i` from `a` to `b`, closed form for symbolic bounds |
 | `svariance(x1, x2, ...)` | Variance of a sample (divides by `n-1`) |
 | `symbolsinfo()` | Lists all currently bound symbols |
+| `table(expr, k, a, b)` | Values of `expr` for `k = a..b` |
 | `tan(x)` | Tangent |
 | `tanh(x)` | Hyperbolic tangent |
 | `taylor(f, x, n, a)` | Taylor series of `f` around `x=a`, degree `n` |
@@ -1670,6 +1923,7 @@ is experimental and may misbehave.
 | `testgt(a, b)` | `1` if `a>b`, else `0` |
 | `testle(a, b)` | `1` if `a<=b`, else `0` |
 | `testlt(a, b)` | `1` if `a<b`, else `0` |
+| `totient(n)` | Euler's totient function |
 | `trace(A)` | Sum of the diagonal of a matrix |
 | `transpose(A)` | Transpose of a matrix/tensor |
 | `trigexpand(expr)` | Expands trig functions of sums and multiples |
@@ -1678,6 +1932,7 @@ is experimental and may misbehave.
 | `units(0\|1)` | Toggles bare unit symbols on/off |
 | `variance(x1, x2, ...)` | Variance of a population (divides by `n`) |
 | `zero(n)` | Zero vector of length `n` |
+| `zeta(s)` | Riemann zeta function |
 
 ## Implementation
 

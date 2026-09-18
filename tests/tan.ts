@@ -112,7 +112,7 @@ run_test([
   // we have errors doing the calculations so
   // we don't get to that exact 1.0 float
   'f(60,sqrt(3))', // 60
-  '1.000000...',
+  '1.0',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
@@ -124,7 +124,7 @@ run_test([
   // we have errors doing the calculations so
   // we don't get to that exact 1.0 float
   'f(240,sqrt(3))', // 240
-  '1.000000...',
+  '1.0',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
@@ -136,7 +136,7 @@ run_test([
   // we have errors doing the calculations so
   // we don't get to that exact 1.0 float
   'f(-60,-sqrt(3))', // -60
-  '1.000000...',
+  '1.0',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
@@ -148,7 +148,7 @@ run_test([
   // we have errors doing the calculations so
   // we don't get to that exact 1.0 float
   'f(-240,-sqrt(3))', // -240
-  '1.000000...',
+  '1.0',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
@@ -165,7 +165,7 @@ run_test([
   // check the default case
 
   'tan(1/12*pi)',
-  'tan(1/12*pi)',
+  '2-3^(1/2)',
 
   // exact values at special angles
   'tan(0)',

@@ -1,47 +1,47 @@
 import { run_test } from '../test-harness';
 
 run_test([
-  'besselj(x,n)',
-  'besselj(x,n)',
+  'besselj(n,x)',
+  'besselj(n,x)',
 
   'besselj(0,0)',
   '1',
 
-  'besselj(0,1)',
+  'besselj(1,0)',
   '0',
 
-  'besselj(0,-1)',
+  'besselj(-1,0)',
   '0',
 
-  'besselj(x,1/2)-sqrt(2/pi/x)*sin(x)',
+  'besselj(1/2,x)-sqrt(2/pi/x)*sin(x)',
   '0',
 
-  'besselj(x,-1/2)-sqrt(2/pi/x)*cos(x)',
+  'besselj(-1/2,x)-sqrt(2/pi/x)*cos(x)',
   '0',
 
-  'besselj(x,3/2)-sqrt(2/pi/x)*(sin(x)/x-cos(x))',
+  'besselj(3/2,x)-sqrt(2/pi/x)*(sin(x)/x-cos(x))',
   '0',
 
-  'besselj(x,-3/2)-sqrt(2/pi/x)*(-cos(x)/x-sin(x))',
+  'besselj(-3/2,x)-sqrt(2/pi/x)*(-cos(x)/x-sin(x))',
   '0',
 
-  'besselj(x,5/2)-sqrt(2/pi/x)*((3/x^2-1)*sin(x)-3/x*cos(x))',
+  'besselj(5/2,x)-sqrt(2/pi/x)*((3/x^2-1)*sin(x)-3/x*cos(x))',
   '0',
 
-  'besselj(x,-5/2)-sqrt(2/pi/x)*((3/x^2-1)*cos(x)+3/x*sin(x))',
+  'besselj(-5/2,x)-sqrt(2/pi/x)*((3/x^2-1)*cos(x)+3/x*sin(x))',
   '0',
 
   // From the note above
 
-  'besselj(x,3/2)-(1/x)*besselj(x,1/2)+besselj(x,-1/2)',
+  'besselj(3/2,x)-(1/x)*besselj(1/2,x)+besselj(-1/2,x)',
   '0',
 
-  'besselj(x,-3/2)+(1/x)*besselj(x,-1/2)+besselj(x,1/2)',
+  'besselj(-3/2,x)+(1/x)*besselj(-1/2,x)+besselj(1/2,x)',
   '0',
 
   // this should simplify
 
-  'y=besselj(x,5/2)',
+  'y=besselj(5/2,x)',
   '',
 
   'x^2*d(y,x,x)+x*d(y,x)+(x^2-(5/2)^2)*y',
@@ -51,38 +51,38 @@ run_test([
   '',
 
   // J_n(0) = 0 for n > 0 and for integers n != 0
-  'besselj(0,5)',
+  'besselj(5,0)',
   '0',
 
-  'besselj(0,1/2)',
+  'besselj(1/2,0)',
   '0',
 
-  'besselj(0,3/2)',
+  'besselj(3/2,0)',
   '0',
 
   // J_(-1/2)(0) is infinite
-  'besselj(0,-1/2)',
+  'besselj(-1/2,0)',
   'Stop: divide by zero',
 
   // J_(-n) = (-1)^n J_n, J_n(-x) = (-1)^n J_n(x)
-  'besselj(x,-1)',
-  '-besselj(x,1)',
+  'besselj(-1,x)',
+  '-besselj(1,x)',
 
-  'besselj(x,-2)',
-  'besselj(x,2)',
+  'besselj(-2,x)',
+  'besselj(2,x)',
 
-  'besselj(-x,2)',
-  'besselj(x,2)',
+  'besselj(2,-x)',
+  'besselj(2,x)',
 
-  'besselj(-x,3)',
-  '-besselj(x,3)',
+  'besselj(3,-x)',
+  '-besselj(3,x)',
 
   // J_0' = -J_1
-  'd(besselj(x,0),x)+besselj(x,1)',
+  'd(besselj(0,x),x)+besselj(1,x)',
   '0',
 
   // Bessel equation for n = 1/2
-  'y=besselj(x,1/2)',
+  'y=besselj(1/2,x)',
   '',
 
   'x^2*d(y,x,2)+x*d(y,x)+(x^2-1/4)*y',
@@ -92,31 +92,46 @@ run_test([
   '',
 
   // numeric values (tables of Abramowitz and Stegun)
-  'besselj(1.0,0)',
+  'besselj(0,1.0)',
   '0.765198...',
 
-  'besselj(1.0,1)',
+  'besselj(1,1.0)',
   '0.440051...',
 
-  'besselj(2.5,2)',
+  'besselj(2,2.5)',
   '0.446059...',
 
-  'besselj(10.0,0)',
+  'besselj(0,10.0)',
   '-0.245936...',
 
-  'besselj(-1.0,1)',
+  'besselj(1,-1.0)',
   '-0.440051...',
 
-  'besselj(1.0,-1)',
+  'besselj(-1,1.0)',
   '-0.440051...',
 
-  'float(besselj(1,0))',
+  'float(besselj(0,1))',
   '0.765198...',
 
-  'besselj(0.0,1)',
+  'besselj(1,0.0)',
   '0.0',
 
   // wrong number of arguments
   'besselj(x)',
   'Stop: besselj: expected 2 arguments, got 1',
+
+  // besselj(n, x): order first, as in Maxima, Mathematica and SymPy.
+  // J0(1) = 0.7651976866, J1(2) = 0.5767248078
+  'float(besselj(0,1))',
+  '0.765198...',
+
+  'float(besselj(1,2))',
+  '0.576725...',
+
+  // J0' = -J1
+  'd(besselj(0,x),x)',
+  '-besselj(1,x)',
+
+  'd(besselj(0,2*x),x)',
+  '-2*besselj(1,2*x)',
 ]);

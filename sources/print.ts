@@ -2,6 +2,7 @@ import { primeName } from './at';
 import {
   ABS,
   ADD,
+  AND,
   ARCCOS,
   ARCSIN,
   ARCTAN,
@@ -10,6 +11,7 @@ import {
   breakpoint,
   caadr,
   caar,
+  Cons,
   caddddr,
   cadddr,
   caddr,
@@ -52,6 +54,8 @@ import {
   LAST_PLAIN_PRINT,
   MULTIPLY,
   NIL,
+  NOT,
+  OR,
   Num,
   NUM,
   PATTERN,
@@ -257,7 +261,7 @@ export function printline(p: BaseAtom): string {
 
 // a double printed as 1.5*10^(-7): needs parentheses as a base or exponent
 function isscientific(p: BaseAtom): boolean {
-  return isdouble(p) && /[*^]|\\cdot/.test(doubleToReasonableString(p.d));
+  return isdouble(p) && /[*^]|\\cdot/.test(doubleToReasonableString(p.d, p.bigRepr));
 }
 
 function print_base_of_denom(BASE: BaseAtom): string {
@@ -1716,6 +1720,8 @@ function print_factor(
       accumulator += print_TESTLT_latex(p);
       return accumulator;
     }
+    accumulator += print_expr(cadr(p)) + '<' + print_expr(caddr(p));
+    return accumulator;
   } else if (car(p) === symbol(TESTLE)) {
     if (defs.codeGen) {
       accumulator +=
@@ -1726,6 +1732,8 @@ function print_factor(
       accumulator += print_TESTLE_latex(p);
       return accumulator;
     }
+    accumulator += print_expr(cadr(p)) + '<=' + print_expr(caddr(p));
+    return accumulator;
   } else if (car(p) === symbol(TESTGT)) {
     if (defs.codeGen) {
       accumulator +=
@@ -1736,6 +1744,8 @@ function print_factor(
       accumulator += print_TESTGT_latex(p);
       return accumulator;
     }
+    accumulator += print_expr(cadr(p)) + '>' + print_expr(caddr(p));
+    return accumulator;
   } else if (car(p) === symbol(TESTGE)) {
     if (defs.codeGen) {
       accumulator +=
@@ -1746,6 +1756,8 @@ function print_factor(
       accumulator += print_TESTGE_latex(p);
       return accumulator;
     }
+    accumulator += print_expr(cadr(p)) + '>=' + print_expr(caddr(p));
+    return accumulator;
   } else if (car(p) === symbol(TESTEQ)) {
     if (defs.codeGen) {
       accumulator +=
@@ -1756,6 +1768,24 @@ function print_factor(
       accumulator += print_TESTEQ_latex(p);
       return accumulator;
     }
+    accumulator += print_expr(cadr(p)) + '==' + print_expr(caddr(p));
+    return accumulator;
+  } else if (
+    defs.printMode === PRINTMODE_LATEX &&
+    !defs.codeGen &&
+    (car(p) === symbol(AND) || car(p) === symbol(OR) || car(p) === symbol(NOT))
+  ) {
+    // a \land b, a \lor b, \neg a; a nested and/or gets parentheses
+    const operand = (q: BaseAtom) =>
+      car(q) === symbol(AND) || car(q) === symbol(OR)
+        ? '\\left(' + print_expr(q) + '\\right)'
+        : print_expr(q);
+    const args = (p as Cons).tail();
+    if (car(p) === symbol(NOT)) {
+      return accumulator + '\\neg ' + operand(args[0]);
+    }
+    const op = car(p) === symbol(AND) ? ' \\land ' : ' \\lor ';
+    return accumulator + args.map(operand).join(op);
   } else if (car(p) === symbol(FLOOR)) {
     if (defs.codeGen) {
       accumulator += 'Math.floor(' + print_expr(cadr(p)) + ')';

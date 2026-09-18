@@ -15,12 +15,18 @@ export function strcmp(str1: string, str2: string): Sign {
   }
 }
 
-export function doubleToReasonableString(d: number) {
+export function doubleToReasonableString(d: number, bigRepr?: string) {
   // when generating code, print out
   // the standard JS Number printout
   let stringRepresentation: string;
   if (defs.codeGen || defs.fullDoubleOutput) {
     return '' + d;
+  }
+  // the digits of float(x, n), already rounded to length
+  if (bigRepr !== undefined) {
+    return defs.printMode === PRINTMODE_LATEX
+      ? bigRepr.replace(/\*10\^\(?(-?\d+)\)?/, ' \\cdot 10^{$1}')
+      : bigRepr;
   }
 
   // float overflow: print like the inf symbol, not as JS "Infinity.0"

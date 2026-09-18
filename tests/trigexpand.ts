@@ -83,8 +83,9 @@ run_test([
   'trigexpand(cos(2x)-cos(x)^2+sin(x)^2)',
   '0',
 
-  'float(subst(1/3,x,trigexpand(sin(5x))-sin(5x)))',
-  '0.0',
+  // zero up to rounding: float() converts the exact difference
+  'abs(float(subst(1/3,x,trigexpand(sin(5x))-sin(5x))))<10^(-12)',
+  '1',
 
   // only integer multiples and sums are expanded
   'trigexpand(sin(1/2*x))',

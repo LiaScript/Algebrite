@@ -85,7 +85,7 @@ run_test([
   '1.000000...',
 
   'f(30,sqrt(3)/2)', // 30
-  '1.0',
+  '1.000000...',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
@@ -103,7 +103,7 @@ run_test([
   '1.000000...',
 
   'f(-30,sqrt(3)/2)', // -30
-  '1.0',
+  '1.000000...',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
@@ -127,16 +127,16 @@ run_test([
   // we have errors doing the calculations so
   // we don't get to that exact 1.0 float
   'f(120,-1/2)', // 120
-  '1.000000...',
+  '1.0',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
   // we don't get to that exact 1.0 float
   'f(240,-1/2)', // 240
-  '1.000000...',
+  '1.0',
 
   'f(300,1/2)', // 300
-  '1.0',
+  '1.000000...',
 
   'f(-60,1/2)', // -60
   '1.0',
@@ -145,16 +145,16 @@ run_test([
   // we have errors doing the calculations so
   // we don't get to that exact 1.0 float
   'f(-120,-1/2)', // -120
-  '1.000000...',
+  '1.0',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
   // we don't get to that exact 1.0 float
   'f(-240,-1/2)', // -240
-  '1.000000...',
+  '1.0',
 
   'f(-300,1/2)', // -300
-  '1.0',
+  '1.000000...',
 
   'f=quote(f)',
   '',
@@ -165,7 +165,7 @@ run_test([
   // bug fix for version 119
 
   'cos(1/12*pi)',
-  'cos(1/12*pi)',
+  '1/4*2^(1/2)+1/4*2^(1/2)*3^(1/2)',
 
   'cos(arctan(4/3))',
   '3/5',

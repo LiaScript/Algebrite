@@ -955,7 +955,7 @@ function emit_number(p: U, emit_sign: number) {
       }
       break;
     case DOUBLE:
-      tmpString = doubleToReasonableString((p as Double).d);
+      tmpString = doubleToReasonableString((p as Double).d, (p as Double).bigRepr);
       if (tmpString[0] === '-' && emit_sign === 0) {
         tmpString = tmpString.substring(1);
       }

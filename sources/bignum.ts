@@ -431,7 +431,7 @@ export function print_number(p: U, signed: boolean): string {
       break;
 
     case DOUBLE:
-      aAsString = doubleToReasonableString(p.d);
+      aAsString = doubleToReasonableString(p.d, p.bigRepr);
       if (!signed) {
         if (aAsString[0] === '-') {
           aAsString = aAsString.substring(1);

@@ -16,7 +16,7 @@ import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { requireDimensionless } from './quantity';
-import { subtract } from './add';
+import { add, subtract } from './add';
 import { integerTimesPi } from './sin';
 
 // Tangent function of numerical and symbolic arguments
@@ -94,6 +94,19 @@ function tangent(p1: U): U {
     case 120:
     case 300:
       return negate(power(integer(3), rational(1, 2)));
+    // tan(15) = 2-3^(1/2), tan(75) = 2+3^(1/2)
+    case 15:
+    case 195:
+      return subtract(integer(2), power(integer(3), rational(1, 2)));
+    case 165:
+    case 345:
+      return subtract(power(integer(3), rational(1, 2)), integer(2));
+    case 75:
+    case 255:
+      return add(integer(2), power(integer(3), rational(1, 2)));
+    case 105:
+    case 285:
+      return negate(add(integer(2), power(integer(3), rational(1, 2))));
     default:
       return makeList(symbol(TAN), p1);
   }

@@ -27,7 +27,8 @@ import {
   realconstant
 } from './is';
 import { makeList } from './list';
-import { multiply, negate } from './multiply';
+import { specialSineAngle } from './sin';
+import { divide, multiply, negate } from './multiply';
 import { subtract } from './add';
 import { requireDimensionless } from './quantity';
 
@@ -109,6 +110,12 @@ function arcsin(x: U): U {
     return defs.evaluatingAsFloats
       ? double(-Math.PI / 3.0)
       : multiply(rational(-1, 3), symbol(PI));
+  }
+
+  // arcsin((6^(1/2)-2^(1/2))/4) = pi/12 and the like
+  const degrees = specialSineAngle(x);
+  if (degrees !== undefined) {
+    return multiply(divide(integer(degrees), integer(180)), symbol(PI));
   }
 
   if (!isrational(x)) {

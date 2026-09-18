@@ -1,31 +1,46 @@
 import { countOccurrencesOfSymbol } from '../runtime/count';
 import {
   ADD,
+  caddr,
   cadr,
+  car,
   Constants,
   DEBUG,
+  defs,
   E,
   INF,
   evalFloats,
+  noFloats,
   iscons,
   isrational,
   istensor,
   MULTIPLY,
+  NIL,
   PI,
   POWER,
   U
 } from '../runtime/defs';
 import { stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
-import { bignum_float, double } from './bignum';
+import { bigFloat, MAX_DIGITS } from './bigfloat';
+import { bignum_float, double, nativeInt } from './bignum';
 import { Eval } from './eval';
 import { makeList } from './list';
 import { copy_tensor } from './tensor';
 
+// float(x) in double precision, float(x, n) to n significant digits
 export function Eval_float(p1: U) {
-  return evalFloats(() => {
-    return Eval(yyfloat(Eval(cadr(p1))));
-  });
+  if (caddr(p1) !== symbol(NIL)) {
+    const n = nativeInt(Eval(caddr(p1)));
+    if (isNaN(n) || n < 1 || n > MAX_DIGITS) {
+      stop(`float: 2nd argument must be a number of digits from 1 to ${MAX_DIGITS}`);
+    }
+    return bigFloat(noFloats(Eval, cadr(p1)), n);
+  }
+  // exactly first, like N[] elsewhere: gcd, roots, the integral table and
+  // primality tests give wrong answers or none on float input
+  const exact = noFloats(Eval, cadr(p1));
+  return evalFloats(() => Eval(yyfloat(exact)));
 }
 
 function checkFloatHasWorkedOutCompletely(nodeToCheck) {
@@ -50,6 +65,20 @@ function checkFloatHasWorkedOutCompletely(nodeToCheck) {
   ) {
     return stop('float: some unevalued parts in ' + nodeToCheck);
   }
+}
+
+// Runs an exact algorithm (roots, integral tables, ...) with float evaluation
+// off and converts its result afterwards when it was asked for inside
+// float(): those algorithms cannot match or factor float coefficients.
+export function evalExactly(f: (p1: U) => U, p1: U): U {
+  const asFloats = defs.evaluatingAsFloats;
+  const result = noFloats(f, p1);
+  // an unevaluated call comes back as it is: converting it would evaluate
+  // it again, without end
+  if (!asFloats || (iscons(result) && car(result) === car(p1))) {
+    return result;
+  }
+  return zzfloat(result);
 }
 
 export function zzfloat(p1: U): U {

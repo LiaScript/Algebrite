@@ -52,6 +52,7 @@ import { makeQuantity, requireDimensionless } from './quantity';
 import { subst } from './subst';
 import { check_tensor_dimensions, Eval_tensor } from './tensor';
 import { Eval_user_function } from './userfunc';
+import { matrixExponential } from './linalg';
 
 export function evaluate_integer(p: U): number {
   return nativeInt(Eval(p));
@@ -317,7 +318,11 @@ export function Eval_Eval(p1: U) {
 // exp evaluation: it replaces itself with
 // a POWER(E,something) node and evals that one
 export function Eval_exp(p1: U) {
-  return exponential(requireDimensionless(Eval(cadr(p1)), 'exp'));
+  const arg = Eval(cadr(p1));
+  if (istensor(arg) && arg.ndim === 2) {
+    return matrixExponential(arg);
+  }
+  return exponential(requireDimensionless(arg, 'exp'));
 }
 
 export function Eval_factorial(p1: U) {

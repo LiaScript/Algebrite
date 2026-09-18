@@ -73,7 +73,7 @@ run_test([
   '1',
 
   'subst(u,x,x+1==y)',
-  'testeq(u+1,y)',
+  'u+1==y',
 
   // vectors
   'subst(3,x,[x,x^2])',

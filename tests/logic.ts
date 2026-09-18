@@ -41,7 +41,7 @@ run_test([
   'and(1,a)',
 
   'or(0,a<b)',
-  'or(0,testlt(a,b))',
+  'or(0,a<b)',
 
   // comparisons of rationals and floats
   '1/3<1/2',
@@ -136,17 +136,17 @@ run_test([
 
   // undecidable: stays unevaluated
   'testeq(a,b)',
-  'testeq(a,b)',
+  'a==b',
 
   'testgt(x,1)',
-  'testgt(x,1)',
+  'x>1',
 
   'x<1',
-  'testlt(x,1)',
+  'x<1',
 
   // complex numbers have no order
   'testlt(i,1)',
-  'testlt(i,1)',
+  'i<1',
 
   'testeq(i,i)',
   '1',
@@ -186,7 +186,7 @@ run_test([
 
   // undecidable condition: unevaluated
   'test(x<1,a,b)',
-  'test(testlt(x,1),a,b)',
+  'test(x<1,a,b)',
 
   // nested
   'test(1<2,test(3<2,a,b),c)',
@@ -219,10 +219,10 @@ run_test([
   '0',
 
   'check(x<1)',
-  'check(testlt(x,1))',
+  'check(x<1)',
 
   'check(testeq(a,b))',
-  'check(testeq(a,b))',
+  'check(a==b)',
 
   'check(and(1<2,2<3))',
   '1',

@@ -25,6 +25,7 @@ import { add, add_all, subtract } from './add';
 import { integer, rational } from './bignum';
 import { coeff } from './coeff';
 import { Eval } from './eval';
+import { evalExactly } from './float';
 import { factorpoly } from './factorpoly';
 import { guess } from './guess';
 import { iscomplexnumber, isnegativeterm, ispolyexpandedform, isposint, isZeroAtomOrTensor } from './is';
@@ -78,7 +79,11 @@ export function normalizeEquation(callExpr: U): [U, U] {
   return [POLY1, X1];
 }
 
-export function Eval_roots(POLY: U) {
+export function Eval_roots(p1: U) {
+  return evalExactly(evalRoots, p1);
+}
+
+function evalRoots(POLY: U) {
   const [POLY1, X1] = normalizeEquation(POLY);
 
   if (!ispolyexpandedform(POLY1, X1)) {

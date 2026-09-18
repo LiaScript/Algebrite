@@ -223,10 +223,10 @@ run_test([
   '[-(b/a)^(1/2),(b/a)^(1/2)]',
 
   'solve(sin(x),x)',
-  'Stop: solve: 1st argument is not a polynomial in the variable x — solve() currently only supports polynomial equations',
+  '[0,pi]',
 
   'solve(3,x)',
-  'Stop: solve: 1st argument is not a polynomial in the variable x — solve() currently only supports polynomial equations',
+  'Stop: solve: 1st argument does not contain the variable x',
 
   // symbolic leading coefficient: normalising divided it by itself, which
   // expanded to 1/(s^2+1)+s^2/(s^2+1) instead of 1

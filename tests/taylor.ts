@@ -78,16 +78,17 @@ run_test([
   'taylor(exp(x),x,n)',
   'taylor(exp(x),x,n,0)',
 
-  // not analytic at the point
+  // a pole: the Laurent series, see series_sums.ts
   'taylor(1/x,x,3)',
-  'Stop: divide by zero',
+  '1/x',
 
+  // a branch point has no such series
   'taylor(sqrt(x),x,2)',
   'Stop: divide by zero',
 
-  // removable singularities are not resolved (would be 1-x^2/6+x^4/120)
+  // removable singularity: 1-x^2/6+x^4/120
   'taylor(sin(x)/x,x,4)',
-  'Stop: divide by zero',
+  '1/120*x^4-1/6*x^2+1',
 
   // wrong number of arguments
   'taylor()',

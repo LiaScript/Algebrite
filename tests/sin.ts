@@ -118,7 +118,7 @@ run_test([
   '1.000000...',
 
   'f(120,sqrt(3)/2)', // 120
-  '1.0',
+  '1.000000...',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
@@ -127,7 +127,7 @@ run_test([
   '1.000000...',
 
   'f(300,-sqrt(3)/2)', // 300
-  '1.0',
+  '1.000000...',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
@@ -136,16 +136,16 @@ run_test([
   '1.000000...',
 
   'f(-120,-sqrt(3)/2)', // -120
-  '1.0',
+  '1.000000...',
 
   // this should really be 1.0 , however
   // we have errors doing the calculations so
   // we don't get to that exact 1.0 float
   'f(-240,sqrt(3)/2)', // -240
-  '1.000000...',
+  '1.0',
 
   'f(-300,sqrt(3)/2)', // -300
-  '1.0',
+  '1.000000...',
 
   'f=quote(f)',
   '',
@@ -156,7 +156,7 @@ run_test([
   // check the default case
 
   'sin(1/12*pi)',
-  'sin(1/12*pi)',
+  '-1/4*2^(1/2)+1/4*2^(1/2)*3^(1/2)',
 
   'sin(arctan(4/3))',
   '4/5',

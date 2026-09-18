@@ -58,5 +58,9 @@ function mod(p1: U, p2: U): U {
     stop('mod function: integer arguments expected');
   }
 
-  return new Num(mmod(p1.q.a, p2.q.a));
+  // mmod truncates (sign of the dividend); the result takes the sign of the
+  // divisor instead, as in Maxima, Mathematica and SymPy: mod(-7,3) = 2
+  const r = mmod(p1.q.a, p2.q.a);
+  const flip = !r.isZero() && r.isNegative() !== p2.q.a.isNegative();
+  return new Num(flip ? r.add(p2.q.a) : r);
 }

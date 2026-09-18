@@ -27,7 +27,8 @@ import {
   realconstant
 } from './is';
 import { makeList } from './list';
-import { multiply, negate } from './multiply';
+import { specialSineAngle } from './sin';
+import { divide, multiply, negate } from './multiply';
 import { subtract } from './add';
 import { requireDimensionless } from './quantity';
 
@@ -112,6 +113,12 @@ function arccos(x: U): U {
     return defs.evaluatingAsFloats
       ? double((5.0 * Math.PI) / 6.0)
       : multiply(rational(5, 6), symbol(PI));
+  }
+
+  // arccos of the special sines: 90 degrees minus the arcsin
+  const degrees = specialSineAngle(x);
+  if (degrees !== undefined) {
+    return multiply(divide(integer(90 - degrees), integer(180)), symbol(PI));
   }
 
   if (!isrational(x)) {

@@ -57,7 +57,7 @@ run_test([
   'arg(z)',
 
   'z>0',
-  'testgt(z,0)',
+  'z>0',
 
   // contradictions
   'assume(z,positive)',

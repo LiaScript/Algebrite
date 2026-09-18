@@ -44,6 +44,7 @@ import { symbol } from "../runtime/symbol";
 import { checkArgCount, equal, exponential, length, lessp } from '../sources/misc';
 import { add, add_all, subtract } from './add';
 import { besselj } from './besselj';
+import { specialDerivative } from './special';
 import { bessely } from './bessely';
 import { integer, nativeInt, rational } from './bignum';
 import { cosine } from './cos';
@@ -272,6 +273,11 @@ function d_scalar_scalar_1(p1: U, p2: Sym): U {
 
   if (car(p1) === symbol(INTEGRAL) && caddr(p1) === p2) {
     return derivative_of_integral(p1);
+  }
+
+  const viaSpecial = specialDerivative(p1, (q) => derivative(q, p2));
+  if (viaSpecial !== undefined) {
+    return viaSpecial;
   }
 
   return dfunction(p1, p2);
@@ -519,61 +525,24 @@ function derfc(p1: U, p2: Sym): U {
   );
 }
 
+// besselj(n, x) and bessely(n, x): J0' = -J1, Jn' = J(n-1) - n/x*Jn, and the
+// same for Y
 function dbesselj(p1: U, p2: Sym): U {
-  if (isZeroAtomOrTensor(caddr(p1))) {
-    return dbesselj0(p1, p2);
-  }
-  return dbesseljn(p1, p2);
-}
-
-function dbesselj0(p1: U, p2: Sym): U {
-  const deriv = derivative(cadr(p1), p2);
-  return multiply(
-    multiply(deriv, besselj(cadr(p1), Constants.one)),
-    Constants.negOne
-  );
-}
-
-function dbesseljn(p1: U, p2: Sym): U {
-  const deriv = derivative(cadr(p1), p2);
-  return multiply(
-    deriv,
-    add(
-      besselj(cadr(p1), add(caddr(p1), Constants.negOne)),
-      multiply(
-        divide(multiply(caddr(p1), Constants.negOne), cadr(p1)),
-        besselj(cadr(p1), caddr(p1))
-      )
-    )
-  );
+  return dbessel(besselj, cadr(p1), caddr(p1), p2);
 }
 
 function dbessely(p1: U, p2: Sym): U {
-  if (isZeroAtomOrTensor(caddr(p1))) {
-    return dbessely0(p1, p2);
+  return dbessel(bessely, cadr(p1), caddr(p1), p2);
+}
+
+function dbessel(f: (x: U, n: U) => U, n: U, x: U, p2: Sym): U {
+  const deriv = derivative(x, p2);
+  if (isZeroAtomOrTensor(n)) {
+    return negate(multiply(deriv, f(x, Constants.one)));
   }
-  return dbesselyn(p1, p2);
-}
-
-function dbessely0(p1: U, p2: Sym): U {
-  const deriv = derivative(cadr(p1), p2);
-  return multiply(
-    multiply(deriv, besselj(cadr(p1), Constants.one)),
-    Constants.negOne
-  );
-}
-
-function dbesselyn(p1: U, p2: Sym): U {
-  const deriv = derivative(cadr(p1), p2);
   return multiply(
     deriv,
-    add(
-      bessely(cadr(p1), add(caddr(p1), Constants.negOne)),
-      multiply(
-        divide(multiply(caddr(p1), Constants.negOne), cadr(p1)),
-        bessely(cadr(p1), caddr(p1))
-      )
-    )
+    subtract(f(x, subtract(n, Constants.one)), multiply(divide(n, x), f(x, n)))
   );
 }
 

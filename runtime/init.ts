@@ -389,6 +389,8 @@ const defn_str = [
   'version="' + version + '"',
   'e=exp(1)',
   'i=sqrt(-1)',
+  // the name other CAS use for inf
+  'infinity=inf',
   'autoexpand=1',
   'assumeRealVariables=1',
   'trange=[-pi,pi]',

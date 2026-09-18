@@ -1,13 +1,19 @@
 import {
+  cadddr,
   caddr,
   cadr,
   car,
   Constants,
+  iscons,
   issymbol,
   istensor,
   NIL,
   Tensor,
   TESTEQ,
+  TESTGE,
+  TESTGT,
+  TESTLE,
+  TESTLT,
   U
 } from '../runtime/defs';
 import { alloc_tensor } from '../runtime/alloc';
@@ -18,6 +24,7 @@ import { add, subtract } from './add';
 import { derivative } from './derivative';
 import { det } from './det';
 import { Eval } from './eval';
+import { evalExactly } from './float';
 import { inner } from './inner';
 import { inv } from './inv';
 import { ispolyexpandedform, isZeroAtomOrTensor } from './is';
@@ -36,22 +43,47 @@ import {
 import { matrix } from './rref';
 import { build_tensor } from './scan';
 import { simplify } from './simplify';
+import { solveInequalities, solveInequality } from './solve_inequality';
+import { solveWithFamily, tidySolutions } from './solve_transcendental';
 import { subst } from './subst';
+import { guess } from './guess';
 import { check_tensor_dimensions } from './tensor';
 
-// solve(expr, x) / solve(lhs == rhs, x): polynomial equation solving only.
-// Delegates to roots() for the actual solving — see roots.ts. Non-polynomial
-// equations (e.g. transcendental) are explicitly out of scope for now.
+// solve(expr, x) / solve(lhs == rhs, x): polynomial equations go to roots()
+// (see roots.ts), everything else to solveEquation (solve_transcendental.ts)
+// and inequalities to solveInequality (solve_inequality.ts).
 //
 // solve([eq1, eq2, ...], [x, y, ...]): linear system, see solveLinearSystem,
 // or polynomial system, see solvePolySystem. Equations may use = or ==;
 // without the variable list the variables are collected from the equations
 // in order of first appearance.
+// float(solve(...)) solves exactly and converts the solutions afterwards:
+// the polynomial routines cannot work with float coefficients
 export function Eval_solve(p1: U) {
+  return evalExactly(solve, p1);
+}
+
+function solve(p1: U): U {
   // A literal list of equations is converted element-wise before anything is
   // evaluated: Eval of [x+y=3] would treat x+y=3 as a function definition.
   const eqsArg = cadr(p1);
   const vars = Eval(caddr(p1));
+  if (isInequality(eqsArg)) {
+    const x =
+      vars === symbol(NIL)
+        ? guess(subtract(Eval(cadr(eqsArg)), Eval(caddr(eqsArg))))
+        : vars;
+    return solveInequality(eqsArg, x);
+  }
+  // a list of inequalities in one variable: where all of them hold
+  if (istensor(eqsArg) && eqsArg.elem.length > 0 && eqsArg.elem.every(isInequality)) {
+    const first = eqsArg.elem[0];
+    const x =
+      vars === symbol(NIL)
+        ? guess(subtract(Eval(cadr(first)), Eval(caddr(first))))
+        : vars;
+    return solveInequalities(eqsArg.elem, x);
+  }
   if (istensor(eqsArg) || istensor(vars)) {
     const eqs = istensor(eqsArg)
       ? build_tensor(eqsArg.elem.map(equationToExpr))
@@ -69,15 +101,30 @@ export function Eval_solve(p1: U) {
 
   const [POLY1, X1] = normalizeEquation(p1);
 
-  if (!ispolyexpandedform(POLY1, X1)) {
-    stop(
-      'solve: 1st argument is not a polynomial in the variable ' +
-        X1 +
-        ' — solve() currently only supports polynomial equations'
-    );
+  if (!Find(POLY1, X1)) {
+    stop('solve: 1st argument does not contain the variable ' + X1);
   }
+  if (ispolyexpandedform(POLY1, X1)) {
+    return keepAssumedRoots(roots(POLY1, X1), X1, 'solve');
+  }
+  // solve(eq, x, n): n names the integer of a periodic solution family
+  const family = cadddr(p1) === symbol(NIL) ? undefined : Eval(cadddr(p1));
+  const sols = tidySolutions(solveWithFamily(POLY1, X1, family));
+  if (sols.length === 0) {
+    stop('solve: no solution');
+  }
+  return keepAssumedRoots(
+    sols.length === 1 ? sols[0] : build_tensor(sols),
+    X1,
+    'solve'
+  );
+}
 
-  return keepAssumedRoots(roots(POLY1, X1), X1, 'solve');
+function isInequality(p: U): boolean {
+  return (
+    iscons(p) &&
+    [TESTLT, TESTLE, TESTGT, TESTGE].some((op) => car(p) === symbol(op))
+  );
 }
 
 // Variables in order of first appearance.
