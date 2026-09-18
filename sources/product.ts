@@ -31,7 +31,7 @@ export function Eval_product(p1: U) {
     // 2nd arg (index)
     const indexVariable = caddr(p1);
     if (!issymbol(indexVariable)) {
-        stop('sum: 2nd arg?');
+        stop('product: 2nd arg?');
     }
 
     // 3rd arg (lower limit)

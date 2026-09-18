@@ -33,6 +33,44 @@ run_test([
   'f = quote(f)',
   '',
 
+  'product(k,k,1,5)',
+  '120',
+
+  'product(k,k,3,3)',
+  '3',
+
+  'product(k,k,-2,2)',
+  '0',
+
+  // (x-1)*(x-2)*(x-3)
+  'product(x-k,k,1,3)',
+  'x^3-6*x^2+11*x-6',
+
+  // telescoping: (k+1)/k
+  'product(1+1/k,k,1,9)',
+  '10',
+
+  // empty ranges (upper < lower) give 1
+  'product(k,k,5,1)',
+  '1',
+
+  'product(k,k,4,3)',
+  '1',
+
+  // symbolic or non-integer bounds stay unevaluated
+  'product(k,k,1,n)',
+  'product(k,k,1,n)',
+
+  'product(x,k,1,n)',
+  'product(x,k,1,n)',
+
+  'product(k,k,1/2,3)',
+  'product(k,k,1/2,3)',
+
+  // the index must be a symbol
+  'product(k,1,1,3)',
+  'Stop: product: 2nd arg?',
+
   // wrong number of arguments
   'product(k,k,1)',
   'Stop: product: expected 4 arguments, got 3',
