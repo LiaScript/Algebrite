@@ -101,13 +101,18 @@ test('timelimit is per statement', (t) => {
 
 // A fallback method that catches every error must not turn a timeout into
 // its own message: solve said "no solution", float(x, n) "cannot evaluate".
-// Both statements run for 2 to 3 seconds without a limit.
+// The solve statement took 2 s when this was found and takes 0.1 s since
+// the kernel roots are recognised, hence the short limit; float(zeta(3),300)
+// runs for 3 s.
 run_test([
-  'timelimit=0.5',
+  'timelimit=0.02',
   '',
 
   'solve(2*cos(x)^3-sqrt(2)*cos(x)^2+cos(x)^2/2-sqrt(2)*cos(x)/4-cos(x)/4+sqrt(2)/8=0,x,n)',
-  'Stop: time limit of 0.5 s exceeded, see timelimit',
+  'Stop: time limit of 0.02 s exceeded, see timelimit',
+
+  'timelimit=0.5',
+  '',
 
   'float(zeta(3),300)',
   'Stop: time limit of 0.5 s exceeded, see timelimit',
