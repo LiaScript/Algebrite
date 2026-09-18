@@ -159,6 +159,8 @@ export function Eval_printlist(p1: U) {
 }
 
 function _print(p: U, passedPrintMode: string): string {
+  // print(a, b, ...) prints every argument, one per line
+  const printed: string[] = [];
   let accumulator = '';
 
   while (iscons(p)) {
@@ -194,6 +196,7 @@ function _print(p: U, passedPrintMode: string): string {
       rememberPrint(accumulator, LAST_LIST_PRINT);
     }
     defs.printMode = origPrintMode;
+    printed.push(accumulator);
 
     p = cdr(p);
   }
@@ -203,7 +206,7 @@ function _print(p: U, passedPrintMode: string): string {
       `emttedString from display: ${defs.stringsEmittedByUserPrintouts}`
     );
   }
-  return accumulator;
+  return printed.join('\n');
 }
 
 function rememberPrint(theString: string, theTypeOfPrint: string) {
