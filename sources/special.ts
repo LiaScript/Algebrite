@@ -44,9 +44,7 @@ export const SPECIAL: { [name: string]: Special } = {
   lambertw: {
     exact: lambertExact,
     numeric: lambertW,
-    // W' = W/(x*(1+W))
-    derivative: (x) =>
-      divide(call('lambertw', x), multiply(x, add(Constants.one, call('lambertw', x))))
+    // W' = W/(x*(1+W)), see specialDerivative: the same on every branch
   },
   Si: {
     odd: true,
@@ -112,6 +110,9 @@ export function specialDerivative(p: U, dx: (q: U) => U): U | undefined {
   if (name === GAMMA) {
     return multiply(multiply(p, call('digamma', cadr(p))), dx(cadr(p)));
   }
+  if (name === 'lambertw') {
+    return multiply(divide(p, multiply(cadr(p), add(Constants.one, p))), dx(cadr(p)));
+  }
   const f = SPECIAL[name];
   if (!f || !f.derivative) {
     return undefined;
@@ -119,7 +120,52 @@ export function specialDerivative(p: U, dx: (q: U) => U): U | undefined {
   return multiply(Eval(f.derivative(cadr(p))), dx(cadr(p)));
 }
 
-// ---- Lambert W, principal branch
+// ---- Lambert W: lambertw(x) is the principal branch W0, lambertw(x, -1)
+// the other real branch W-1, defined for -1/e <= x < 0
+
+export function Eval_lambertw(p1: U) {
+  checkArgCount(p1, 1, 2);
+  const x = Eval(cadr(p1));
+  const branch = caddr(p1) === symbol('nil') ? Constants.zero : Eval(caddr(p1));
+  const k = nativeInt(branch);
+  if (k === 0) {
+    return special('lambertw', x);
+  }
+  if (k === -1) {
+    if (isdouble(x)) {
+      const v = lambertWm1(x.d);
+      if (v !== undefined) {
+        return double(v);
+      }
+    } else if (equal(x, negate(exponential(Constants.negOne)))) {
+      return Constants.negOne;
+    }
+  }
+  return call('lambertw', x, isNaN(k) ? branch : integer(k));
+}
+
+function lambertWm1(x: number): number | undefined {
+  if (x < -1 / Math.E || x >= 0) {
+    return undefined;
+  }
+  let w = Math.log(-x) - Math.log(-Math.log(-x));
+  if (x < -0.3) {
+    w = -1 - Math.sqrt(2 * (Math.E * x + 1)); // near the branch point
+  }
+  for (let i = 0; i < 100; i++) {
+    const ew = Math.exp(w);
+    const f = w * ew - x;
+    const step = f / (ew * (w + 1) - ((w + 2) * f) / (2 * w + 2));
+    if (!Number.isFinite(step)) {
+      break;
+    }
+    w -= step;
+    if (Math.abs(step) < 1e-15 * (1 + Math.abs(w))) {
+      break;
+    }
+  }
+  return w;
+}
 
 // W(0) = 0, W(e) = 1, W(-1/e) = -1, W(k*log(k)) = log(k) for k >= 1 and
 // W(log(k^k)) = log(k)

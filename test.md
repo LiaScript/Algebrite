@@ -1117,7 +1117,7 @@ prime(5)              # the 5th prime number
 | `chebyshevt(n, x)`, `chebyshevu(n, x)` | Chebyshev polynomials of the first / second kind |
 | `zeta(s)` | Riemann zeta function, exact at even and at negative integers |
 | `beta(a, b)`, `digamma(x)` | Beta function / logarithmic derivative of `Gamma` |
-| `lambertw(x)` | Lambert W, the inverse of `x*exp(x)` |
+| `lambertw(x)`, `lambertw(x, -1)` | Lambert W, the inverse of `x*exp(x)`: principal branch / the second real branch for `-1/e <= x < 0` |
 | `Si(x)`, `Ci(x)`, `Ei(x)` | Sine, cosine and exponential integral |
 | `fresnels(x)`, `fresnelc(x)` | Fresnel integrals of `sin(pi*t^2/2)` and `cos(pi*t^2/2)` |
 
@@ -1834,7 +1834,7 @@ is experimental and may misbehave.
 | `isreal(x)` | `1`/`0` if known, else unevaluated |
 | `jacobian(f, vars)` | Matrix of the first derivatives of the vector `f` |
 | `laguerre(n, x)`, `laguerre(n, k, x)` | Laguerre polynomial / associated Laguerre polynomial |
-| `lambertw(x)` | Lambert W, the inverse of `x*exp(x)` |
+| `lambertw(x)`, `lambertw(x, -1)` | Lambert W, the inverse of `x*exp(x)`: principal branch / the second real branch for `-1/e <= x < 0` |
 | `laplace(f, t, s)` | Laplace transform |
 | `laplacian(f, vars)` | Sum of the unmixed second derivatives of `f` |
 | `lcm(a, b, ...)` | Least common multiple |

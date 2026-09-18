@@ -33,16 +33,14 @@ import { apart } from './expand';
 import { denominator } from './denominator';
 import { numerator } from './numerator';
 import { logarithm } from './log';
-import { equal } from './misc';
 import { derivative } from './derivative';
 import { evalExactly, zzfloat } from './float';
-import { exponential } from './misc';
 import { zeta } from './zeta';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { simplify } from './simplify';
 import { subst } from './subst';
-import { checkArgCount } from './misc';
+import { checkArgCount, equal, exponential } from './misc';
 
 // 'sum' function
 

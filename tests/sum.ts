@@ -200,7 +200,7 @@ run_test([
   'sum(binomial(n,k),k,0,n)',
   'sum(binomial(n,k),k,0,n)',
 
-  // telescopes: 1/k - 1/(k+1), see round2.ts
+  // telescopes: 1/k - 1/(k+1), see series_sums.ts
   'sum(1/(k*(k+1)),k,1,n)',
   '1-1/(1+n)',
 

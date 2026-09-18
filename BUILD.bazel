@@ -271,12 +271,12 @@ nodejs_test(
 )
 
 nodejs_test(
-    name = "test_simplify_more",
+    name = "test_simplify_rewrites",
     data = [
         ":tsc",
         "@npm//big-integer",
     ],
-    entry_point = ":tests/simplify_more.ts",
+    entry_point = ":tests/simplify_rewrites.ts",
 )
 
 nodejs_test(
@@ -322,24 +322,6 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/round.ts",
-)
-
-nodejs_test(
-    name = "test_round2",
-    data = [
-        ":tsc",
-        "@npm//big-integer",
-    ],
-    entry_point = ":tests/round2.ts",
-)
-
-nodejs_test(
-    name = "test_round3",
-    data = [
-        ":tsc",
-        "@npm//big-integer",
-    ],
-    entry_point = ":tests/round3.ts",
 )
 
 nodejs_test(
@@ -589,12 +571,30 @@ nodejs_test(
 )
 
 nodejs_test(
-    name = "test_limit_more",
+    name = "test_limit_fallbacks",
     data = [
         ":tsc",
         "@npm//big-integer",
     ],
-    entry_point = ":tests/limit_more.ts",
+    entry_point = ":tests/limit_fallbacks.ts",
+)
+
+nodejs_test(
+    name = "test_linalg",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/linalg.ts",
+)
+
+nodejs_test(
+    name = "test_lists",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/lists.ts",
 )
 
 nodejs_test(

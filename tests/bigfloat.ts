@@ -148,4 +148,62 @@ run_test([
 
   'float(pi,2000)',
   'Stop: float: 2nd argument must be a number of digits from 1 to 1000',
+
+  // float(x, n) with heavy cancellation: the precision is raised until two
+  // runs agree. sin(10^22) = -0.85220084976718880177270589375303...
+  'float(sin(10^22),30)',
+  '-0.852200849767188801772705893753',
+
+  // exp(100)-exp(100)+1/3: the difference of two huge numbers
+  'float(exp(100)+1/3-exp(100),20)',
+  '0.33333333333333333333',
+
+  // Gamma(1/3) = 2.67893853470774763365569294097 4677... (mpmath)
+  'float(Gamma(1/3),30)',
+  '2.67893853470774763365569294097',
+
+  'float(Gamma(5),10)',
+  '24.00000000',
+
+  // Gamma(-1/2) = -2*sqrt(pi) = -3.5449077018110320546
+  'float(Gamma(-1/2),20)',
+  '-3.5449077018110320546',
+
+  // erf(1) = 0.842700792949714869341220635082 60...
+  'float(erf(1),30)',
+  '0.842700792949714869341220635083',
+
+  // erf(1/2) = 0.52049987781304653768 27...
+  'float(erf(1/2),20)',
+  '0.52049987781304653768',
+
+  // erfc(1) = 1-erf(1) = 0.15729920705028513066
+  'float(erfc(1),20)',
+  '0.15729920705028513066',
+
+  // tiny values: two runs that both underflow to 0 do not count as agreement.
+  // exp(-200) = 1.38389652673...*10^(-87), 1/Gamma(100) = 1.0715102881...*10^(-156)
+  'float(1/10^100,10)',
+  '1.000000000*10^(-100)',
+
+  'float(exp(-200),10)',
+  '1.383896527*10^(-87)',
+
+  'float(1/Gamma(100),10)',
+  '1.071510288*10^(-156)',
+
+  // an exact zero is still zero
+  'float(sin(pi),10)',
+  '0.0',
+
+  // digits that never settle are not returned
+  'float(sin(10^3000),10)',
+  'Stop: float: the precision needed for 10 digits is out of reach',
+
+  // a float argument is taken as the decimal it prints as
+  'float(0.1,20)',
+  '0.10000000000000000000',
+
+  'float(2.5*10^(-7),10)',
+  '2.500000000*10^(-7)',
 ]);

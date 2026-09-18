@@ -168,4 +168,42 @@ run_test([
 
   'integral(exp(x^2)/x,x)',
   'Stop: integral: sorry, could not find a solution',
+
+  // exp with sinh or cosh: the hyperbolic function is written in exp
+  // exp(x)*sinh(x) = (exp(2*x)-1)/2
+  'integral(exp(x)*sinh(x),x)',
+  '-1/2*x+1/4*exp(2*x)',
+
+  'integral(exp(x)*cosh(x),x)',
+  '1/2*x+1/4*exp(2*x)',
+
+  'chk(exp(2*x)*sinh(3*x))',
+  '1',
+
+  // 1/(a+b*cos(x)) and 1/(a+b*sin(x)) with a^2 > b^2: the real arctan form
+  // 2/sqrt(a^2-b^2)*arctan(sqrt((a-b)/(a+b))*tan(x/2))
+  'integral(1/(2+cos(x)),x)',
+  '2*arctan(tan(1/2*x)/(3^(1/2)))/(3^(1/2))',
+
+  'chk(1/(2+cos(x)))',
+  '1',
+
+  'chk(1/(5+3*sin(x)))',
+  '1',
+
+  'chk(1/(5-4*cos(x)))',
+  '1',
+
+  // 1/(x^4+c), c > 0. integral from 0 to inf of 1/(1+x^4) = pi/(2*sqrt(2))
+  'chk(1/(1+x^4))',
+  '1',
+
+  'chk(1/(x^4+16))',
+  '1',
+
+  'chk(3/(2*x^4+5))',
+  '1',
+
+  'float(defint(1/(1+x^4),x,0,inf))',
+  '1.110721...',
 ]);

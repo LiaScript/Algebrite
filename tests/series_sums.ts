@@ -197,4 +197,50 @@ run_test([
 
   'product(sin(k),k,1,n)',
   'product(sin(k),k,1,n)',
+
+  // telescoping sums: partial fractions whose poles differ by integers
+  // 1/(k*(k+1)) = 1/k - 1/(k+1)
+  'sum(1/(k*(k+1)),k,1,inf)',
+  '1',
+
+  'sum(1/(k*(k+1)),k,1,n)',
+  '1-1/(1+n)',
+
+  'sum(1/(k*(k+1)),k,1,10)',
+  '10/11',
+
+  // (1/2)*(1/k - 1/(k+2)): 1/2*(1+1/2)
+  'sum(1/(k*(k+2)),k,1,inf)',
+  '3/4',
+
+  'sum(1/(k^2-1),k,2,inf)',
+  '3/4',
+
+  // (1/2)*(1/(2*k-1) - 1/(2*k+1))
+  'sum(1/((2*k-1)*(2*k+1)),k,1,inf)',
+  '1/2',
+
+  // 1/2*(1/(k*(k+1)) - 1/((k+1)*(k+2))): 1/2*1/2
+  'sum(1/(k*(k+1)*(k+2)),k,1,inf)',
+  '1/4',
+
+  'sum(1/(k+1),k,1,inf)',
+  'Stop: sum: the series diverges',
+
+  // alternating p-series: sum (-1)^k/k^s = -(1-2^(1-s))*zeta(s), -log(2) at s = 1
+  'sum((-1)^k/k,k,1,inf)',
+  '-log(2)',
+
+  'sum((-1)^(k+1)/k,k,1,inf)',
+  'log(2)',
+
+  'sum((-1)^k/k^2,k,1,inf)',
+  '-1/12*pi^2',
+
+  'sum((-1)^(k+1)/k^2,k,1,inf)',
+  '1/12*pi^2',
+
+  // -1 + 1/2 is left out: -log(2) + 1/2
+  'sum((-1)^k/k,k,3,inf)',
+  '1/2-log(2)',
 ]);

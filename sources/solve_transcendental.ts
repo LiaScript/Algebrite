@@ -195,7 +195,8 @@ function solveInKernel(E: U, x: U, depth: number): U[] {
 }
 
 // Equations that need the Lambert W function, W(z)*exp(W(z)) = z:
-//   alpha*x*b^(beta*x) + c = 0   x = W(r*B)/B, r = -c/alpha, B = beta*log(b)
+//   alpha*x*b^(beta*x+gamma) + c = 0   x = W(r*B/b^gamma)/B, r = -c/alpha,
+//                                      B = beta*log(b)
 //   alpha*x*log(x) + c = 0       x = exp(W(r))
 //   a*x^x + c = 0                x = exp(W(log(-c/a)))
 // undefined for any other shape.
@@ -211,11 +212,16 @@ function lambertForm(E: U, ks: U[], kinds: Kind[], x: U): U[] | undefined {
   if (Find(a, u) || Find(c, u) || Find(c, x) || isZeroAtomOrTensor(a)) {
     return undefined;
   }
-  const W = (v: U) => call('lambertw', v);
+  // W0(z), and W-1(z) as well for -1/e < z < 0, where both are real
+  const W = (z: U): U[] => {
+    const f = zzfloat(z);
+    const two = isdouble(f) && f.d < 0 && f.d > -1 / Math.E;
+    return (two ? [call('lambertw', z, Constants.negOne)] : []).concat([call('lambertw', z)]);
+  };
   if (ispower(k) && equal(cadr(k), x) && equal(caddr(k), x)) {
     return Find(a, x)
       ? undefined
-      : [exponential(W(call(LOG, divide(negate(c), a))))];
+      : W(call(LOG, divide(negate(c), a))).map((w) => exponential(w));
   }
   const alpha = divide(a, x);
   if (Find(alpha, x)) {
@@ -223,16 +229,19 @@ function lambertForm(E: U, ks: U[], kinds: Kind[], x: U): U[] | undefined {
   }
   const r = divide(negate(c), alpha);
   if (kinds[0] === 'log' && equal(cadr(k), x)) {
-    return [exponential(W(r))];
+    return W(r).map((w) => exponential(w));
   }
   if (kinds[0] === 'exp') {
-    const beta = divide(caddr(k), x);
-    if (Find(beta, x)) {
+    // b^(beta*x+gamma) = b^gamma * exp(B*x): x*exp(B*x) = r/b^gamma
+    const beta = derivative(caddr(k), x);
+    const gamma = Eval(subtract(caddr(k), multiply(beta, x)));
+    if (Find(beta, x) || Find(gamma, x) || isZeroAtomOrTensor(beta)) {
       return undefined;
     }
     // (E is the equation in here, YYE the number e)
     const B = cadr(k) === symbol(YYE) ? beta : multiply(beta, call(LOG, cadr(k)));
-    return [divide(W(multiply(r, B)), B)];
+    const shifted = divide(r, power(cadr(k), gamma));
+    return W(multiply(shifted, B)).map((w) => divide(w, B));
   }
   return undefined;
 }
@@ -497,7 +506,15 @@ function holds(E: U, x: U, c: U): boolean {
       return true;
     }
     const m = zzfloat(absval(v));
-    return !isdouble(m) || Math.abs(m.d) < 1e-9;
+    if (!isdouble(m)) {
+      return true;
+    }
+    // relative to the largest term: 3^x - 7^15 is off by rounding of 7^15
+    const scale = (isadd(E) ? E.tail() : [E]).reduce((max, t) => {
+      const size = zzfloat(absval(Eval(subst(t, x, c))));
+      return isdouble(size) && size.d > max ? size.d : max;
+    }, 1);
+    return Math.abs(m.d) < 1e-9 * scale;
   } catch (e) {
     return false;
   }

@@ -141,7 +141,7 @@ run_test([
   'solve(x+1>x,x)',
   '1',
 
-  // linear with a slope of known sign; see round2.ts
+  // linear with a slope of known sign, more of these below
   'solve(x>a,x)',
   'x>a',
 
@@ -170,4 +170,72 @@ run_test([
 
   'forget(x)\nsolve(x^2<4,x)',
   'and(x>-2,x<2)',
+
+  // systems of inequalities: the intersection
+  'solve([x>1,x<3],x)',
+  'and(x>1,x<3)',
+
+  'solve([x^2>1,x<5],x)',
+  'or(x<-1,and(x>1,x<5))',
+
+  'solve([x>3,x<1],x)',
+  '0',
+
+  'solve([x^2<4,x>=0],x)',
+  'and(x>=0,x<2)',
+
+  // linear in x with a coefficient of known sign
+  'solve(x>a,x)',
+  'x>a',
+
+  'solve(2*x+a<=b,x)',
+  'x<=1/2*(-a+b)',
+
+  'assume(a,positive)',
+  '',
+
+  'solve(a*x>b,x)',
+  'x>b/a',
+
+  'forget(a)',
+  '',
+
+  'assume(a,negative)',
+  '',
+
+  'solve(a*x>b,x)',
+  'x<b/a',
+
+  'forget(a)',
+  '',
+
+  'solve(a*x>b,x)',
+  'Stop: solve: inequalities with parameters are not supported',
+
+  // needs both branches of Lambert W: x*exp(x) < -1/4 between them
+  'solve(x*exp(x)+1/4<0,x)',
+  'and(x>lambertw(-1/4,-1),x<lambertw(-1/4))',
+
+  // a root next to a huge constant is still found
+  'solve(3^x>7^15,x)',
+  'x>log(4747561509943)/log(3)',
+
+  // a sign that cannot be decided is no 0: it stops
+  'solve(a*x>0,x)',
+  'Stop: solve: inequalities with parameters are not supported',
+
+  'solve(sin(y)*x>0,x)',
+  'Stop: solve: inequalities with parameters are not supported',
+
+  'solve(a*(x-1)*(x-2)<0,x)',
+  'Stop: solve: inequalities with parameters are not supported',
+
+  'assume(a,positive)',
+  '',
+
+  'solve(a*x>0,x)',
+  'x>0',
+
+  'forget(a)',
+  '',
 ]);

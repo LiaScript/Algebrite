@@ -42,12 +42,13 @@ import { bernoulliNumber } from './zeta';
 // a Double that carries the digit string for printing: arithmetic on it
 // falls back to double precision.
 // ponytail: fixed point, so a result is computed twice and the precision
-// doubled until both runs agree (at most 6 times); floating point with an
+// doubled until both runs agree (MAX_ATTEMPTS times, then it stops); floating point with an
 // exponent per number would make that unnecessary.
 
 type Big = bigInt.BigInteger;
 
 const GUARD = 25;
+const MAX_ATTEMPTS = 6; // the precision doubles each time
 export const MAX_DIGITS = 1000;
 
 class Fixed {
@@ -62,14 +63,15 @@ class Fixed {
     return a.multiply(this.S).divide(b);
   }
 
+  // the decimal a double prints as (0.1, not 0.1000000000000000055...)
   fromNumber(d: number): Big {
-    // 17 significant digits hold every double exactly enough
-    const [mant, exp] = d.toExponential(16).split('e');
-    const digits = bigInt(mant.replace('.', ''));
-    const e = parseInt(exp, 10) - 16 + this.P;
-    return e >= 0
-      ? digits.multiply(bigInt(10).pow(e))
-      : digits.divide(bigInt(10).pow(-e));
+    const [mant, exp = '0'] = String(d).toLowerCase().split('e');
+    const [int, frac = ''] = mant.replace('-', '').split('.');
+    const digits = bigInt(int + frac);
+    const e = parseInt(exp, 10) - frac.length + this.P;
+    const value =
+      e >= 0 ? digits.multiply(bigInt(10).pow(e)) : digits.divide(bigInt(10).pow(-e));
+    return d < 0 ? value.negate() : value;
   }
 
   // leading digits only: good enough for starting values and reductions
@@ -428,10 +430,17 @@ export function bigFloat(p: U, n: number): U {
       return stop(`float: cannot evaluate ${p} to ${n} digits`);
     }
     const text = format(high, P + GUARD, n);
-    if (format(low, P, n) === text || attempt === 6) {
+    const last = attempt === MAX_ATTEMPTS;
+    // two zeros are no agreement, a tiny value underflows at both precisions;
+    // only an exact zero is still zero at the last attempt
+    const agree = format(low, P, n) === text && (!high.isZero() || last);
+    if (agree) {
       const d = new Double(fine.toNumber(high));
       d.bigRepr = text;
       return d;
+    }
+    if (last) {
+      return stop(`float: the precision needed for ${n} digits is out of reach`);
     }
     P *= 2;
   }

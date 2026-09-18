@@ -18,7 +18,14 @@ import {
   Eval_primes,
   Eval_totient
 } from './numbers';
-import { Eval_beta, Eval_cfrac, evalChebyshev, evalSpecial, SPECIAL } from './special';
+import {
+  Eval_beta,
+  Eval_cfrac,
+  Eval_lambertw,
+  evalChebyshev,
+  evalSpecial,
+  SPECIAL
+} from './special';
 import { Eval_test } from './test';
 import { Eval_bernoulli, Eval_zeta } from './zeta';
 
@@ -63,6 +70,7 @@ export function softBuiltin(name: string): ((p1: U) => U) | undefined {
       if: Eval_test
     };
     Object.keys(SPECIAL).forEach((name) => (table[name] = evalSpecial(name)));
+    table.lambertw = Eval_lambertw; // takes a branch as 2nd argument
   }
   return Object.prototype.hasOwnProperty.call(table, name) ? table[name] : undefined;
 }

@@ -331,4 +331,83 @@ run_test([
 
   'forget(x)\nsolve(abs(x)=2,x)',
   '[-2,2]',
+
+  // trig equations: a third argument names the integer of the solution family
+  'solve(sin(x)=1/2,x,n)',
+  '[1/6*pi+2*n*pi,5/6*pi+2*n*pi]',
+
+  'solve(cos(x)=0,x,n)',
+  '[1/2*pi+2*n*pi,-1/2*pi+2*n*pi]',
+
+  'solve(tan(x)=1,x,n)',
+  '1/4*pi+n*pi',
+
+  // 2*x = pi/2 + 2*n*pi
+  'solve(sin(2*x)=1,x,n)',
+  '1/4*pi+n*pi',
+
+  // the family holds once n is known to be an integer
+  'assume(n,integer)',
+  '',
+
+  'sin(1/6*pi+2*n*pi)',
+  '1/2',
+
+  'forget(n)',
+  '',
+
+  // without it the principal solutions, as before
+  'solve(sin(x)=1/2,x)',
+  '[1/6*pi,5/6*pi]',
+
+  'solve(x^2=4,x,n)',
+  '[-2,2]',
+
+  // a*sin(g) + b*cos(g) = 0 is tan(g) = -b/a
+  'solve(sin(x)=cos(x),x)',
+  '1/4*pi',
+
+  'solve(sin(x)+cos(x)=0,x)',
+  '-1/4*pi',
+
+  'solve(sin(x)=cos(x),x,n)',
+  '1/4*pi+n*pi',
+
+  // sqrt(3)*sin(x) = cos(x): tan(x) = 1/sqrt(3)
+  'solve(sqrt(3)*sin(x)=cos(x),x)',
+  '1/6*pi',
+
+  // large constants: a root is checked relative to the size of the terms
+  // 7^15 = 4747561509943
+  'solve(3^x=7^15,x)',
+  'log(4747561509943)/log(3)',
+
+  'solve(10^x=10^15+1,x)',
+  'log(1000000000000001)/log(10)',
+
+  // both real branches of Lambert W for an argument between -1/e and 0:
+  // W-1(-1/4) = -2.1532923641, W0(-1/4) = -0.3574029562
+  'solve(x*exp(x)=-1/4,x)',
+  '[lambertw(-1/4,-1),lambertw(-1/4)]',
+
+  'float(lambertw(-1/4,-1))',
+  '-2.153292...',
+
+  'float(lambertw(-1/10,-1))',
+  '-3.577152...',
+
+  'lambertw(-exp(-1),-1)',
+  '-1',
+
+  // the two branches meet at -1/e
+  'solve(x*exp(x)=-exp(-1),x)',
+  '-1',
+
+  // x^x = 4/5 has the solutions 0.0946497109 and 0.7395336500
+  'float(solve(x^x=4/5,x))',
+  '[0.094650...,0.739534...]',
+
+  // d/dx W = W/(x*(1+W)) on either branch
+  'd(lambertw(x,-1),x)',
+  'lambertw(x,-1)/(x+x*lambertw(x,-1))',
 ]);

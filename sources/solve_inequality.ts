@@ -6,6 +6,7 @@ import {
   Constants,
   COS,
   iscons,
+  isdouble,
   isNumericAtom,
   isrational,
   LOG,
@@ -39,7 +40,6 @@ import { numerator } from './numerator';
 import { rationalize } from './rationalize';
 import { solveEquation } from './solve_transcendental';
 import { subst } from './subst';
-import { isdouble } from '../runtime/defs';
 
 // solve(lhs < rhs, x) for a real x: the line is cut at the real roots of
 // numerator and denominator of lhs-rhs, at the roots of every log or even
@@ -83,32 +83,49 @@ export function solveInequalities(rels: U[], x: U): U {
     stop('solve: periodic inequalities are not supported');
   }
 
-  const cutsOf = (E: U) => {
+  // per relation: the zeros of the numerator, and every other cut (poles and
+  // the ends of the real domain)
+  const cutSets = active.map(({ E }) => {
     const R = rationalize(E);
-    return [numerator(R), denominator(R), ...domainArgs(E, x)].reduce<U[]>(
-      (acc, p) => acc.concat(realRoots(p, x)),
-      []
-    );
-  };
-  const cuts = active
-    .reduce<U[]>((acc, { E }) => acc.concat(cutsOf(E)), [])
+    return {
+      zeros: realRoots(numerator(R), x),
+      others: [denominator(R), ...domainArgs(E, x)].reduce<U[]>(
+        (acc, p) => acc.concat(realRoots(p, x)),
+        []
+      )
+    };
+  });
+  const cuts = cutSets
+    .reduce<U[]>((acc, c) => acc.concat(c.zeros, c.others), [])
     .concat([Constants.zero]);
+  const isAmong = (v: U, list: U[]) =>
+    list.some((q) => Math.abs(toNumber(q) - toNumber(v)) <= 1e-12 * Math.max(1, Math.abs(toNumber(v))));
   const pts = cuts
     .filter((p, i) => cuts.findIndex((q) => toNumber(q) === toNumber(p)) === i)
     .sort((a, b) => toNumber(a) - toNumber(b));
   const n = pts.length;
 
   // segments alternate: interval before pts[0], pts[0], interval, ..., after
+  let parametric = false;
   const holdsAt = (v: U) => {
     try {
       if (violatesAssumptions(v, x)) {
         return false;
       }
-      return active.every(({ op, E }) => {
+      return active.every(({ op, E }, i) => {
+        // at a zero of E the value is exactly 0, whatever rounding says
+        // about 3^x - 7^15 there: only <= and >= hold
+        if (isAmong(v, cutSets[i].zeros) && !isAmong(v, cutSets[i].others)) {
+          return op === symbol(TESTLE) || op === symbol(TESTGE);
+        }
         const value = Eval(subst(E, x, v));
         const f = zzfloat(value);
         if (isdouble(f) && !Number.isFinite(f.d)) {
           return false; // log(0) and the like
+        }
+        // symbols left over: the sign depends on a parameter
+        if (!isNumberLike(f)) {
+          parametric = true;
         }
         return truth(op, value) === true;
       });
@@ -124,6 +141,10 @@ export function solveInequalities(rels: U[], x: U): U {
     if (i < n) {
       segments.push(holdsAt(pts[i]));
     }
+  }
+
+  if (parametric) {
+    stop('solve: inequalities with parameters are not supported');
   }
 
   const pieces: U[] = [];
@@ -159,8 +180,8 @@ function linearWithParameters(op: U, E: U, x: U): U | undefined {
     return undefined;
   }
   const root = simplify(negate(divide(Eval(subst(E, x, Constants.zero)), slope)));
-  if (isdouble(zzfloat(root))) {
-    return undefined; // a number: the general method handles it
+  if (isdouble(zzfloat(root)) && isNumberLike(zzfloat(slope))) {
+    return undefined; // all numbers: the general method handles it
   }
   const sign = facts(slope);
   if (!sign.positive && !sign.negative) {

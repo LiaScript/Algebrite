@@ -214,4 +214,14 @@ run_test([
   // 2/3*(4^(3/2)-1)
   'defint(sqrt(x+1),x,0,3)',
   '14/3',
+
+  // denesting still works where it can: (2+11*i)^(1/3) = 2+i
+  'simplify((2+11*i)^(1/3))',
+  '2+i',
+
+  'simplify((7+5*2^(1/2))^(1/3))',
+  '1+2^(1/2)',
+
+  'simplify(sqrt(3+2*sqrt(2)))',
+  '1+2^(1/2)',
 ]);
