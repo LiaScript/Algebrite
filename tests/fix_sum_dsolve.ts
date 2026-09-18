@@ -106,6 +106,30 @@ run_test([
   'sum(1/(k*(2*k+1))+1/2^k,k,1,infinity)',
   '3-2*log(2)',
 
+  // 1.05963845043913, three groups 1/3, 1/2 and 1
+  'sum(1/((3*k+1)*(2*k+1)*(k+1)),k,0,inf)',
+  '-4*log(2)+9/4*log(3)+1/4*3^(1/2)*pi',
+
+  // 0.108134376881961
+  'sum(1/(k*(2*k+1)*(3*k+1)),k,1,inf)',
+  '5+4*log(2)-9/2*log(3)-1/2*3^(1/2)*pi',
+
+  // a double pole next to the simple ones: 1/k^2 - 2/k + 2/(k+1/2),
+  // 0.417522789088008
+  'sum(1/(k^2*(2*k+1)),k,1,inf)',
+  '-4+4*log(2)+1/6*pi^2',
+
+  // -1.03122842796812
+  'sum(1/(k*(2*k+1))-1/k^2,k,1,inf)',
+  '2-2*log(2)-1/6*pi^2',
+
+  // a telescoping group and a loose one: 1 + 2 - 2*log(2)
+  'sum(1/(k*(k+1))+1/(k*(2*k+1)),k,1,inf)',
+  '3-2*log(2)',
+
+  'sum(-1/(k*(2*k+1)),k,1,inf)',
+  '-2+2*log(2)',
+
   'float(sum(1/(9*k^2-1),k,1,infinity))',
   '0.197700...',
 
@@ -128,6 +152,14 @@ run_test([
 
   'float(eval(sum(1/(k*(2*k+1)),k,m,infinity),m,4))',
   '0.132753...',
+
+  // too far from digamma(1/2) for the recurrence; 2 - 2*log(2) minus the
+  // first 1999 terms is 0.000250031249999023
+  'sum(1/(k*(2*k+1)),k,2000,inf)',
+  '-digamma(2000)+digamma(4001/2)',
+
+  'float(sum(1/(k*(2*k+1)),k,2000,inf))',
+  '2.500312...*10^(-4)',
 ]);
 
 // still divergent, judged on the whole summand
@@ -212,6 +244,27 @@ run_test([
   'sum(1/(k*(k+a)),k,1,inf)',
   'sum(1/(k*(k+a)),k,1,inf)',
 
+  // (k+1)/k^3 = 1/k^2 + 1/k^3
+  'sum((k+1)/k^3,k,1,inf)',
+  '1/6*pi^2+zeta(3)',
+
+  'sum(1/(k^2-1),k,2,inf)',
+  '3/4',
+
+  'sum(1/((2*k+1)*(2*k+3)*(2*k+5)),k,0,inf)',
+  '1/12',
+
+  // irrational poles, a double pole off the integers: no closed form
+  'sum(1/(k^2-2),k,0,inf)',
+  'sum(1/(k^2-2),k,0,inf)',
+
+  'sum(1/(k+1/2)^2,k,0,inf)',
+  'sum(1/((k+1/2)^2),k,0,inf)',
+
+  // not an integer lower limit
+  'sum(1/(k*(2*k+1)),k,1/2,inf)',
+  'sum(1/(k*(2*k+1)),k,1/2,inf)',
+
   // no closed form without digamma(n+...): stays
   'sum(1/(k*(2*k+1)),k,1,n)',
   'sum(1/(k*(2*k+1)),k,1,n)',
@@ -258,6 +311,19 @@ run_test([
   'sum(1/(k*(2*k+1)),k,-3,inf)',
   'Stop: divide by zero',
 
+  'sum(1/(k*(2*k+1)),k,0,inf)',
+  'Stop: divide by zero',
+
+  // k^2-1 and k^2+3*k+2 are factored
+  'sum(1/(k^2-1),k,1,inf)',
+  'Stop: divide by zero',
+
+  'sum(1/(k^2+3*k+2),k,-2,n)',
+  'Stop: divide by zero',
+
+  'sum(x^k/(k-2),k,0,inf)',
+  'Stop: divide by zero',
+
   // geometric and Gosper summands
   'sum(2^k/(k-3),k,0,n)',
   'Stop: divide by zero',
@@ -295,6 +361,9 @@ run_test([
   'sum(1/(k*(k+1)),k,1,n)',
   '1-1/(1+n)',
 
+  'sum(1/(k^2+3*k+2),k,0,n)',
+  '1-1/(2+n)',
+
   // a symbolic pole or lower limit is not decided
   'simplify(sum(1/((k+m)*(k+m+1)),k,1,n)-(1/(m+1)-1/(n+m+1)))',
   '0',
@@ -328,7 +397,7 @@ run_test([
   'C2*exp(-C1*x)',
 
   'dsolve(d(y(x),x)=x*C1,y(x))',
-  'C2+1/2*C1*x^2',
+  '1/2*C1*x^2+C2',
 
   'dsolve(d(u(t),t)+C1*u(t)=0,u(t))',
   'C2*exp(-C1*t)',
@@ -346,11 +415,11 @@ run_test([
   'C2+C1*cos(x)+C3*sin(x)',
 
   'dsolve(d(y(x),x,2)=C1*x,y(x))',
-  'C2+C3*x+1/6*C1*x^3',
+  '1/6*C1*x^3+C3*x+C2',
 
   // the name in a condition: y(0) = C2, the other constant is C1
   'dsolve(d(y(x),x,2)+y(x)=0,y(x),y(0)=C2)',
-  'C2*cos(x)+C1*sin(x)',
+  'C1*sin(x)+C2*cos(x)',
 
   'dsolve(d(y(x),x)=y(x),y(x),y(0)=C1)',
   'C1*exp(x)',
@@ -358,9 +427,31 @@ run_test([
   'dsolve(d(y(x),x,2)+y(x)=0,y(x),y(0)=C1)',
   'C1*cos(x)+C2*sin(x)',
 
+  // y = C1*x^2/2 + C2 + C3*x, y(0) = 0: C2 = 0, and C3 becomes C2
+  'dsolve(d(y(x),x,2)=C1,y(x),y(0)=0)',
+  'x*(1/2*C1*x+C2)',
+
+  // a value bound to C1 does not free the name
+  'C1=5',
+  '',
+
+  'dsolve(d(y(x),x)+C1*y(x)=0,y(x))',
+  'C2*exp(-5*x)',
+
+  'C1=quote(C1)',
+  '',
+
+  // systems: C2 = x(0), C3 = y(0); x' = C1*C3*cos - C2*abs(C1)*sin = C1*y
+  'dsolve([d(x(t),t)=C1*y(t),d(y(t),t)=-C1*x(t)],[x(t),y(t)])',
+  '[C1*C3*sin(t*abs(C1))/abs(C1)+C2*cos(t*abs(C1)),-C1*C2*sin(t*abs(C1))/abs(C1)+C3*cos(t*abs(C1))]',
+
+  // C1 = x(0), C3 = y(0)
+  'dsolve([d(x(t),t)=y(t)+C2,d(y(t),t)=-x(t)],[x(t),y(t)])',
+  '[C1*cos(t)+C2*sin(t)+C3*sin(t),-C2-C1*sin(t)+C2*cos(t)+C3*cos(t)]',
+
   // separable, Bernoulli and exact equations
   'dsolve(d(y(x),x)=C1*y(x)^2,y(x))',
-  '-1/(C2+C1*x)',
+  '-1/(C1*(x+C2))',
 
   // no clash: as before
   'dsolve(d(y(x),x)+a*y(x)=0,y(x))',
@@ -370,7 +461,7 @@ run_test([
   'C1*cos(x)+C2*sin(x)',
 
   'dsolve(d(y(x),x,2)+y(x)=0,y(x),y(0)=1)',
-  'cos(x)+C1*sin(x)',
+  'C1*sin(x)+cos(x)',
 
   'dsolve(d(y(x),x,2)+y(x)=0,y(x),d(y(x),x)(0)=1)',
   'C1*cos(x)+sin(x)',
@@ -403,6 +494,18 @@ run_test([
   'dsolve(d(y(x),x)=sin(y(x)),y(x),y(0)=pi)',
   'pi',
 
+  'dsolve(d(y(x),x)=(y(x)-1)^2,y(x),y(0)=1)',
+  '1',
+
+  'dsolve(d(y(x),x)=y(x)*(y(x)-1)*(y(x)-2),y(x),y(0)=2)',
+  '2',
+
+  'dsolve(d(y(x),x)+y(x)=y(x)^2,y(x),y(0)=1)',
+  '1',
+
+  'dsolve(d(y(x),x)+y(x)=y(x)^2,y(x),y(0)=0)',
+  '0',
+
   // Bernoulli y' = x*y + y^2: y = 0
   'dsolve(d(y(x),x)=x*y(x)+y(x)^2,y(x),y(0)=0)',
   '0',
@@ -414,13 +517,25 @@ run_test([
   'dsolve(d(y(x),x)=y(x)/x+tan(y(x)/x),y(x),y(1)=pi)',
   'pi*x',
 
+  // Bernoulli with k = 1/2 < 1: v = y^(1/2) has a value at 0, as before;
+  // y' = x*y + sqrt(y) holds with sqrt(y) = sqrt(pi)/2*exp(x^2/4)*erf(x/2)
+  'dsolve(d(y(x),x)=x*y(x)+sqrt(y(x)),y(x),y(0)=0)',
+  '1/4*pi*exp(1/2*x^2)*erf(1/2*x)^2',
+
+  // h has no zero at y0: as before
+  'dsolve(d(y(x),x)=1/y(x),y(x),y(0)=0)',
+  '[-(2*x)^(1/2),(2*x)^(1/2)]',
+
+  'dsolve(d(y(x),x)=y(x)^2,y(x),d(y(x),x)(0)=0)',
+  'Stop: dsolve: a first-order equation takes one initial condition y(x0)=y0',
+
   // other conditions and the general solution as before:
   // y = 1/(1-x): y' = 1/(1-x)^2 = y^2, y(0) = 1
   'dsolve(d(y(x),x)=y(x)^2,y(x),y(0)=1)',
-  '-1/(-1+x)',
+  '1/(-x+1)',
 
   'dsolve(d(y(x),x)=y(x)^2,y(x))',
-  '-1/(C1+x)',
+  '-1/(x+C1)',
 
   'dsolve(d(y(x),x)=y(x)*(1-y(x)),y(x))',
   'C1*exp(x)/(-1+C1*exp(x))',
@@ -434,15 +549,35 @@ run_test([
 run_test([
   // y' = (1+tan(u)^2)/(1+x^2) for u = arctan(x)+C1
   'dsolve((1+x^2)*d(y(x),x)=1+y(x)^2,y(x))',
-  'tan(arctan(x)+C1)',
+  'tan(C1+arctan(x))',
 
   'dsolve(d(y(x),x)=(1+y(x)^2)/(1+x^2),y(x))',
-  'tan(arctan(x)+C1)',
+  'tan(C1+arctan(x))',
 
   // y(0) = 1: tan(arctan(x)+pi/4)
   'dsolve((1+x^2)*d(y(x),x)=1+y(x)^2,y(x),y(0)=1)',
   'tan(1/4*pi+arctan(x))',
 
+  // arctan(y) - arctan(x) = 0
+  'dsolve((1+x^2)*d(y(x),x)=1+y(x)^2,y(x),y(1)=1)',
+  'x',
+
+  // y' = 2/cos(u)^2*(1/2)/(1+x^2/4) = (4+y^2)/(4+x^2)
+  'dsolve((4+x^2)*d(y(x),x)=4+y(x)^2,y(x))',
+  '2*tan(C1+arctan(1/2*x))',
+
+  'dsolve((1+x^2)*d(y(x),x)=x*(1+y(x)^2),y(x))',
+  'tan(C1+1/2*log(x^2+1))',
+
+  'dsolve(x*d(y(x),x)=1+y(x)^2,y(x))',
+  'tan(C1+log(x))',
+
+  'dsolve((1+t^2)*d(u(t),t)=1+u(t)^2,u(t))',
+  'tan(C1+arctan(t))',
+
   'dsolve(d(y(x),x)=1+y(x)^2,y(x))',
   'tan(x+C1)',
+
+  'dsolve(d(y(x),x)=x*(1+y(x)^2),y(x))',
+  'tan(1/2*x^2+C1)',
 ]);
