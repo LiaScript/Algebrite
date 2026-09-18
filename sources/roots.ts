@@ -102,10 +102,14 @@ function isSimpleRoot(k: U[]): boolean {
   return k.slice(1, k.length - 1).every((el) => isZeroAtomOrTensor(el));
 }
 
+// coefficients divided by the leading one, which becomes exactly 1:
+// divide() of a sum by itself expands to 1/(a+b)*a+1/(a+b)*b instead
 function normalisedCoeff(poly: U, x: U): U[] {
   const miniStack = coeff(poly, x);
   const divideBy = miniStack[miniStack.length - 1];
-  return miniStack.map((item) => divide(item, divideBy));
+  return miniStack.map((item, i) =>
+    i === miniStack.length - 1 ? Constants.one : divide(item, divideBy)
+  );
 }
 
 export function roots(POLY: U, X: U): U {

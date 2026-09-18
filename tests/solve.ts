@@ -187,4 +187,15 @@ run_test([
 
   'solve(3,x)',
   'Stop: solve: 1st argument is not a polynomial in the variable x — solve() currently only supports polynomial equations',
+
+  // symbolic leading coefficient: normalising divided it by itself, which
+  // expanded to 1/(s^2+1)+s^2/(s^2+1) instead of 1
+  'solve(a*Y+b*Y-1,Y)',
+  '1/(a+b)',
+
+  'solve(Y*s^2-1+Y,Y)',
+  '1/(s^2+1)',
+
+  'solve(Y*s+3*Y-2,Y)',
+  '2/(s+3)',
 ]);
