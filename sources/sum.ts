@@ -9,21 +9,30 @@ import {
   iscons,
   ispower,
   isdouble,
+  isfactorial,
   isNumericAtom,
   isrational,
   issymbol,
   Num,
+  PI,
+  SECRETX,
   U
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
-import { get_binding, set_binding, symbol } from '../runtime/symbol';
+import {
+  collectUserSymbols,
+  get_binding,
+  set_binding,
+  symbol
+} from '../runtime/symbol';
 import { add, subtract } from './add';
 import { integer, nativeInt } from './bignum';
 import { coeff } from './coeff';
 import { Eval, evaluate_integer } from './eval';
 import {
   equaln,
+  isnegativenumber,
   isposint,
   ispolyexpandedform,
   ispolyfactoredorexpandedform,
@@ -40,7 +49,12 @@ import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { simplify } from './simplify';
 import { subst } from './subst';
-import { checkArgCount, equal, exponential } from './misc';
+import { checkArgCount, equal, exponential, yyexpand } from './misc';
+import { isInteger, isPositive } from './assume';
+import { binomial } from './binomial';
+import { limit } from './limit';
+import { rationalize } from './rationalize';
+import { gosper } from './sum_gosper';
 
 // 'sum' function
 
@@ -108,6 +122,10 @@ function symbolicSum(p1: U, body: U, x: U): U {
     if ([a, b].some((p) => isNumericAtom(p) && isNaN(nativeInt(p)))) {
       return p1;
     }
+    const row = binomialRow(f, x, a, b);
+    if (row) {
+      return row;
+    }
     let terms = isadd(f) ? f.tail() : [f];
     const isPoly = (t: U) => !Find(t, x) || ispolyexpandedform(t, x);
 
@@ -136,17 +154,180 @@ function symbolicSum(p1: U, body: U, x: U): U {
       a,
       b
     );
-    for (const t of terms.filter((t) => !isPoly(t))) {
-      const g = geometricSum(t, x, a, b);
-      if (!g) {
-        return p1;
-      }
-      result = add(result, g);
+    // term by term, and the terms together when one has no closed form of
+    // its own: (k+1)! - k!
+    const rest = terms.filter((t) => !isPoly(t));
+    const closed = rest.map(
+      (t) => geometricSum(t, x, a, b) || gosperSum(t, x, a, b)
+    );
+    if (closed.every((g) => g)) {
+      return closed.reduce(add, add(telescoped, result));
     }
-    return add(telescoped, result);
+    const together =
+      rest.length > 1 && gosperSum(rest.reduce(add, Constants.zero), x, a, b);
+    return together ? add(add(telescoped, result), together) : p1;
   } finally {
     set_binding(x, saved);
   }
+}
+
+// A factorial over the index and a symbol of the limits, as in
+// binomial(n,k) summed up to n: the antidifference of Gosper's algorithm has
+// poles there, (-1)^k*binomial(n,k) would come out as 0 also for n = 0.
+function mixesIndexAndLimits(t: U, x: U, limits: U[]): boolean {
+  const syms: U[] = [];
+  limits.forEach((l) => collectUserSymbols(l, syms));
+  const mixes = (p: U): boolean =>
+    iscons(p) &&
+    ((isfactorial(p) && Find(p, x) && syms.some((v) => Find(p, v))) ||
+      p.tail().some(mixes));
+  return mixes(t);
+}
+
+function hasFactorial(p: U): boolean {
+  return iscons(p) && (isfactorial(p) || p.tail().some(hasFactorial));
+}
+
+// Gosper's antidifference; a summand that stops somewhere on the way has none
+function antidifference(t: U, x: U, limits: U[]): U | null {
+  if (mixesIndexAndLimits(t, x, limits)) {
+    return null;
+  }
+  try {
+    return gosper(t, x);
+  } catch (e) {
+    return null;
+  }
+}
+
+// sum_{x=a}^{b} t = z(b+1) - z(a) for the antidifference z of Gosper
+function gosperSum(t: U, x: U, a: U, b: U): U | null {
+  const z = antidifference(t, x, [a, b]);
+  const lower = z && lowerValue(z, t, x, a);
+  return (
+    lower &&
+    subtract(simplify(Eval(subst(z, x, add(b, Constants.one)))), lower)
+  );
+}
+
+// z(a), or z(a+1) - t(a) where z(a) runs into the factorial of a negative
+// integer: x!/(6*(x-3)!) at x = 2 is 0, but not for the evaluator
+function lowerValue(z: U, t: U, x: U, a: U): U | null {
+  const at = (p: U, v: U) => simplify(Eval(subst(p, x, v)));
+  const hasPole = (p: U): boolean =>
+    iscons(p) &&
+    ((isfactorial(p) && isnegativenumber(cadr(p))) || p.tail().some(hasPole));
+  const direct = at(z, a);
+  if (!hasPole(direct)) {
+    return direct;
+  }
+  const next = subtract(at(z, add(a, Constants.one)), at(t, a));
+  return hasPole(next) ? null : next;
+}
+
+// sum_{x=a}^{inf} t = lim z - z(a). With t(x+1)/t(x) -> rho, abs(rho) < 1,
+// t decays geometrically and so does z, a rational multiple of t; for
+// rho = 1 the limit of z is tried, a symbolic rho (x^k) is left alone.
+function gosperSeries(t: U, x: U, a: U): U | null {
+  const z = antidifference(t, x, [a]);
+  if (!z) {
+    return null;
+  }
+  const next = Eval(subst(t, x, add(x, Constants.one)));
+  // limit() does not come back from quotients of factorials
+  const atInf = (p: U): U | null => {
+    try {
+      return hasFactorial(p) ? null : limit(p, x, symbol(INF));
+    } catch (e) {
+      return null; // no limit found
+    }
+  };
+  const rho = atInf(simplify(divide(next, t)));
+  const size = !rho
+    ? NaN
+    : Find(rho, symbol(INF))
+    ? Infinity
+    : Math.abs(toNumber(rho));
+  if (size > 1) {
+    stop('sum: the series diverges');
+  }
+  const end = size < 1 ? Constants.zero : size === 1 ? atInf(z) : null;
+  if (!end || Find(end, symbol(INF)) || Find(end, x)) {
+    return null;
+  }
+  const lower = lowerValue(z, t, x, a);
+  return lower && subtract(end, lower);
+}
+
+// The whole row of binomial coefficients, from the binomial theorem
+//   sum_{x=0}^{b} binomial(b,x)*y^x = (1+y)^b
+// and theta = y*d/dy, which multiplies the summand by x:
+//   sum p(x)*r^x*binomial(b,x) = p(theta) (1+y)^b at y = r,
+// and sum binomial(b,x)^2 = binomial(2*b,b). For r = -1 the row adds up to
+// 0^b, which is 0 only for an integer b >= 1. Terms that a lower limit
+// above 0 skips are subtracted.
+function binomialRow(f: U, x: U, a: U, b: U): U | null {
+  const from = nativeInt(a);
+  if (
+    b === symbol(INF) ||
+    isNumericAtom(b) ||
+    !(from >= 0 && from <= MAX_SKIPPED) ||
+    !hasFactorial(f)
+  ) {
+    return null;
+  }
+  // only for a summand of the right shape: 1/x has no value at 0
+  const head = () => {
+    let acc: U = Constants.zero;
+    for (let j = 0; j < from; j++) {
+      acc = add(acc, Eval(subst(f, x, integer(j))));
+    }
+    return acc;
+  };
+  const row = binomial(b, x);
+  const q = simplify(divide(f, row));
+  const square = simplify(divide(q, row));
+  if (!Find(square, x)) {
+    return subtract(
+      multiply(square, binomial(multiply(integer(2), b), b)),
+      head()
+    );
+  }
+
+  // q = p(x)*r^x: r is the limit of q(x+1)/q(x)
+  const ratio = rationalize(
+    simplify(divide(Eval(subst(q, x, add(x, Constants.one))), q))
+  );
+  const parts = [numerator(ratio), denominator(ratio)].map(yyexpand);
+  if (parts.some((p) => Find(p, x) && !ispolyexpandedform(p, x))) {
+    return null;
+  }
+  const [cn, cd] = parts.map((p) => coeff(p, x));
+  if (cn.length !== cd.length) {
+    return null;
+  }
+  const r = simplify(divide(cn[cn.length - 1], cd[cd.length - 1]));
+  // (1/2)^x is not combined with 2^x: r^x is also divided out as n^x/d^x
+  const p = [
+    power(r, x),
+    divide(power(numerator(r), x), power(denominator(r), x))
+  ]
+    .map((rx) => yyexpand(simplify(divide(q, rx))))
+    .find((p) => !Find(p, x) || ispolyexpandedform(p, x));
+  if (!p) {
+    return null;
+  }
+  if (isZeroAtomOrTensor(simplify(add(r, Constants.one)))) {
+    return !Find(p, x) && isPositive(b) && isInteger(b) ? negate(head()) : null;
+  }
+  const y = symbol(SECRETX);
+  let g: U = power(add(Constants.one, y), b);
+  let total: U = Constants.zero;
+  for (const c of coeff(p, x)) {
+    total = add(total, multiply(c, g));
+    g = multiply(y, derivative(g, y));
+  }
+  return subtract(simplify(Eval(subst(total, y, r))), head());
 }
 
 // sum_{i=a}^{b} f(i) = F(b) - F(a-1), with F built from power sums.
@@ -213,7 +394,7 @@ function infiniteSum(p1: U, terms: U[], x: U, a: U): U {
     if (!Find(t, x) || ispolyexpandedform(t, x)) {
       stop('sum: the series diverges');
     }
-    const g = infiniteTerm(t, x, a);
+    const g = infiniteTerm(t, x, a) || gosperSeries(t, x, a);
     if (!g) {
       return p1;
     }
@@ -222,13 +403,16 @@ function infiniteSum(p1: U, terms: U[], x: U, a: U): U {
   return result;
 }
 
+// more terms than this are not subtracted from a known series
+const MAX_SKIPPED = 1000;
+
 function infiniteTerm(t: U, x: U, a: U): U | null {
   const at = (v: U) => Eval(subst(t, x, v));
   const next = at(add(x, Constants.one));
   // the terms below the lower bound, for series known from 0 or 1 on
   const skipped = (from: number): U | null => {
     const n = nativeInt(a);
-    if (isNaN(n) || n < from) {
+    if (isNaN(n) || n < from || n - from > MAX_SKIPPED) {
       return null;
     }
     let acc: U = Constants.zero;
@@ -263,6 +447,10 @@ function infiniteTerm(t: U, x: U, a: U): U | null {
     const cu = isposint(su) ? simplify(multiply(u, power(x, su))) : x;
     const head = skipped(1);
     const shift = Eval(power(Constants.negOne, subtract(caddr(alternating), x)));
+    if (findSign(u, x) === undefined && isNumericAtom(shift) && Find(cu, x)) {
+      const g = leibniz(yyexpand(simplify(divide(Constants.one, u))), x, a);
+      return g && multiply(shift, g);
+    }
     if (findSign(u, x) !== undefined || Find(cu, x) || !head || !isNumericAtom(shift)) {
       return null;
     }
@@ -286,6 +474,40 @@ function infiniteTerm(t: U, x: U, a: U): U | null {
     return head && !Find(c, x) ? subtract(multiply(c, zeta(s)), head) : null;
   }
   return null;
+}
+
+// sum_{x=a}^{inf} (-1)^x/(c1*x+c0) with 2*c0/c1 an integer, shifted to the
+// alternating harmonic series -log(2) = sum_{j>=1} (-1)^j/j (c0/c1 = s) or to
+// the Leibniz series pi/4 = sum_{j>=0} (-1)^j/(2*j+1) (c0/c1 = s + 1/2):
+// j = x + s, and the terms below j = a + s are subtracted.
+function leibniz(inverse: U, x: U, a: U): U | null {
+  if (!ispolyexpandedform(inverse, x)) {
+    return null;
+  }
+  const c = coeff(inverse, x);
+  const twice = c.length === 2 ? nativeInt(simplify(divide(multiply(integer(2), c[0]), c[1]))) : NaN;
+  const from = nativeInt(a);
+  if (isNaN(twice) || isNaN(from)) {
+    return null;
+  }
+  const odd = twice % 2 !== 0;
+  const s = Math.floor(twice / 2);
+  const first = odd ? 0 : 1;
+  if (from + s < first || from + s > MAX_SKIPPED) {
+    return null;
+  }
+  const term = (j: number) =>
+    divide(integer(j % 2 === 0 ? 1 : -1), integer(odd ? 2 * j + 1 : j));
+  let series: U = odd
+    ? divide(symbol(PI), integer(4))
+    : negate(logarithm(integer(2)));
+  for (let j = first; j < from + s; j++) {
+    series = subtract(series, term(j));
+  }
+  return divide(
+    multiply(integer((s % 2 === 0 ? 1 : -1) * (odd ? 2 : 1)), series),
+    c[1]
+  );
 }
 
 // the factor (-1)^g of t with g = x + constant

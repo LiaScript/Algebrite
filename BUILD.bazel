@@ -199,6 +199,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_sum_gosper",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/sum_gosper.ts",
+)
+
+nodejs_test(
     name = "test_sum",
     data = [
         ":tsc",
