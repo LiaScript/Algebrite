@@ -26,6 +26,7 @@ import {
   SETQ,
   SIN,
   TAN,
+  Tensor,
   TESTEQ,
   U,
 } from '../runtime/defs';
@@ -41,7 +42,7 @@ import { Eval } from './eval';
 import { imag } from './imag';
 import { integral } from './integral';
 import { isNegative, isPositive, isReal } from './assume';
-import { iseveninteger, ispolyexpandedform, isZeroAtomOrTensor } from './is';
+import { iseveninteger, isfloating, ispolyexpandedform, isZeroAtomOrTensor } from './is';
 import { invlaplace, laplace, linear } from './laplace';
 import { exponential } from './misc';
 import { divide, multiply, negate } from './multiply';
@@ -51,6 +52,7 @@ import { real } from './real';
 import { equationToExpr, roots } from './roots';
 import { build_tensor } from './scan';
 import { simplify } from './simplify';
+import { solveLinearSystem } from './solve';
 import { solveEquation, tidySolutions } from './solve_transcendental';
 import { subst } from './subst';
 
@@ -77,26 +79,36 @@ H(x, y(x)) = C1 in the message.
 Euler-Cauchy solutions are written with log(x): real for x > 0, and with
 the complex log(x) they solve the equation for x < 0 as well.
 
+dsolve([x' = ..., y' = ...], [x(t), y(t)]) solves a first-order linear
+system with constant coefficients and returns [x(t), y(t)]; C1, C2, ...
+are the values at 0.
+
 ponytail: no singular solutions (h(y) = 0 of a separable y' = g(x) h(y)),
-no variation of parameters (forcing laplace can't transform, like 1/x),
-no Riccati, no y'' = f(y, y'), no systems.
+variation of parameters for order 2 only, no Riccati, no y'' = f(y, y'),
+no shifted Euler-Cauchy (a x + b)^k, conditions are solved one at a time
+for one constant each.
 
 */
 
-type Condition = { order: number; at: U; value: U };
+// a condition on the derivative of this order of the index-th function
+type Condition = { index: number; order: number; at: U; value: U };
 
 export function Eval_dsolve(p1: U): U {
-  const ode = equationToExpr(cadr(p1));
   const Y = Eval(caddr(p1));
-  if (!iscons(Y) || !issymbol(cadr(Y)) || cddr(Y) !== symbol(NIL)) {
+  const Ys = istensor(Y) ? Y.tensor.elem : [Y];
+  if (!Ys.every((F) => iscons(F) && issymbol(cadr(F)) && cddr(F) === symbol(NIL))) {
     stop('dsolve: 2nd argument must be a function call like y(x)');
   }
   const conds: Condition[] = [];
   for (let p = cdddr(p1); iscons(p); p = cdr(p)) {
     const ics = car(p);
-    conds.push(...(istensor(ics) ? ics.tensor.elem : [ics]).map((e) => condition(e, Y)));
+    conds.push(...(istensor(ics) ? ics.tensor.elem : [ics]).map((e) => condition(e, Ys)));
   }
-  const sols = dsolve(ode, Y, conds);
+  // the equations unevaluated: Eval would take x' = y as a definition
+  const eqs = cadr(p1);
+  const sols = istensor(Y)
+    ? system((istensor(eqs) ? eqs.tensor.elem : [eqs]).map(equationToExpr), Ys, conds)
+    : dsolve(equationToExpr(eqs), Y, conds);
   if (sols.length === 0) {
     stop('dsolve: no solution satisfies the conditions');
   }
@@ -104,7 +116,8 @@ export function Eval_dsolve(p1: U): U {
 }
 
 // y(0)=1, y'(0)=0 or d(y(x),x)(0)=0, read without Eval: y(0)=1 would define y
-function condition(e: U, Y: U): Condition {
+function condition(e: U, Ys: U[]): Condition {
+  const Y = Ys[0];
   const isEquation = car(e) === symbol(SETQ) || car(e) === symbol(TESTEQ);
   // the parser reads d(y(x),x)(0) as the call eval(d(y(x),x))(0)
   const callee = car(cadr(e));
@@ -125,10 +138,11 @@ function condition(e: U, Y: U): Condition {
   for (let i = 0; i < order; i++) {
     lhs = cadr(lhs);
   }
-  if (!isEquation || car(lhs) !== car(Y) || cddr(lhs) !== symbol(NIL)) {
+  const index = Ys.findIndex((F) => car(F) === car(lhs));
+  if (!isEquation || index < 0 || cddr(lhs) !== symbol(NIL)) {
     stop("dsolve: conditions must look like y(0)=1, y'(0)=1 or d(y(x),x,2)(0)=1");
   }
-  return { order, at: x0, value: Eval(caddr(e)) };
+  return { index, order, at: x0, value: Eval(caddr(e)) };
 }
 
 const constant = (i: number) => usr_symbol('C' + i);
@@ -483,6 +497,51 @@ function variationOfParameters([y1, y2]: U[], g: U, x: U): U | null {
   return I1 && I2 && Eval(subtract(multiply(y2, I2), multiply(y1, I1)));
 }
 
+// ---------------------------------------------------------------- systems
+
+// sum_j m_ij y_j' + a_ij y_j = q_i(t) with constant m_ij, a_ij. The laplace
+// transform sum_j m_ij (s Y_j - y_j(0)) + a_ij Y_j = Q_i is linear in the
+// Y_j; the constants are the values at 0, Cj = y_j(0).
+function system(odes: U[], Ys: U[], conds: Condition[]): U[] {
+  const n = Ys.length;
+  const t = cadr(Ys[0]);
+  if (odes.length !== n || !Ys.every((F) => cadr(F) === t)) {
+    stop('dsolve: a system takes as many equations as functions like x(t), y(t) of one variable');
+  }
+  if (odes.some(isfloating)) {
+    stop('dsolve: a system needs exact coefficients, 1/2 instead of 0.5'); // invlaplace factors
+  }
+  const s = usr_symbol('$s');
+  const ys = Ys.map((_, j) => usr_symbol('$y' + (j + 1)));
+  const ds = Ys.map((_, j) => usr_symbol('$d' + (j + 1)));
+  const transforms = Ys.map((_, j) => usr_symbol('$Y' + (j + 1)));
+  const eqs = odes.map((ode) => {
+    let E = ode;
+    Ys.forEach((F, j) => {
+      const dF = new Cons(symbol(DERIVATIVE), new Cons(F, new Cons(t, symbol(NIL))));
+      E = subst(subst(E, dF, ds[j]), F, ys[j]);
+    });
+    const lin = linearCoefficients(Eval(E), [...ys, ...ds]);
+    if (
+      lin === null ||
+      !freeOf(build_tensor(lin.a), t) ||
+      Ys.some((F) => order(ode, F, t) > 1 || Find(lin.q, car(F)))
+    ) {
+      stop('dsolve: only first-order linear systems with constant coefficients are supported');
+    }
+    return transforms.reduce((acc: U, Yj, j) => {
+      const dYj = subtract(multiply(s, Yj), constant(j + 1));
+      return add(acc, add(multiply(lin.a[n + j], dYj), multiply(lin.a[j], Yj)));
+    }, negate(laplace(lin.q, t, s)));
+  });
+  const solved = solveLinearSystem(build_tensor(eqs), build_tensor(transforms) as Tensor);
+  const sol = build_tensor((solved as Tensor).elem.map((Yj) => invlaplace(Yj, s, t)));
+  if (Find(sol, symbol(LAPLACE)) || Find(sol, symbol(INVLAPLACE))) {
+    stop('dsolve: the laplace transform does not solve this system');
+  }
+  return fitAll([sol], t, n, conds);
+}
+
 // number of successive derivatives of P, P itself first, that vanish at root
 function multiplicity(P: U, r: U, root: U): number {
   let m = 0;
@@ -617,7 +676,7 @@ function keepSatisfying(sols: U[], x: U, conds: Condition[]): U[] {
 }
 
 function atOrder(sol: U, x: U, c: Condition): U {
-  let d = sol;
+  let d = istensor(sol) ? sol.tensor.elem[c.index] : sol; // a system
   for (let i = 0; i < c.order; i++) {
     d = derivative(d, x);
   }

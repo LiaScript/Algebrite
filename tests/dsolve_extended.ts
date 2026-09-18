@@ -625,7 +625,7 @@ run_test([
 
   // x = exp(4t) + exp(-t), y = 3/2 exp(4t) - exp(-t)
   'dsolve([d(x(t),t)=x(t)+2*y(t),d(y(t),t)=3*x(t)+2*y(t)],[x(t),y(t)],x(0)=2,y(0)=1/2)',
-  '[exp(-t)+exp(4*t),-exp(-t)+3/2*exp(4*t)]',
+  '[exp(-t)*(1+exp(5*t)),1/2*exp(-t)*(-2+3*exp(5*t))]',
 
   // a double eigenvalue without a second eigenvector
   'dsolve([d(x(t),t)=x(t)+y(t),d(y(t),t)=y(t)],[x(t),y(t)])',
@@ -648,8 +648,8 @@ run_test([
   'simplify(d(s[2],t)+s[1]-t)',
   '0',
 
-  'simplify(subst(0,t,s))',
-  '[0,0]',
+  's',
+  '[t,0]',
 
   // the derivatives coupled: x' = (x+y)/2, y' = (x-y)/2
   's=dsolve([d(x(t),t)+d(y(t),t)=x(t),d(x(t),t)-d(y(t),t)=y(t)],[x(t),y(t)])',
@@ -690,6 +690,23 @@ run_test([
 
   'dsolve([d(x(t),t,2)=y(t),d(y(t),t)=-x(t)],[x(t),y(t)])',
   'Stop: dsolve: only first-order linear systems with constant coefficients are supported',
+
+  // invlaplace can't factor with floats
+  'dsolve([d(x(t),t)=0.5*y(t),d(y(t),t)=-0.5*x(t)],[x(t),y(t)])',
+  'Stop: dsolve: a system needs exact coefficients, 1/2 instead of 0.5',
+
+  'dsolve([d(x(t),t)=1/2*y(t),d(y(t),t)=-1/2*x(t)],[x(t),y(t)],x(0)=1,y(0)=0)',
+  '[cos(1/2*t),-sin(1/2*t)]',
+
+  // a parameter of unknown sign: a sin(t abs(a))/abs(a) is sin(a t)
+  'dsolve([d(x(t),t)=a*y(t),d(y(t),t)=-a*x(t)],[x(t),y(t)],x(0)=1,y(0)=0)',
+  '[cos(t*abs(a)),-a*sin(t*abs(a))/abs(a)]',
+
+  'assume(a,positive)',
+  '',
+
+  'dsolve([d(x(t),t)=a*y(t),d(y(t),t)=-a*x(t)],[x(t),y(t)],x(0)=1,y(0)=0)',
+  '[cos(a*t),-sin(a*t)]',
 
   'dsolve([d(x(t),t)=y(t)],[x(t),y(t)])',
   'Stop: dsolve: a system takes as many equations as functions like x(t), y(t) of one variable',
