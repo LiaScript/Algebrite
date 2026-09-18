@@ -677,3 +677,30 @@ run_test([
   'limit((sin(x)/x)^(1/x^2),x,0)',
   'exp(-1/6)',
 ]);
+
+// found on the way: sin(x)/x goes to 1, so sin(1/x) decides (a squeeze of
+// the two bounded factors alone would say 0)
+run_test([
+  'limit(sin(1/x)*sin(x)/x,x,0)',
+  'Stop: limit: the limit does not exist: sin(1/x) oscillates',
+
+  'limit(sin(x)*cos(1/x)/x,x,0)',
+  'Stop: limit: the limit does not exist: cos(1/x) oscillates',
+
+  // 3*sin(x)*sin(1/x): a constant factor changes nothing
+  'limit(3*sin(x)*sin(1/x),x,0)',
+  '0',
+]);
+
+// 0*inf with a logarithm of tan: h*log(1/h) with h = pi/2-x, 0.0069, 0.000115
+// (these were right only because 0*log(tan(1/2*pi)) was 0)
+run_test([
+  'limit(cos(x)*log(tan(x)),x,pi/2,left)',
+  '0',
+
+  'limit(tan(x)^cos(x),x,pi/2,left)',
+  '1',
+
+  'limit(x*log(sin(x)),x,0,right)',
+  '0',
+]);

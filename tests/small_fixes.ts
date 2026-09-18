@@ -959,8 +959,9 @@ run_test([
   'float(Ci(-1),20)',
   'Stop: float: cannot evaluate Ci(-1) to 20 digits',
 
+  // a pole: digamma stops there like gamma
   'float(digamma(-2),20)',
-  'Stop: float: cannot evaluate digamma(-2) to 20 digits',
+  'Stop: divide by zero',
 
   'float(lambertw(-1),20)',
   'Stop: float: cannot evaluate lambertw(-1) to 20 digits',

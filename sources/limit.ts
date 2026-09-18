@@ -1,6 +1,7 @@
 import {
   ABS,
   ARCTAN,
+  ARCTANH,
   caddddr,
   cadddr,
   caddr,
@@ -14,6 +15,7 @@ import {
   ERFC,
   COSH,
   FLOOR,
+  GAMMA,
   INF,
   iscons,
   isdouble,
@@ -23,8 +25,10 @@ import {
   isrational,
   issymbol,
   LOG,
+  MOD,
   NIL,
   POWER,
+  ROUND,
   SGN,
   SIN,
   SINH,
@@ -34,30 +38,35 @@ import {
   isadd,
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
-import { facts, isNonzero, isReal, withSign } from './assume';
+import { facts, isNonzero, isPositive, isReal, withSign } from './assume';
 import { stop } from '../runtime/run';
 import { symbol, usr_symbol } from '../runtime/symbol';
-import { double, integer, rational } from './bignum';
+import { double, integer, nativeInt, rational } from './bignum';
+import { Condense } from './condense';
 import { cosine } from './cos';
+import { sine } from './sin';
+import { degree } from './degree';
 import { Eval } from './eval';
 import { derivative } from './derivative';
 import { denominator } from './denominator';
 import { zzfloat } from './float';
 import {
   isinteger,
+  isminusone,
   isnegativenumber,
   isplusone,
+  ispolyexpandedform,
   isposint,
   ispositivenumber,
   isZeroAtomOrTensor
 } from './is';
-import { add } from './add';
+import { add, subtract } from './add';
 import { logarithm } from './log';
 import { activeBranch, hasPiecewise, isPiecewise, resolvePiecewise } from './piecewise';
 import { power } from './power';
 import { makeList } from './list';
 import { checkArgCount, equal, exponential, yyexpand } from './misc';
-import { divide, multiply, multiply_all, negate } from './multiply';
+import { divide, inverse, multiply, multiply_all, negate } from './multiply';
 import { numerator } from './numerator';
 import { rationalize } from './rationalize';
 import { simplify } from './simplify';
@@ -74,25 +83,45 @@ const INDETERMINATE = Symbol('indeterminate');
 // since Algebrite has no symbolic infinity/NaN value to check for instead.
 function tryEvalAt(expr: U, X: U, A: U): U | typeof INDETERMINATE {
   try {
-    return Eval(subst(expr, X, A));
+    return evalWatchingPoles(subst(expr, X, A));
   } catch (e) {
     return INDETERMINATE;
   }
 }
 
-// tan and log do not stop at their poles, they come back unevaluated as
-// tan(1/2*pi) or log(0); substitution then looks like it succeeded.
+// log and arctanh do not stop at their poles, they come back unevaluated as
+// log(0) or arctanh(1); substitution then looks like it succeeded.
 function hasPole(p: U): boolean {
   if (!iscons(p)) {
     return false;
   }
-  if (car(p) === symbol(TAN) && isZeroAtomOrTensor(cosine(cadr(p)))) {
-    return true;
-  }
   if (car(p) === symbol(LOG) && isZeroAtomOrTensor(cadr(p))) {
     return true;
   }
+  if (car(p) === symbol(ARCTANH) && (isplusone(cadr(p)) || isminusone(cadr(p)))) {
+    return true;
+  }
   return p.tail().some(hasPole);
+}
+
+// Every log(0) is the same expression, whatever went to 0 inside and how
+// fast: log(0)/log(0) = 1 and log(0)-log(0) = 0 say nothing about the limit
+// (log(x)/log(x^3+x^2) goes to 1/2). Sums, products and powers are evaluated
+// bottom-up, and two poles meeting in one of them stop, as inf-inf does.
+// A pole times an exact 0 stays 0: a logarithm loses against every power.
+function evalWatchingPoles(p: U): U {
+  const arithmetic = isadd(p) || ismultiply(p) || ispower(p);
+  if (!iscons(p) || !arithmetic || !(Find(p, symbol(LOG)) || Find(p, symbol(ARCTANH)))) {
+    return Eval(p);
+  }
+  const args = p.tail().map(evalWatchingPoles);
+  const polar = args.filter(hasPole);
+  const plainPower =
+    ispower(p) && !hasPole(args[1]) && isNumericAtom(args[1]) && !isZeroAtomOrTensor(args[1]);
+  if (polar.length > 1 || (ispower(p) && polar.length > 0 && !plainPower)) {
+    stop('limit: poles meet');
+  }
+  return Eval(makeList(car(p), ...args));
 }
 
 // The pole makes the whole expression infinite: it is the expression, a
@@ -141,12 +170,49 @@ export function Eval_limit(p1: U) {
 const VANISHING_DENOMINATOR =
   'limit: denominator vanishes while numerator does not — limit is infinite or does not exist';
 
+// The fallbacks call limit() on parts of F, and each other, and ask the same
+// questions again and again (the limit of sin(1/x) for the squeeze, the
+// factors, the jump functions, the oscillation): within one top-level call
+// the answers, and the failures, are remembered. What the answer depends on
+// besides the arguments is part of the key.
+let depth = 0;
+const memo = new Map<string, U | Error>();
+
 export function limit(F: U, X: U, A: U, sides: number[] = [-1, 1]): U {
+  if (depth > 20) {
+    stop('limit: nested too deeply');
+  }
+  const context = [JSON.stringify(facts(X)), inverting, probing, lhopitalOnceRunning];
+  const key = [F, X, A, sides, ...context].join('|');
+  const known = memo.get(key);
+  if (known instanceof Error) {
+    throw known;
+  }
+  if (known !== undefined) {
+    return known;
+  }
+  depth++;
+  try {
+    const result = limitGuarded(F, X, A, sides);
+    memo.set(key, result);
+    return result;
+  } catch (e) {
+    memo.set(key, e);
+    throw e;
+  } finally {
+    if (--depth === 0) {
+      memo.clear();
+    }
+  }
+}
+
+function limitGuarded(F: U, X: U, A: U, sides: number[]): U {
   if (isInfinite(A) && hasPiecewise(F)) {
     // ponytail: the branch at +-1e9 is taken for the one near +-inf
     const G = resolvePiecewise(F, X, double(A === symbol(INF) ? 1e9 : -1e9));
     F = G === undefined ? F : Eval(G);
   }
+  F = unboundFloors(F, X, A, sides);
   const viaExp = powerLimit(F, X, A, sides);
   if (viaExp !== undefined) {
     return viaExp;
@@ -154,11 +220,21 @@ export function limit(F: U, X: U, A: U, sides: number[] = [-1, 1]): U {
   try {
     return limitCore(F, X, A, sides);
   } catch (e) {
+    // the evaluator expands (x-1)*sin(1/(x-1)); the factors are needed
+    const C = isadd(F) ? Condense(F) : F;
     const r =
       squeeze(F, X, A, sides) ||
+      (ismultiply(C) ? squeeze(C, X, A, sides) : undefined) ||
       termwise(F, X, A, sides) ||
+      combineLogs(F, X, A, sides) ||
+      boundedPlusInfinite(F, X, A, sides) ||
       factorwise(F, X, A, sides) ||
-      compose(F, X, A, sides);
+      compose(F, X, A, sides) ||
+      viaKernel(F, X, A, sides) ||
+      leadingTerm(F, X, A, sides) ||
+      expProduct(F, X, A, sides) ||
+      invert(F, X, A, sides) ||
+      lhopitalOnce(F, X, A, sides);
     if (r !== undefined) {
       return r;
     }
@@ -201,9 +277,26 @@ function oscillating(F: U, X: U, A: U, sides: number[]): U | undefined {
     if (ispower(f) && isposint(caddr(f))) {
       return onSide(cadr(f), side);
     }
+    const toInfinity = (g: U): boolean => {
+      const L = Find(g, X) && !hasJump(g, X) && limitOf(g, side);
+      return !!L && isInfinite(L);
+    };
     if (car(f) === symbol(SIN) || car(f) === symbol(COS)) {
-      const g = Find(cadr(f), X) && !hasJump(cadr(f)) && limitOf(cadr(f), side);
-      return g && isInfinite(g) ? f : undefined;
+      return toInfinity(cadr(f)) ? f : undefined;
+    }
+    // the fractional part mod(g,1), see unboundFloors
+    if (car(f) === symbol(MOD) && !Find(caddr(f), X)) {
+      return toInfinity(cadr(f)) ? f : undefined;
+    }
+    // (-1)^floor(g) is 1 and -1 again and again
+    if (ispower(f) && isnegativenumber(cadr(f)) && isRounding(car(caddr(f)))) {
+      return toInfinity(cadr(caddr(f))) ? f : undefined;
+    }
+    // sgn, floor, ceiling and round of a wave around 0 jump with it (of a
+    // sum they need not: sgn(2+sin(x)) is 1), abs of a wave is a wave
+    if (iscons(f) && isJumpFunction(car(f)) && car(f) !== symbol(MOD)) {
+      const inner = cadr(f);
+      return car(f) === symbol(ABS) || !isadd(inner) ? onSide(inner, side) : undefined;
     }
     if (!ismultiply(f) && !isadd(f)) {
       return undefined;
@@ -246,22 +339,233 @@ function powerLimit(F: U, X: U, A: U, sides: number[]): U | undefined {
   }
 }
 
-// a bounded factor (sin, cos or a positive power of one) times a rest that
-// goes to 0: sin(x)/x at inf, x*sin(1/x) at 0
+// bounded on the whole real line
+function isBounded(f: U, X: U): boolean {
+  if (!iscons(f) || !Find(f, X)) {
+    return !Find(f, X);
+  }
+  const head = car(f);
+  if ([SIN, COS, SGN, ARCTAN, TANH, ERF].some((name) => head === symbol(name))) {
+    return true;
+  }
+  if (head === symbol(MOD)) {
+    return !Find(caddr(f), X);
+  }
+  if (isJumpFunction(head) || isadd(f) || ismultiply(f)) {
+    return f.tail().every((q) => isBounded(q, X));
+  }
+  return ispower(f) && isposint(caddr(f)) && isBounded(cadr(f), X);
+}
+
+// bounded factors times a rest that goes to 0: sin(x)/x at inf, x*sin(1/x)
+// at 0. Among bounded factors alone one that goes to 0 is enough:
+// sin(x)*sin(1/x) at 0.
 function squeeze(F: U, X: U, A: U, sides: number[]): U | undefined {
   const factors = ismultiply(F) ? F.tail() : [F];
-  const isBounded = (f: U): boolean =>
-    (car(f) === symbol(SIN) || car(f) === symbol(COS)) ||
-    (ispower(f) && isposint(caddr(f)) && isBounded(cadr(f)));
-  const bounded = factors.filter((f) => Find(f, X) && isBounded(f));
-  if (bounded.length === 0 || bounded.length === factors.length) {
+  const bounded = factors.filter((f) => Find(f, X) && isBounded(f, X));
+  if (bounded.length === 0) {
+    return undefined;
+  }
+  const goesToZero = (f: U): boolean => {
+    try {
+      return isZeroAtomOrTensor(limit(f, X, A, sides));
+    } catch (e) {
+      return false;
+    }
+  };
+  const rest = factors.filter((f) => !bounded.includes(f));
+  const squeezed = rest.some((f) => Find(f, X))
+    ? goesToZero(multiply_all(rest))
+    : bounded.length > 1 && bounded.some(goesToZero);
+  return squeezed ? Constants.zero : undefined;
+}
+
+// inf-inf between logarithms: log(a)-log(b) is log(a/b), for a and b of the
+// same sign; with a positive limit of a/b that was the case.
+function combineLogs(F: U, X: U, A: U, sides: number[]): U | undefined {
+  if (!isadd(F)) {
+    return undefined;
+  }
+  // [n, g] of a term n*log(g) with an integer n
+  const logPart = (t: U): [U, U] | undefined => {
+    if (car(t) === symbol(LOG)) {
+      return [Constants.one, cadr(t)];
+    }
+    const isScaled =
+      ismultiply(t) && t.tail().length === 2 && isinteger(cadr(t)) && car(caddr(t)) === symbol(LOG);
+    return isScaled ? [cadr(t), cadr(caddr(t))] : undefined;
+  };
+  const logs = F.tail().filter((t) => Find(t, X) && logPart(t) !== undefined);
+  if (logs.length < 2) {
     return undefined;
   }
   try {
-    const rest = multiply_all(factors.filter((f) => !bounded.includes(f)));
-    return isZeroAtomOrTensor(limit(rest, X, A, sides)) ? Constants.zero : undefined;
+    const inside = multiply_all(logs.map((t) => power(logPart(t)[1], logPart(t)[0])));
+    const rest = F.tail().filter((t) => !logs.includes(t)).reduce(add, Constants.zero);
+    const L = limit(inside, X, A, sides);
+    const R = limit(rest, X, A, sides);
+    return isPositive(L) === true && !Find(R, symbol(INF)) ? add(logarithm(L), R) : undefined;
   } catch (e) {
     return undefined;
+  }
+}
+
+// bounded terms plus a rest that goes to +-inf: sin(x)+x
+function boundedPlusInfinite(F: U, X: U, A: U, sides: number[]): U | undefined {
+  if (!isadd(F)) {
+    return undefined;
+  }
+  const rest = F.tail().filter((t) => !isBounded(t, X));
+  if (rest.length === 0 || rest.length === F.tail().length) {
+    return undefined;
+  }
+  try {
+    const L = limit(rest.reduce(add, Constants.zero), X, A, sides);
+    return isInfinite(L) ? L : undefined;
+  } catch (e) {
+    return undefined;
+  }
+}
+
+// N/D at +-inf with a sum D: both divided by a term of D, so that the
+// bounded and the smaller terms go to 0: (x+sin(x))/(x+cos(x)) by x
+function leadingTerm(F: U, X: U, A: U, sides: number[]): U | undefined {
+  const N = numerator(F);
+  const D = denominator(F);
+  if (!isInfinite(A) || !isadd(D) || D.tail().length > 4) {
+    return undefined;
+  }
+  for (const T of D.tail().filter((t) => Find(t, X))) {
+    try {
+      const d = limit(divide(D, T), X, A, sides);
+      if (Find(d, symbol(INF)) || isZeroAtomOrTensor(d)) {
+        continue;
+      }
+      const n = limit(divide(N, T), X, A, sides);
+      if (!Find(n, symbol(INF))) {
+        return divide(n, d);
+      }
+    } catch (e) {
+      // the next term
+    }
+  }
+  return undefined;
+}
+
+// a product of powers c^g with constant bases c > 0 is exp(sum of g*log(c)):
+// 2^x/3^x at inf, where L'Hopital only reproduces the quotient
+function expProduct(F: U, X: U, A: U, sides: number[]): U | undefined {
+  if (!ismultiply(F)) {
+    return undefined;
+  }
+  const withX = F.tail().filter((f) => Find(f, X));
+  const isExp = (f: U) =>
+    ispower(f) &&
+    !Find(cadr(f), X) &&
+    (cadr(f) === symbol(E) || isPositive(cadr(f)) === true);
+  if (withX.length < 2 || !withX.every(isExp)) {
+    return undefined;
+  }
+  try {
+    const exponent = withX
+      .map((f) => multiply(caddr(f), logarithm(cadr(f))))
+      .reduce(add, Constants.zero);
+    const L = limit(Condense(exponent), X, A, sides);
+    const rest = multiply_all(F.tail().filter((f) => !Find(f, X)));
+    if (!isInfinite(L)) {
+      return multiply(rest, exponential(L));
+    }
+    const r = L === symbol(INF) ? signedInf(multiply(rest, L)) : Constants.zero;
+    return Find(r, symbol(INF)) && !isInfinite(r) ? undefined : r;
+  } catch (e) {
+    return undefined;
+  }
+}
+
+// F(K(x)) with x only inside one function K: the limit of F(y) at the
+// limit of K. exp(-tan(x))*tan(x) left of pi/2 is y*exp(-y) at inf.
+function viaKernel(F: U, X: U, A: U, sides: number[]): U | undefined {
+  const kernels: U[] = [];
+  const collect = (p: U) => {
+    if (!iscons(p) || !Find(p, X)) {
+      return;
+    }
+    if (p !== F && !isadd(p) && !ismultiply(p) && !ispower(p)) {
+      kernels.push(p);
+    }
+    p.tail().forEach(collect);
+  };
+  collect(F);
+  const y = usr_symbol('limit_y');
+  for (const K of kernels.slice(0, 3)) {
+    const G = subst(F, K, y);
+    if (Find(G, X)) {
+      continue;
+    }
+    try {
+      return limit(Eval(G), y, limit(K, X, A, sides));
+    } catch (e) {
+      // the next kernel
+    }
+  }
+  return undefined;
+}
+
+// One round of L'Hopital at infinity with everything else behind it:
+// log(2^x+3^x)/x becomes (2^x*log(2)+3^x*log(3))/(2^x+3^x), which L'Hopital
+// only reproduces and leadingTerm resolves. Not nested.
+let lhopitalOnceRunning = false;
+function lhopitalOnce(F: U, X: U, A: U, sides: number[]): U | undefined {
+  if (lhopitalOnceRunning || !isInfinite(A) || hasJump(F, X)) {
+    return undefined;
+  }
+  const sign = A === symbol(INF) ? Constants.one : Constants.negOne;
+  const N = numerator(F);
+  const D = denominator(F);
+  lhopitalOnceRunning = true;
+  try {
+    const both = (test: (v: U) => boolean) =>
+      [N, D].every((p) => {
+        const v = withSign(X, isnegativenumber(sign) ? 'negative' : 'positive', () =>
+          atInfinity(p, X, sign)
+        );
+        return v !== undefined && test(v);
+      });
+    if (!both(isInfinite) && !both(isZeroAtomOrTensor)) {
+      return undefined;
+    }
+    return limit(divide(derivative(N, X), derivative(D, X)), X, A, sides);
+  } catch (e) {
+    return undefined;
+  } finally {
+    lhopitalOnceRunning = false;
+  }
+}
+
+// guards invert() against the way back: limitAtInfinity puts x = 1/t
+let inverting = false;
+
+// One side of a finite point as a limit at infinity, x = A +- 1/u: there
+// the values 0 and inf of the parts are known (at the point they are only
+// "division by zero"), and exp(-1/x)/x^3 becomes u^3/exp(u).
+function invert(F: U, X: U, A: U, sides: number[]): U | undefined {
+  if (inverting || isInfinite(A) || sides.length !== 1) {
+    return undefined;
+  }
+  inverting = true;
+  try {
+    return withSign(X, 'positive', () => {
+      const G = Eval(subst(F, X, add(A, divide(integer(sides[0]), X))));
+      // log(x) left of 0 is not real
+      if (Find(G, Constants.imaginaryunit)) {
+        return undefined;
+      }
+      return limit(G, X, symbol(INF));
+    });
+  } catch (e) {
+    return undefined;
+  } finally {
+    inverting = false;
   }
 }
 
@@ -363,7 +667,13 @@ function splitRadicals(p: U, X: U): U {
     return p;
   }
   if (ispower(p) && isrational(caddr(p)) && !isinteger(caddr(p))) {
-    return power(rationalize(splitRadicals(cadr(p), X)), caddr(p));
+    // the denominator t^2 > 0 leaves the root whatever the sign of the
+    // numerator: ((1-t^2)/t^2)^(1/2) = (1-t^2)^(1/2)/t
+    const R = rationalize(splitRadicals(cadr(p), X));
+    const d = denominator(R);
+    return isPositive(d) === true
+      ? divide(power(numerator(R), caddr(p)), power(d, caddr(p)))
+      : power(R, caddr(p));
   }
   return Eval(makeList(car(p), ...p.tail().map((q) => splitRadicals(q, X))));
 }
@@ -378,6 +688,10 @@ function atInfinity(F: U, X: U, sign: U): U | undefined {
   try {
     // not evaluated as a whole first: that would turn (1+1/inf)^inf into 1
     const v = resolveInf(subst(F, X, multiply(sign, symbol(INF))));
+    // log(1/inf) = log(0): the evaluator does not know that it is -inf
+    if (hasPole(v)) {
+      return undefined;
+    }
     if (!Find(v, symbol(INF)) || isInfinite(v)) {
       return v;
     }
@@ -503,28 +817,118 @@ function signedInf(p: U): U {
   return c.positive ? symbol(INF) : c.negative ? negate(symbol(INF)) : p;
 }
 
-// L'Hopital directly in x for inf/inf and 0/0 at infinity (x*exp(-x) is
-// x/exp(x)); undefined when it does not come to a result.
-function lhopitalAtInfinity(F: U, X: U, sign: U): U | undefined {
-  let N = numerator(F);
-  let D = denominator(F);
-  for (let i = 0; i < MAX_LHOPITAL_ITERATIONS; i++) {
-    const n = atInfinity(N, X, sign);
-    const d = atInfinity(D, X, sign);
+// The exponential beats every power: x^10/exp(x) needs 10 rounds, each one
+// lowers the degree of the polynomial part.
+function lhopitalBudget(parts: U[], X: U): number {
+  const deg = (p: U) => (ispolyexpandedform(p, X) ? nativeInt(degree(p, X)) || 0 : 0);
+  return Math.min(parts.map(deg).reduce((a, b) => a + b, MAX_LHOPITAL_ITERATIONS), 30);
+}
+
+// The value of a part of F at the point: 0, finite, inf or -inf (the sign
+// of an infinity is not always known, see limitAt), undefined for none.
+// `proper` says that the part is smaller than F, so that it may be given to
+// limit() without coming back here with the same question.
+type ValueOf = (part: U, proper: boolean) => U | undefined;
+
+// L'Hopital for 0/0 and inf/inf; undefined when it does not come to a
+// result. A product 0*inf is tried with its zero factors, then with its
+// infinite factors, as the denominator: x*exp(x) at -inf is x/exp(-x),
+// x*(pi/2-arctan(x)) is (pi/2-arctan(x))/(1/x). `infinite` is asked for the
+// result when the numerator alone is infinite or the denominator alone 0.
+function lhopital(
+  F: U,
+  X: U,
+  valueOf: ValueOf,
+  infinite: (n: U, d: U) => U | undefined,
+  steps?: { left: number }
+): U | undefined {
+  if (hasJump(F, X)) {
+    return undefined;
+  }
+  const splits: [U, U][] = [[numerator(F), denominator(F)]];
+  const P = isadd(F) ? Condense(F) : F;
+  const factors = ismultiply(P) ? P.tail() : [];
+  // only the first round asks limit() for the value of a part: every round
+  // of every split doing so would not end
+  const top = steps === undefined;
+  const values = factors.map((f) => valueOf(f, top));
+  const going = (test: (v: U) => boolean) =>
+    factors.filter((f, i) => values[i] !== undefined && test(values[i]));
+  const zero = going(isZeroAtomOrTensor);
+  const infiniteFactors = going(isInfinite);
+  if (zero.length > 0 && infiniteFactors.length > 0) {
+    for (const part of [zero, infiniteFactors]) {
+      const d = multiply_all(part);
+      splits.push([divide(P, d), inverse(d)]);
+    }
+  }
+  // derivatives in total, over all splits: each round has up to three
+  if (steps === undefined) {
+    steps = { left: lhopitalBudget([...splits[0], ...factors], X) };
+  }
+  for (const [N, D] of splits) {
+    const n = valueOf(N, top && Find(D, X));
+    const d = valueOf(D, top && Find(N, X));
     if (n === undefined || d === undefined) {
-      return undefined;
+      continue;
     }
     const bothZero = isZeroAtomOrTensor(n) && isZeroAtomOrTensor(d);
     if (!bothZero && !(isInfinite(n) && isInfinite(d))) {
-      return isZeroAtomOrTensor(d) ? undefined : divide(n, d);
+      if (isInfinite(d)) {
+        return Constants.zero;
+      }
+      const r = isInfinite(n) || isZeroAtomOrTensor(d) ? infinite(n, d) : divide(n, d);
+      if (r !== undefined) {
+        return r;
+      }
+      continue;
+    }
+    if (steps.left-- <= 0) {
+      return undefined;
     }
     // the quotient of the derivatives is normalized before it is taken
-    // apart again: 2*x/(x^2+1) / (1/x) is 2*x^2/(x^2+1)
-    const G = divide(derivative(N, X), derivative(D, X));
-    N = numerator(G);
-    D = denominator(G);
+    // apart again: 2*x/(x^2+1) / (1/x) is 2*x^2/(x^2+1); nested fractions
+    // like 1/(x*(2*x/(x^3+x^2)+3*x^2/(x^3+x^2))) need more
+    let G = divide(derivative(N, X), derivative(D, X));
+    if ([numerator(G), denominator(G)].some((part) => valueOf(part, false) === undefined)) {
+      G = divide(rationalize(numerator(G)), rationalize(denominator(G)));
+    }
+    const r = lhopital(G, X, valueOf, infinite, steps);
+    if (r !== undefined) {
+      return r;
+    }
   }
   return undefined;
+}
+
+function lhopitalAtInfinity(F: U, X: U, sign: U): U | undefined {
+  const A = multiply(sign, symbol(INF));
+  const valueOf: ValueOf = (part, proper) => {
+    const v = atInfinity(part, X, sign);
+    return v !== undefined || !proper ? v : finiteOrInfinite(() => limit(part, X, A));
+  };
+  return lhopital(F, X, valueOf, (n, d) =>
+    isZeroAtomOrTensor(d) ? undefined : signedInf(divide(n, d))
+  );
+}
+
+// The limit of a part of F for lhopital, or undefined for none and for
+// something like inf/a. Not nested: a part of a part is only substituted,
+// otherwise every round of every L'Hopital would start new ones.
+let probing = false;
+function finiteOrInfinite(f: () => U): U | undefined {
+  if (probing) {
+    return undefined;
+  }
+  probing = true;
+  try {
+    const L = f();
+    return Find(L, symbol(INF)) && !isInfinite(L) ? undefined : L;
+  } catch (e) {
+    return undefined;
+  } finally {
+    probing = false;
+  }
 }
 
 // An infinite limit: the sign of F just beside A, on each requested side.
@@ -558,34 +962,168 @@ function infiniteLimit(F: U, X: U, A: U, sides: number[]): U {
 
 // not a module-level list: this file is loaded inside a circular import,
 // before the names in defs are initialised
-function isJumpFunction(head: U): boolean {
-  return [SGN, ABS, FLOOR, CEILING].some((f) => head === symbol(f));
+function isRounding(head: U): boolean {
+  return [FLOOR, CEILING, ROUND].some((f) => head === symbol(f));
 }
 
-function hasJump(p: U): boolean {
-  return iscons(p) && (isJumpFunction(car(p)) || isPiecewise(p) || p.tail().some(hasJump));
+function isJumpFunction(head: U): boolean {
+  return isRounding(head) || [SGN, ABS, MOD].some((f) => head === symbol(f));
+}
+
+// a jump function of X (abs(a) is a constant)
+function hasJump(p: U, X: U): boolean {
+  return (
+    iscons(p) &&
+    Find(p, X) &&
+    (isJumpFunction(car(p)) || isPiecewise(p) || p.tail().some((q) => hasJump(q, X)))
+  );
+}
+
+// floor(g), ceiling(g) and round(g) with g -> +-inf are g plus a bounded
+// part, the fractional part mod(g,1): floor(g) = g - mod(g,1). Then
+// floor(x)/x is 1 - mod(x,1)/x, and the squeeze argument applies. The
+// exponent of (-1)^floor(x) stays as it is, see oscillating.
+function unboundFloors(F: U, X: U, A: U, sides: number[]): U {
+  if (![FLOOR, CEILING, ROUND].some((f) => Find(F, symbol(f)))) {
+    return F;
+  }
+  const toInfinity = (g: U): boolean => {
+    try {
+      return (isInfinite(A) ? [1] : sides).every((s) => isInfinite(limit(g, X, A, [s])));
+    } catch (e) {
+      return false;
+    }
+  };
+  const frac = (g: U) => makeList(symbol(MOD), g, Constants.one);
+  const half = rational(1, 2);
+  const walk = (p: U): U => {
+    if (!iscons(p) || !Find(p, X) || (ispower(p) && isnegativenumber(cadr(p)))) {
+      return p;
+    }
+    const head = car(p);
+    if (isRounding(head) && toInfinity(cadr(p))) {
+      const g = walk(cadr(p));
+      return head === symbol(FLOOR)
+        ? subtract(g, frac(g))
+        : head === symbol(CEILING)
+        ? add(g, frac(negate(g)))
+        : subtract(add(g, half), frac(add(g, half)));
+    }
+    return makeList(head, ...p.tail().map(walk));
+  };
+  const G = walk(F);
+  return equal(G, F) ? F : Eval(G);
+}
+
+// tan, gamma and digamma stop at their poles like 1/0, and L'Hopital has
+// nothing to work with. With a pole at the point they are rewritten with
+// the pole in a plain denominator: tan = sin/cos, at g = -n
+// Gamma(g) = Gamma(g+n+2)/(g*(g+1)*...*(g+n+1)) (the evaluator turns
+// Gamma(x+1) into x*Gamma(x) again, Gamma(x+2) it leaves alone) and
+// digamma(g) = digamma(g+n+1) - 1/g - ... - 1/(g+n).
+function regularizePoles(F: U, X: U, A: U): U {
+  const digamma = usr_symbol('digamma');
+  if (![symbol(TAN), symbol(GAMMA), digamma].some((f) => Find(F, f))) {
+    return F;
+  }
+  const walk = (p: U): U => {
+    if (!iscons(p) || !Find(p, X)) {
+      return p;
+    }
+    const head = car(p);
+    const args = p.tail().map(walk);
+    const g = args[0];
+    const at = args.length === 1 ? tryEvalAt(g, X, A) : INDETERMINATE;
+    if (at !== INDETERMINATE) {
+      if (head === symbol(TAN) && isZeroAtomOrTensor(cosine(at))) {
+        return divide(sine(g), cosine(g));
+      }
+      const n = isinteger(at) && !isposint(at) ? -nativeInt(at) : NaN;
+      const shifted = (k: number) => Eval(makeList(head, add(g, integer(k))));
+      const steps = (count: number) =>
+        [...Array(count).keys()].map((k) => add(g, integer(k)));
+      if (head === symbol(GAMMA) && n <= 20) {
+        return divide(shifted(n + 2), multiply_all(steps(n + 2)));
+      }
+      if (head === digamma && n <= 20) {
+        return steps(n + 1).map(inverse).reduce(subtract, shifted(n + 1));
+      }
+    }
+    return makeList(head, ...args);
+  };
+  const G = walk(F);
+  return equal(G, F) ? F : Eval(G);
+}
+
+// sin or cos of something that goes to infinity, anywhere inside
+function hasWave(p: U, X: U, A: U, side: number): boolean {
+  if (!iscons(p) || !Find(p, X)) {
+    return false;
+  }
+  if (car(p) === symbol(SIN) || car(p) === symbol(COS)) {
+    try {
+      if (isInfinite(limit(cadr(p), X, A, [side]))) {
+        return true;
+      }
+    } catch (e) {
+      return true;
+    }
+  }
+  return p.tail().some((q) => hasWave(q, X, A, side));
+}
+
+// The value of g at one point beside A decides a jump function of g only
+// if g settles there: it has a limit on that side (sgn(sin(x)) at inf has
+// none), a finite one for floor, ceiling and round (floor(x) at inf is not
+// the constant floor(1000000)), and where the limit is a jump of the
+// function itself, g must come from one side (sgn(x*sin(1/x)) does not).
+// mod is never decided: the evaluator's mod is the one of integers.
+function probeHolds(head: U, g: U, X: U, A: U, side: number): boolean {
+  let L: U;
+  try {
+    L = limit(g, X, A, [side]);
+  } catch (e) {
+    return false;
+  }
+  if (head === symbol(MOD)) {
+    return false;
+  }
+  const signOnly = head === symbol(SGN) || head === symbol(ABS);
+  if (Find(L, symbol(INF))) {
+    return signOnly && isInfinite(L);
+  }
+  const atJump = signOnly
+    ? isZeroAtomOrTensor(L)
+    : isinteger(head === symbol(ROUND) ? add(L, rational(1, 2)) : L);
+  return !atJump || !hasWave(g, X, A, side);
 }
 
 // On one side of the point a jump function is smooth: sgn(g) is a constant,
-// abs(g) is g or -g, floor(g) and ceiling(g) are constants. The value of g
-// just beside the point says which. Nodes whose g cannot be evaluated
-// numerically there (symbolic coefficients) are left as they are.
-function resolveJumps(p: U, X: U, beside: number): U {
-  if (!iscons(p)) {
+// abs(g) is g or -g, floor(g), ceiling(g) and round(g) are constants. The
+// value of g just beside the point says which, see probeHolds. Nodes whose g
+// cannot be evaluated numerically there (symbolic coefficients) are left as
+// they are.
+function resolveJumps(p: U, X: U, A: U, side: number, beside: number): U {
+  if (!iscons(p) || !Find(p, X)) {
     return p;
   }
   const head = car(p);
   if (isPiecewise(p)) {
     const branch = activeBranch(p, X, double(beside));
     if (branch !== undefined) {
-      return resolveJumps(branch, X, beside);
+      return resolveJumps(branch, X, A, side, beside);
     }
   }
   if (isJumpFunction(head)) {
     const g = cadr(p);
-    const v = zzfloat(subst(g, X, double(beside)));
-    if (isdouble(v)) {
-      const inner = resolveJumps(g, X, beside);
+    let v: U;
+    try {
+      v = zzfloat(subst(g, X, double(beside)));
+    } catch (e) {
+      v = g;
+    }
+    if (isdouble(v) && probeHolds(head, g, X, A, side)) {
+      const inner = resolveJumps(g, X, A, side, beside);
       switch (head) {
         case symbol(SGN):
           return integer(Math.sign(v.d));
@@ -593,18 +1131,20 @@ function resolveJumps(p: U, X: U, beside: number): U {
           return v.d < 0 ? negate(inner) : inner;
         case symbol(FLOOR):
           return integer(Math.floor(v.d));
+        case symbol(ROUND):
+          return integer(Math.round(v.d));
         default:
           return integer(Math.ceil(v.d));
       }
     }
   }
-  return makeList(head, ...p.tail().map((q) => resolveJumps(q, X, beside)));
+  return makeList(head, ...p.tail().map((q) => resolveJumps(q, X, A, side, beside)));
 }
 
 // With jump functions present the value at the point says nothing about the
 // limit, and L'Hopital does not apply. Each side is solved on its own, with
 // the jumps resolved for that side, and the sides must agree. Returns
-// undefined when the jumps could not all be resolved.
+// undefined for a symbolic point; jumps that could not be resolved stop.
 function limitWithJumps(F: U, X: U, A: U, sides: number[]): U | undefined {
   const a = zzfloat(A);
   if (!isdouble(a)) {
@@ -613,11 +1153,11 @@ function limitWithJumps(F: U, X: U, A: U, sides: number[]): U | undefined {
   const eps = 1e-6 * Math.max(1, Math.abs(a.d));
   const results: U[] = [];
   for (const side of sides) {
-    const smooth = Eval(resolveJumps(F, X, a.d + side * eps));
-    if (hasJump(smooth)) {
-      return undefined;
+    const smooth = Eval(resolveJumps(F, X, A, side, a.d + side * eps));
+    if (hasJump(smooth, X)) {
+      stop('limit: could not resolve a jump function');
     }
-    results.push(limitAt(smooth, X, A, [side]));
+    results.push(limit(smooth, X, A, [side]));
   }
   if (results.some((r) => !equal(r, results[0]))) {
     stop('limit: left and right limits differ — limit does not exist');
@@ -627,7 +1167,8 @@ function limitWithJumps(F: U, X: U, A: U, sides: number[]): U | undefined {
 
 // sides: -1 for the left of A, 1 for the right
 function limitAt(F: U, X: U, A: U, sides: number[]): U {
-  if (hasJump(F)) {
+  F = regularizePoles(F, X, A);
+  if (hasJump(F, X)) {
     const resolved = limitWithJumps(F, X, A, sides);
     if (resolved !== undefined) {
       return resolved;
@@ -648,31 +1189,24 @@ function limitAt(F: U, X: U, A: U, sides: number[]): U {
 
   const simplified = simplify(F);
   result = tryEvalAt(simplified, X, A);
-  if (result !== INDETERMINATE) {
+  if (result !== INDETERMINATE && !hasPole(result)) {
     return result;
   }
 
-  let N = numerator(F);
-  let D = denominator(F);
-  for (let i = 0; i < MAX_LHOPITAL_ITERATIONS; i++) {
-    const nAtA = tryEvalAt(N, X, A);
-    const dAtA = tryEvalAt(D, X, A);
-
-    // L'Hopital is only valid for 0/0: if either part cannot be evaluated
-    // at A, differentiating on would produce a wrong answer
-    if (nAtA === INDETERMINATE || dAtA === INDETERMINATE) {
-      break;
+  // A part that cannot be substituted may still have a limit of its own:
+  // log(sin(x)/x) in log(sin(x)/x)/x^2. log(0) counts as an infinity, of
+  // unknown sign: log(0)/log(0) is inf/inf, not 1.
+  const valueOf: ValueOf = (part, proper) => {
+    const v = tryEvalAt(part, X, A);
+    if (v !== INDETERMINATE) {
+      return !hasPole(v) ? v : isInfiniteAtPole(v) ? symbol(INF) : undefined;
     }
-    if (!isZeroAtomOrTensor(dAtA)) {
-      return divide(nAtA, dAtA);
-    }
-    if (!isZeroAtomOrTensor(nAtA)) {
-      return infiniteLimit(F, X, A, sides);
-    }
-
-    const G = divide(derivative(N, X), derivative(D, X));
-    N = numerator(G);
-    D = denominator(G);
+    return proper ? finiteOrInfinite(() => limit(part, X, A, sides)) : undefined;
+  };
+  // no L'Hopital through a jump function (at a symbolic point): lhopital
+  const viaLhopital = lhopital(F, X, valueOf, () => infiniteLimit(F, X, A, sides));
+  if (viaLhopital !== undefined) {
+    return viaLhopital;
   }
 
   stop("limit: could not resolve after repeated L'Hopital iterations");

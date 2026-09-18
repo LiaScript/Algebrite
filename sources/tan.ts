@@ -8,6 +8,7 @@ import {
   TAN,
   U
 } from '../runtime/defs';
+import { stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
 import { double, integer, nativeInt, rational } from './bignum';
 import { Eval } from './eval';
@@ -107,6 +108,11 @@ function tangent(p1: U): U {
     case 105:
     case 285:
       return negate(add(integer(2), power(integer(3), rational(1, 2))));
+    // the poles, like sec(pi/2) and cot(0): left as tan(1/2*pi), a factor 0
+    // beside it made the product 0 (tan(x)*cos(x) at pi/2 is 1)
+    case 90:
+    case 270:
+      return stop('divide by zero');
     default:
       return makeList(symbol(TAN), p1);
   }

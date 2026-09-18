@@ -17,7 +17,7 @@ import { add, subtract } from './add';
 import { double, rational } from './bignum';
 import { Eval } from './eval';
 import { factorial } from './factorial';
-import { isnegativeterm, isposint, ispositivenumber } from './is';
+import { isnegativeterm, isposint, ispositivenumber, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
@@ -41,6 +41,10 @@ function gamma(p1: U): U {
 }
 
 function gammaf(p1: U): U {
+  // the pole at 0, like gamma(-1): left as Gamma(0), 0*Gamma(0) was 0
+  if (isZeroAtomOrTensor(p1)) {
+    stop('divide by zero');
+  }
   if (isrational(p1) && MEQUAL(p1.q.a, 1) && MEQUAL(p1.q.b, 2)) {
     return power(Constants.Pi(), rational(1, 2));
   }
