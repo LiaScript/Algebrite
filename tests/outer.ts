@@ -30,4 +30,35 @@ run_test([
 
   'simplify(inner(H3344,H4455)-contract(H33444455,4,5))',
   '0',
+
+  'outer(2,3)',
+  '6',
+
+  'outer([1,2],[3,4,5])',
+  '[[3,4,5],[6,8,10]]',
+
+  'outer([a,b],[c,d])',
+  '[[a*c,a*d],[b*c,b*d]]',
+
+  // vector times matrix gives a rank-3 tensor
+  'outer([1,2],[[1,2],[3,4]])',
+  '[[[1,2],[3,4]],[[2,4],[6,8]]]',
+
+  'shape(outer([1,2],[[1,2],[3,4]]))',
+  '[2,2,2]',
+
+  // three vectors: a[i]*b[j]*c[k]
+  'outer([1,2],[3,4],[5,6])',
+  '[[[15,18],[20,24]],[[30,36],[40,48]]]',
+
+  'outer([1,i],[1,-i])',
+  '[[1,-i],[i,1]]',
+
+  // only the entries involving 1.5 are floats
+  'outer([1.5,2],[2,1])',
+  '[[3.0,1.5],[4,2]]',
+
+  // contracting outer(u,v) gives the scalar product
+  'contract(outer([1,2,3],[4,5,6]))',
+  '32',
 ]);
