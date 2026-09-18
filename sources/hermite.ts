@@ -33,7 +33,7 @@ function yyhermite(X: U, N: U): U {
   const n = nativeInt(N);
   // tensors: x^2 would be a dot product, so they are not mapped over
   if (n < 0 || isNaN(n) || istensor(X)) {
-    return makeList(symbol(HERMITE), X, N);
+    return makeList(symbol(HERMITE), N, X);
   }
 
   if (issymbol(X)) {

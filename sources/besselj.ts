@@ -32,7 +32,7 @@ scripting, JS, internal, treenode, general concept
 
 Parameters
 ----------
-x,n
+n,x
 
 General description
 -------------------
@@ -41,25 +41,25 @@ Returns a solution to the Bessel differential equation (Bessel function of first
 
 Recurrence relation:
 
-  besselj(x,n) = (2/x) (n-1) besselj(x,n-1) - besselj(x,n-2)
+  besselj(n,x) = (2/x) (n-1) besselj(n-1,x) - besselj(n-2,x)
 
-  besselj(x,1/2) = sqrt(2/pi/x) sin(x)
+  besselj(1/2,x) = sqrt(2/pi/x) sin(x)
 
-  besselj(x,-1/2) = sqrt(2/pi/x) cos(x)
+  besselj(-1/2,x) = sqrt(2/pi/x) cos(x)
 
 For negative n, reorder the recurrence relation as:
 
-  besselj(x,n-2) = (2/x) (n-1) besselj(x,n-1) - besselj(x,n)
+  besselj(n-2,x) = (2/x) (n-1) besselj(n-1,x) - besselj(n,x)
 
 Substitute n+2 for n to obtain
 
-  besselj(x,n) = (2/x) (n+1) besselj(x,n+1) - besselj(x,n+2)
+  besselj(n,x) = (2/x) (n+1) besselj(n+1,x) - besselj(n+2,x)
 
 Examples:
 
-  besselj(x,3/2) = (1/x) besselj(x,1/2) - besselj(x,-1/2)
+  besselj(3/2,x) = (1/x) besselj(1/2,x) - besselj(-1/2,x)
 
-  besselj(x,-3/2) = -(1/x) besselj(x,-1/2) - besselj(x,1/2)
+  besselj(-3/2,x) = -(1/x) besselj(-1/2,x) - besselj(1/2,x)
 
 */
 export function Eval_besselj(p1: U) {
@@ -81,12 +81,12 @@ function yybesselj(X: U, N: U): U {
     return double(d);
   }
 
-  // bessej(0,0) = 1
+  // besselj(0,0) = 1
   if (isZeroAtomOrTensor(X) && isZeroAtomOrTensor(N)) {
     return Constants.one;
   }
 
-  // besselj(0,n) = 0 for integer n != 0 and for n > 0
+  // J_n(0) = 0 for integer n != 0 and for n > 0
   if (isZeroAtomOrTensor(X) && (!isNaN(n) || ispositivenumber(N))) {
     return Constants.zero;
   }
@@ -109,7 +109,7 @@ function yybesselj(X: U, N: U): U {
       return multiply(power(divide(twoOverPi, X), rational(1, 2)), cosine(X));
     }
 
-    // besselj(x,n) = (2/x) (n-sgn(n)) besselj(x,n-sgn(n)) - besselj(x,n-2*sgn(n))
+    // J_n(x) = (2/x) (n-sgn(n)) J_(n-sgn(n))(x) - J_(n-2*sgn(n))(x)
     const SGN = integer(MSIGN(N.q.a));
 
     return subtract(

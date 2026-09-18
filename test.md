@@ -1113,8 +1113,8 @@ prime(5)              # the 5th prime number
 | `besselj(n, x)`, `bessely(n, x)` | Bessel functions of the first / second kind of order `n` |
 | `dirac(x)` | Dirac delta function |
 | `heaviside(x)` | Heaviside step function, `1/2` at `x=0` |
-| `hermite(x, n)`, `laguerre(x, n)`, `legendre(x, n)` | Classical orthogonal polynomials of degree `n` |
-| `chebyshevt(x, n)`, `chebyshevu(x, n)` | Chebyshev polynomials of the first / second kind |
+| `hermite(n, x)`, `laguerre(n, x)`, `legendre(n, x)` | Classical orthogonal polynomials of degree `n` |
+| `chebyshevt(n, x)`, `chebyshevu(n, x)` | Chebyshev polynomials of the first / second kind |
 | `zeta(s)` | Riemann zeta function, exact at even and at negative integers |
 | `beta(a, b)`, `digamma(x)` | Beta function / logarithmic derivative of `Gamma` |
 | `lambertw(x)` | Lambert W, the inverse of `x*exp(x)` |
@@ -1146,15 +1146,17 @@ heaviside(x)                # step function
 
 derivative(heaviside(x),x)  # the step differentiates to a delta
 
-hermite(x,3)                # Hermite polynomial of degree 3
+hermite(3,x)                # Hermite polynomial of degree 3
 
-legendre(x,2)               # Legendre polynomial of degree 2
+legendre(2,x)               # Legendre polynomial of degree 2
 ```
 @Algebrite.pretty
 
-`besselj(n, x)` and `bessely(n, x)` take the order first and the argument second,
-as Maxima, Mathematica and SymPy do. Older versions of this template had the
-two the other way round.
+`besselj(n, x)`, `bessely(n, x)` and the orthogonal polynomials `hermite(n, x)`,
+`legendre(n, x)`, `laguerre(n, x)`, `chebyshevt(n, x)` take the order or degree
+first and the argument last, as Maxima, Mathematica and SymPy do. The associated
+forms are `legendre(n, m, x)` and `laguerre(n, k, x)`. Older versions of this
+template had the argument first.
 
 ```Maxima
 zeta(2)                     # pi^2/6
@@ -1169,7 +1171,7 @@ derivative(Ei(x),x)         # exp(x)/x
 
 beta(2,3)                   # Gamma(2)*Gamma(3)/Gamma(5)
 
-chebyshevt(x,3)             # 4 x^3 - 3 x
+chebyshevt(3,x)             # 4 x^3 - 3 x
 ```
 @Algebrite.pretty
 
@@ -1741,8 +1743,8 @@ is experimental and may misbehave.
 | `ceiling(x)` | Rounds up to the nearest integer |
 | `cfrac(x [,n])` | Continued fraction of a rational, or the first `n` terms |
 | `charpoly(A, x)` | Characteristic polynomial of a matrix |
-| `chebyshevt(x, n)` | Chebyshev polynomial of the first kind |
-| `chebyshevu(x, n)` | Chebyshev polynomial of the second kind |
+| `chebyshevt(n, x)` | Chebyshev polynomial of the first kind |
+| `chebyshevu(n, x)` | Chebyshev polynomial of the second kind |
 | `check(expr)` | Evaluates a relational expression to `1`/`0` |
 | `cholesky(A)` | Lower triangular `L` with `L*transpose(L) = A` |
 | `choose(n, k)` | Alias for `binomial` |
@@ -1811,7 +1813,7 @@ is experimental and may misbehave.
 | `groebner(polys, vars, order)` | Reduced Gröbner basis (`lex`, `grlex`, `grevlex`) |
 | `harmonic(n)` | Harmonic number `1+1/2+...+1/n` |
 | `heaviside(x)` | Heaviside step function |
-| `hermite(x, n)` | Physicists' Hermite polynomial |
+| `hermite(n, x)` | Physicists' Hermite polynomial |
 | `hessian(f, vars)` | Matrix of the second derivatives of `f` |
 | `hilbert(n)` | `n`&times;`n` Hilbert matrix |
 | `identity(n)` | `n`&times;`n` identity matrix, same as `unit(n)` |
@@ -1831,13 +1833,13 @@ is experimental and may misbehave.
 | `isprime(n)` | `1` if `n` is prime, else `0` |
 | `isreal(x)` | `1`/`0` if known, else unevaluated |
 | `jacobian(f, vars)` | Matrix of the first derivatives of the vector `f` |
-| `laguerre(x, n)` | Laguerre polynomial |
+| `laguerre(n, x)`, `laguerre(n, k, x)` | Laguerre polynomial / associated Laguerre polynomial |
 | `lambertw(x)` | Lambert W, the inverse of `x*exp(x)` |
 | `laplace(f, t, s)` | Laplace transform |
 | `laplacian(f, vars)` | Sum of the unmixed second derivatives of `f` |
 | `lcm(a, b, ...)` | Least common multiple |
 | `leading(p, x)` | Leading coefficient of polynomial `p` |
-| `legendre(x, n)` | Legendre polynomial |
+| `legendre(n, x)`, `legendre(n, m, x)` | Legendre polynomial / associated Legendre function |
 | `length(list)` | Number of elements of a list, rows of a matrix |
 | `limit(f, x, a [,dir])` | Limit, also at `inf` and one-sided |
 | `ln(x)` | Natural logarithm, same as `log(x)` |

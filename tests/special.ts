@@ -204,24 +204,24 @@ run_test([
   'Gamma(x)*digamma(x)',
 
   // Chebyshev polynomials, in the (x, n) order of hermite and legendre
-  'chebyshevt(x,0)',
+  'chebyshevt(0,x)',
   '1',
 
-  'chebyshevt(x,1)',
+  'chebyshevt(1,x)',
   'x',
 
-  'chebyshevt(x,3)',
+  'chebyshevt(3,x)',
   '4*x^3-3*x',
 
-  'chebyshevu(x,2)',
+  'chebyshevu(2,x)',
   '4*x^2-1',
 
   // T_n(cos(t)) = cos(n*t)
-  'simplify(chebyshevt(cos(t),2)-cos(2*t))',
+  'simplify(chebyshevt(2,cos(t))-cos(2*t))',
   '0',
 
-  'chebyshevt(x,n)',
-  'chebyshevt(x,n)',
+  'chebyshevt(n,x)',
+  'chebyshevt(n,x)',
 
   // numbers
   'fibonacci(10)',

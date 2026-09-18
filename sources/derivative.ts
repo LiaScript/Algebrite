@@ -489,11 +489,13 @@ function dsgn(p1: U, p2: Sym): U {
   return multiply(multiply(deriv, dirac(cadr(p1))), integer(2));
 }
 
+// hermite(n, x): H_n' = 2*n*H_(n-1)
 function dhermite(p1: U, p2: Sym): U {
-  const deriv = derivative(cadr(p1), p2);
+  const n = cadr(p1);
+  const x = caddr(p1);
   return multiply(
-    multiply(deriv, multiply(integer(2), caddr(p1))),
-    hermite(cadr(p1), add(caddr(p1), Constants.negOne))
+    multiply(derivative(x, p2), multiply(integer(2), n)),
+    hermite(x, add(n, Constants.negOne))
   );
 }
 

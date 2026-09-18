@@ -97,10 +97,10 @@ run_test([
   'm=1',
   '',
 
-  'R=r^l*exp(-r/n)*laguerre(2*r/n,n-l-1,2*l+1)',
+  'R=r^l*exp(-r/n)*laguerre(n-l-1,2*l+1,2*r/n)',
   '',
 
-  'Y=legendre(cos(theta),l,abs(m))*exp(i*m*phi)',
+  'Y=legendre(l,abs(m),cos(theta))*exp(i*m*phi)',
   '',
 
   'psi=R*Y',

@@ -57,10 +57,12 @@ For m > 0
 */
 export function Eval_legendre(p1: U) {
   checkArgCount(p1, 2, 3);
-  const X = Eval(cadr(p1));
-  const N = Eval(caddr(p1));
-  const p2 = Eval(cadddr(p1));
-  const M = p2 === symbol(NIL) ? Constants.zero : p2;
+  // legendre(n, x) or legendre(n, m, x): the argument comes last, as in
+  // Maxima, Mathematica and SymPy
+  const N = Eval(cadr(p1));
+  const three = cadddr(p1) !== symbol(NIL);
+  const M = three ? Eval(caddr(p1)) : Constants.zero;
+  const X = Eval(three ? cadddr(p1) : caddr(p1));
 
   return legendre(X, N, M);
 }
@@ -75,7 +77,7 @@ function __legendre(X: U, N: U, M: U): U {
 
   // tensors: x^2 would be a dot product, so they are not mapped over
   if (n < 0 || isNaN(n) || m < 0 || isNaN(m) || istensor(X)) {
-    return makeList(symbol(LEGENDRE), X, N, M);
+    return makeList(symbol(LEGENDRE), N, M, X);
   }
 
   let result: U;

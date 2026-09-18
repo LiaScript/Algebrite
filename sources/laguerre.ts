@@ -46,10 +46,12 @@ In the "for" loop i = n-1 so the recurrence relation becomes
 */
 export function Eval_laguerre(p1: U) {
   checkArgCount(p1, 2, 3);
-  const X = Eval(cadr(p1));
-  const N = Eval(caddr(p1));
-  const p2 = Eval(cadddr(p1));
-  const K = p2 === symbol(NIL) ? Constants.zero : p2;
+  // laguerre(n, x) or laguerre(n, k, x): the argument comes last, as in
+  // Maxima, Mathematica and SymPy
+  const N = Eval(cadr(p1));
+  const three = cadddr(p1) !== symbol(NIL);
+  const K = three ? Eval(caddr(p1)) : Constants.zero;
+  const X = Eval(three ? cadddr(p1) : caddr(p1));
 
   return laguerre(X, N, K);
 }
@@ -58,7 +60,7 @@ function laguerre(X: U, N: U, K: U): U {
   let n = nativeInt(N);
   // tensors: x^2 would be a dot product, so they are not mapped over
   if (n < 0 || isNaN(n) || istensor(X)) {
-    return makeList(symbol(LAGUERRE), X, N, K);
+    return makeList(symbol(LAGUERRE), N, K, X);
   }
 
   if (issymbol(X)) {

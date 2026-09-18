@@ -168,4 +168,38 @@ run_test([
   // the variable of an equation is still guessed past a soft function name
   'solve(lambertw(x)=1)',
   'e',
+
+  // orthogonal polynomials take the degree first, the argument last, as in
+  // Maxima, Mathematica and SymPy: H3 = 8x^3-12x, P2 = (3x^2-1)/2,
+  // L2 = (x^2-4x+2)/2, T3 = 4x^3-3x
+  'hermite(3,x)',
+  '8*x^3-12*x',
+
+  'legendre(2,x)',
+  '3/2*x^2-1/2',
+
+  'laguerre(2,x)',
+  '1/2*x^2-2*x+1',
+
+  'chebyshevt(3,x)',
+  '4*x^3-3*x',
+
+  // associated forms: the extra parameter sits in the middle.
+  // L_1^k = 1+k-x, P_1^1 = -(1-x^2)^(1/2)
+  'laguerre(1,k,x)',
+  '-x+1+k',
+
+  'legendre(1,1,x)',
+  '-(-x^2+1)^(1/2)',
+
+  // H_n' = 2*n*H_(n-1): 6*H2 = 6*(4x^2-2)
+  'd(hermite(3,x),x)',
+  '24*x^2-12',
+
+  'd(hermite(n,x),x)',
+  '2*n*hermite(-1+n,x)',
+
+  // the old order does not evaluate any more: x is no degree
+  'hermite(x,3)',
+  'hermite(x,3)',
 ]);

@@ -391,16 +391,16 @@ export function Eval_beta(p1: U) {
   return divide(multiply(g(a), g(b)), g(add(a, b)));
 }
 
-// chebyshevt(x,n) and chebyshevu(x,n), in the argument order of hermite and
+// chebyshevt(n,x) and chebyshevu(n,x), the degree first like hermite and
 // legendre: T0 = U0 = 1, T1 = x, U1 = 2x, P(n+1) = 2x*P(n) - P(n-1)
 export function evalChebyshev(name: string): (p1: U) => U {
   return (p1: U) => {
     checkArgCount(p1, 2);
-    const x = Eval(cadr(p1));
-    const N = Eval(caddr(p1));
+    const N = Eval(cadr(p1));
+    const x = Eval(caddr(p1));
     const n = nativeInt(N);
     if (isNaN(n) || n < 0) {
-      return call(name, x, N);
+      return call(name, N, x);
     }
     let prev: U = Constants.one;
     let cur: U = name === 'chebyshevt' ? x : multiply(integer(2), x);
