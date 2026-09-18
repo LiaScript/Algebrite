@@ -5288,7 +5288,7 @@
     "bazel-out/k8-fastbuild/bin/sources/roots.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.roots = exports.keepAssumedRoots = exports.Eval_roots = exports.normalizeEquation = exports.equationToExpr = void 0;
+      exports.rootsList = exports.roots = exports.keepAssumedRoots = exports.Eval_roots = exports.normalizeEquation = exports.equationToExpr = void 0;
       var alloc_1 = require_alloc();
       var defs_1 = require_defs();
       var run_1 = require_run();
@@ -5408,6 +5408,7 @@
         const r = roots(poly, x);
         return defs_1.istensor(r) ? r.tensor.elem : [r];
       }
+      exports.rootsList = rootsList;
       function getSimpleRoots(n, leadingCoeff, lastCoeff) {
         log.debug("getSimpleRoots");
         n = n - 1;
@@ -15716,6 +15717,53 @@ FACTOR=${p8}`);
     }
   });
 
+  // bazel-out/k8-fastbuild/bin/sources/resultant.js
+  var require_resultant = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/resultant.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.resultant = exports.Eval_resultant = void 0;
+      var defs_1 = require_defs();
+      var symbol_1 = require_symbol();
+      var coeff_1 = require_coeff();
+      var degree_1 = require_degree();
+      var det_1 = require_det();
+      var eval_1 = require_eval();
+      var guess_1 = require_guess();
+      var is_1 = require_is();
+      function Eval_resultant(p1) {
+        const f = eval_1.Eval(defs_1.cadr(p1));
+        const g = eval_1.Eval(defs_1.caddr(p1));
+        const arg = eval_1.Eval(defs_1.cadddr(p1));
+        const x = arg === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(f) : arg;
+        degree_1.checkpoly("resultant", f, x);
+        degree_1.checkpoly("resultant", g, x);
+        return resultant(f, g, x);
+      }
+      exports.Eval_resultant = Eval_resultant;
+      function resultant(f, g, x) {
+        var _a;
+        if (is_1.isZeroAtomOrTensor(f) || is_1.isZeroAtomOrTensor(g)) {
+          return defs_1.Constants.zero;
+        }
+        const a = coeff_1.coeff(f, x).reverse();
+        const b = coeff_1.coeff(g, x).reverse();
+        const m = a.length - 1;
+        const n = b.length - 1;
+        const size = m + n;
+        const elems = [];
+        for (let i = 0; i < size; i++) {
+          const [c, shift] = i < n ? [a, i] : [b, i - n];
+          for (let j = 0; j < size; j++) {
+            elems.push((_a = c[j - shift]) !== null && _a !== void 0 ? _a : defs_1.Constants.zero);
+          }
+        }
+        return det_1.determinant(elems, size);
+      }
+      exports.resultant = resultant;
+    }
+  });
+
   // bazel-out/k8-fastbuild/bin/sources/round.js
   var require_round = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/round.js"(exports) {
@@ -15757,7 +15805,7 @@ FACTOR=${p8}`);
     "bazel-out/k8-fastbuild/bin/sources/rref.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.Eval_eigenvectors = exports.Eval_eigenvalues = exports.Eval_nullspace = exports.Eval_matrixrank = exports.Eval_rref = void 0;
+      exports.matrix = exports.Eval_eigenvectors = exports.Eval_eigenvalues = exports.Eval_nullspace = exports.Eval_matrixrank = exports.Eval_rref = void 0;
       var defs_1 = require_defs();
       var alloc_1 = require_alloc();
       var run_1 = require_run();
@@ -15850,6 +15898,7 @@ FACTOR=${p8}`);
         tensor_1.check_tensor_dimensions(T);
         return T;
       }
+      exports.matrix = matrix;
       function rowReduce(M) {
         const tidy = (e) => defs_1.isNumericAtom(e) ? e : simplify_1.simplify(e);
         const [m, n] = M.dim;
@@ -15925,6 +15974,7 @@ FACTOR=${p8}`);
       var defs_1 = require_defs();
       var alloc_1 = require_alloc();
       var run_1 = require_run();
+      var find_1 = require_find();
       var symbol_1 = require_symbol();
       var add_1 = require_add();
       var derivative_1 = require_derivative();
@@ -15935,7 +15985,11 @@ FACTOR=${p8}`);
       var is_1 = require_is();
       var multiply_1 = require_multiply();
       var assume_1 = require_assume();
+      var coeff_1 = require_coeff();
+      var misc_1 = require_misc();
+      var resultant_1 = require_resultant();
       var roots_1 = require_roots();
+      var rref_1 = require_rref();
       var scan_1 = require_scan();
       var simplify_1 = require_simplify();
       var subst_1 = require_subst();
@@ -15976,8 +16030,9 @@ FACTOR=${p8}`);
         const b = alloc_1.alloc_tensor(n);
         b.ndim = 1;
         b.dim = [n];
-        eqs.elem.forEach((e, i) => {
-          const eq = defs_1.car(e) === symbol_1.symbol(defs_1.TESTEQ) ? add_1.subtract(defs_1.cadr(e), defs_1.caddr(e)) : e;
+        const exprs = eqs.elem.map((e) => defs_1.car(e) === symbol_1.symbol(defs_1.TESTEQ) ? add_1.subtract(defs_1.cadr(e), defs_1.caddr(e)) : e);
+        let linear = true;
+        exprs.forEach((eq, i) => {
           let rebuilt = eval_1.Eval(vars.elem.reduce((acc, v) => subst_1.subst(acc, v, defs_1.Constants.zero), eq));
           b.elem[i] = multiply_1.negate(rebuilt);
           vars.elem.forEach((v, j) => {
@@ -15985,10 +16040,11 @@ FACTOR=${p8}`);
             A.elem[i * n + j] = c;
             rebuilt = add_1.add(rebuilt, multiply_1.multiply(c, v));
           });
-          if (!is_1.isZeroAtomOrTensor(simplify_1.simplify(add_1.subtract(rebuilt, eq)))) {
-            run_1.stop("solve: system is not linear in the given variables");
-          }
+          linear = linear && is_1.isZeroAtomOrTensor(simplify_1.simplify(add_1.subtract(rebuilt, eq)));
         });
+        if (!linear) {
+          return solvePolySystemMatrix(exprs, vars.elem);
+        }
         tensor_1.check_tensor_dimensions(A);
         tensor_1.check_tensor_dimensions(b);
         if (is_1.isZeroAtomOrTensor(det_1.det(A))) {
@@ -16001,6 +16057,70 @@ FACTOR=${p8}`);
           }
         });
         return solution;
+      }
+      function solvePolySystemMatrix(eqs, vars) {
+        eqs.forEach((e) => vars.forEach((v) => {
+          if (find_1.Find(e, v) && !is_1.ispolyexpandedform(e, v)) {
+            run_1.stop("solve: system is not polynomial in the given variables");
+          }
+        }));
+        const rows = solvePolySystem(eqs, vars).sort(cmpRows).filter((r, i, all) => i === 0 || cmpRows(r, all[i - 1]) !== 0);
+        if (rows.length === 0) {
+          run_1.stop("solve: system has no solution");
+        }
+        const kept = rows.filter((r) => !r.some((value, i) => assume_1.violatesAssumptions(value, vars[i])));
+        if (kept.length === 0) {
+          run_1.stop("solve: no solution satisfies the assumptions about " + vars.join(","));
+        }
+        return rref_1.matrix(kept);
+      }
+      function cmpRows(a, b) {
+        for (let i = 0; i < a.length; i++) {
+          const c = misc_1.cmp_expr(a[i], b[i]);
+          if (c !== 0) {
+            return c;
+          }
+        }
+        return 0;
+      }
+      function solvePolySystem(eqs, vars) {
+        const v = vars[vars.length - 1];
+        const rest = vars.slice(0, -1);
+        const partials = rest.length === 0 ? [[]] : solvePolySystem(eliminate(eqs, v), rest);
+        const rows = [];
+        for (const partial of partials) {
+          const sub = eqs.map((e) => eval_1.Eval(rest.reduce((acc, w, i) => subst_1.subst(acc, w, partial[i]), e)));
+          const pivot = pivotFor(sub, v);
+          if (pivot === void 0) {
+            if (sub.every((e) => is_1.isZeroAtomOrTensor(simplify_1.simplify(e)))) {
+              run_1.stop("solve: system has infinitely many solutions");
+            }
+            continue;
+          }
+          for (const r of roots_1.rootsList(pivot, v)) {
+            if (sub.every((e) => is_1.isZeroAtomOrTensor(simplify_1.simplify(eval_1.Eval(subst_1.subst(e, v, r)))))) {
+              rows.push([...partial, r]);
+            }
+          }
+        }
+        return rows;
+      }
+      function eliminate(eqs, v) {
+        const pivot = pivotFor(eqs, v);
+        return eqs.filter((e) => e !== pivot).map((g) => {
+          if (!find_1.Find(g, v)) {
+            return g;
+          }
+          const r = resultant_1.resultant(pivot, g, v);
+          if (is_1.isZeroAtomOrTensor(r)) {
+            run_1.stop("solve: system has infinitely many solutions");
+          }
+          return r;
+        });
+      }
+      function pivotFor(eqs, v) {
+        const degree = (e) => coeff_1.coeff(e, v).length;
+        return eqs.filter((e) => find_1.Find(e, v)).reduce((best, e) => best === void 0 || degree(e) < degree(best) ? e : best, void 0);
       }
     }
   });
@@ -16403,6 +16523,7 @@ FACTOR=${p8}`);
       var quotient_1 = require_quotient();
       var rationalize_1 = require_rationalize();
       var real_1 = require_real();
+      var resultant_1 = require_resultant();
       var rect_1 = require_rect();
       var roots_1 = require_roots();
       var round_1 = require_round();
@@ -16617,6 +16738,7 @@ FACTOR=${p8}`);
         symbol_1.std_symbol(defs_1.RANK, eval_1.Eval_rank);
         symbol_1.std_symbol(defs_1.RATIONALIZE, rationalize_1.Eval_rationalize);
         symbol_1.std_symbol(defs_1.REAL, real_1.Eval_real);
+        symbol_1.std_symbol(defs_1.RESULTANT, resultant_1.Eval_resultant);
         symbol_1.std_symbol(defs_1.YYRECT, rect_1.Eval_rect);
         symbol_1.std_symbol(defs_1.ROOTS, roots_1.Eval_roots);
         symbol_1.std_symbol(defs_1.ROUND, round_1.Eval_round);
@@ -20899,10 +21021,10 @@ FACTOR=${p8}`);
       exports.CLEAR = exports.CIRCEXP = exports.CHOOSE = exports.CHECK = exports.CEILING = exports.BINOMIAL = exports.BINDING = exports.BESSELY = exports.BESSELJ = exports.ATOMIZE = exports.ARG = exports.ARCTANH = exports.ARCTAN = exports.ARCSINH = exports.ARCSIN = exports.ARCCOSH = exports.ARCCOS = exports.APPROXRATIO = exports.APART = exports.AND = exports.ADJ = exports.ADD = exports.ABS = exports.SYM = exports.TENSOR = exports.STR = exports.DOUBLE = exports.NUM = exports.CONS = exports.Sym = exports.Tensor = exports.Str = exports.Double = exports.Num = exports.Cons = exports.BaseAtom = exports.avoidCalculatingPowersIntoArctans = exports.do_simplify_nested_radicals = exports.dontCreateNewRadicalsInDenominatorWhenEvalingMultiplication = exports.defs = exports.PRINTMODE_LIST = exports.PRINTMODE_HUMAN = exports.PRINTMODE_COMPUTER = exports.PRINTMODE_2DASCII = exports.PRINTMODE_LATEX = exports.PRINTOUTRESULT = exports.DEBUG = exports.NSYM = exports.version = exports.breakpoint = void 0;
       exports.GCD = exports.GAMMA = exports.FUNCTION = exports.FOR = exports.FLOOR = exports.FLOATF = exports.FILTER = exports.FACTORPOLY = exports.FACTORIAL = exports.FACTOR = exports.EXPSIN = exports.EXPCOS = exports.EXPAND = exports.EXP = exports.EVAL = exports.ERFC = exports.ERF = exports.EIGENVECTORS = exports.EIGENVALUES = exports.EIGENVEC = exports.EIGENVAL = exports.EIGEN = exports.DSOLVE = exports.DRAW = exports.DOT = exports.DO = exports.DIVISORS = exports.DIV = exports.DIRAC = exports.DIMENSIONOF = exports.DIM = exports.DET = exports.DERIVATIVE = exports.DENOMINATOR = exports.DEGREE = exports.DEFINT = exports.DECOMP = exports.COSH = exports.COS = exports.CONVERT = exports.CURL = exports.CROSS = exports.CONTRACT = exports.CONJ = exports.CONDENSE = exports.COFACTOR = exports.COEFF = exports.CLOCK = exports.CLEARPATTERNS = exports.CLEARALL = void 0;
       exports.OUTER = exports.OR = exports.OPERATOR = exports.NUMERATOR = exports.NUMBER = exports.NULLSPACE = exports.NROOTS = exports.NOT = exports.MULTIPLY = exports.MOD = exports.MIN = exports.MAX = exports.ISNONZERO = exports.ISNEGATIVE = exports.ISPOSITIVE = exports.ISREAL = exports.ASSUMPTIONS = exports.FORGET = exports.ASSUME = exports.AT = exports.INVLAPLACE = exports.LAPLACE = exports.NSOLVE = exports.TRIGSIMP = exports.TRIGEXPAND = exports.RANDOM = exports.SSD = exports.SD = exports.SVARIANCE = exports.VARIANCE = exports.MEDIAN = exports.MEAN = exports.MATRIXRANK = exports.LOOKUP = exports.LOG = exports.LIMIT = exports.LEGENDRE = exports.LEADING = exports.LCM = exports.LAGUERRE = exports.ISPRIME = exports.ISINTEGER = exports.INVG = exports.INV = exports.INTEGRAL = exports.INNER = exports.INDEX = exports.IMAG = exports.HILBERT = exports.HERMITE = void 0;
-      exports.UNITS = exports.UNIT = exports.TRANSPOSE = exports.TESTLT = exports.TESTLE = exports.TESTGT = exports.TESTGE = exports.TESTEQ = exports.TEST = exports.TAYLOR = exports.TANH = exports.TAN = exports.SYMBOLSINFO = exports.SUM = exports.SUBST = exports.STOP = exports.SQRT = exports.SOLVE = exports.SHAPE = exports.SINH = exports.SIN = exports.SIMPLIFY = exports.SILENTPATTERN = exports.SGN = exports.SETQ = exports.ROOTS = exports.YYRECT = exports.RREF = exports.ROUND = exports.REAL = exports.RATIONALIZE = exports.RANK = exports.QUOTIENT = exports.QUOTE = exports.QUANTITY = exports.PRODUCT = exports.PRINTPLAIN = exports.PRINTLIST = exports.PRINTLATEX = exports.PRINTFULL = exports.PRINT2DASCII = exports.PRINT = exports.PRINT_LEAVE_X_ALONE = exports.PRINT_LEAVE_E_ALONE = exports.PRIME = exports.POWER = exports.POLAR = exports.PATTERNSINFO = exports.PATTERN = exports.PARTFRAC = void 0;
-      exports.MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES = exports.MAXPRIMETAB = exports.E = exports.C6 = exports.C5 = exports.C4 = exports.C3 = exports.C2 = exports.C1 = exports.SYMBOL_X_UNDERSCORE = exports.SYMBOL_B_UNDERSCORE = exports.SYMBOL_A_UNDERSCORE = exports.SYMBOL_IDENTITY_MATRIX = exports.SYMBOL_Z = exports.SYMBOL_Y = exports.SYMBOL_X = exports.SYMBOL_T = exports.SYMBOL_S = exports.SYMBOL_R = exports.SYMBOL_N = exports.SYMBOL_J = exports.SYMBOL_I = exports.SYMBOL_D = exports.SYMBOL_C = exports.SYMBOL_B = exports.SYMBOL_A = exports.INF = exports.PI = exports.VERSION = exports.SECRETX = exports.METAX = exports.METAB = exports.METAA = exports.DRAWX = exports.YYE = exports.MAX_FIXED_PRINTOUT_DIGITS = exports.FORCE_FIXED_PRINTOUT = exports.ASSUME_REAL_VARIABLES = exports.BAKE = exports.AUTOEXPAND = exports.LAST_PLAIN_PRINT = exports.LAST_LIST_PRINT = exports.LAST_LATEX_PRINT = exports.LAST_FULL_PRINT = exports.LAST_2DASCII_PRINT = exports.LAST_PRINT = exports.LAST = exports.NIL = exports.ZERO = void 0;
-      exports.MZERO = exports.MSIGN = exports.isidentitymatrix = exports.isinv = exports.istranspose = exports.isinnerordot = exports.isfactorial = exports.ispower = exports.ismultiply = exports.isadd = exports.caddaddr = exports.cdddaddr = exports.caddadr = exports.cddaddr = exports.cadaddr = exports.caddddr = exports.cddddr = exports.cadddr = exports.cdaddr = exports.caddar = exports.cadadr = exports.caaddr = exports.cdddr = exports.cddar = exports.cdadr = exports.cadar = exports.caddr = exports.caadr = exports.cddr = exports.cdar = exports.cadr = exports.caar = exports.cdr = exports.car = exports.issymbol = exports.isNumericAtomOrTensor = exports.istensor = exports.isstr = exports.isNumericAtom = exports.isdouble = exports.isrational = exports.iscons = exports.dotprod_unicode = exports.transpose_unicode = exports.logbuf = exports.mtotal = exports.primetab = exports.parse_time_simplifications = exports.predefinedSymbolsInGlobalScope_doNotTrackInDependencies = exports.MAXDIM = void 0;
-      exports.evalFloats = exports.evalPolar = exports.doexpand = exports.noexpand = exports.Constants = exports.$ = exports.reset_after_error = exports.MEQUAL = void 0;
+      exports.UNIT = exports.TRANSPOSE = exports.TESTLT = exports.TESTLE = exports.TESTGT = exports.TESTGE = exports.TESTEQ = exports.TEST = exports.TAYLOR = exports.TANH = exports.TAN = exports.SYMBOLSINFO = exports.SUM = exports.SUBST = exports.STOP = exports.SQRT = exports.SOLVE = exports.SHAPE = exports.SINH = exports.SIN = exports.SIMPLIFY = exports.SILENTPATTERN = exports.SGN = exports.SETQ = exports.ROOTS = exports.YYRECT = exports.RREF = exports.ROUND = exports.RESULTANT = exports.REAL = exports.RATIONALIZE = exports.RANK = exports.QUOTIENT = exports.QUOTE = exports.QUANTITY = exports.PRODUCT = exports.PRINTPLAIN = exports.PRINTLIST = exports.PRINTLATEX = exports.PRINTFULL = exports.PRINT2DASCII = exports.PRINT = exports.PRINT_LEAVE_X_ALONE = exports.PRINT_LEAVE_E_ALONE = exports.PRIME = exports.POWER = exports.POLAR = exports.PATTERNSINFO = exports.PATTERN = exports.PARTFRAC = void 0;
+      exports.MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES = exports.MAXPRIMETAB = exports.E = exports.C6 = exports.C5 = exports.C4 = exports.C3 = exports.C2 = exports.C1 = exports.SYMBOL_X_UNDERSCORE = exports.SYMBOL_B_UNDERSCORE = exports.SYMBOL_A_UNDERSCORE = exports.SYMBOL_IDENTITY_MATRIX = exports.SYMBOL_Z = exports.SYMBOL_Y = exports.SYMBOL_X = exports.SYMBOL_T = exports.SYMBOL_S = exports.SYMBOL_R = exports.SYMBOL_N = exports.SYMBOL_J = exports.SYMBOL_I = exports.SYMBOL_D = exports.SYMBOL_C = exports.SYMBOL_B = exports.SYMBOL_A = exports.INF = exports.PI = exports.VERSION = exports.SECRETX = exports.METAX = exports.METAB = exports.METAA = exports.DRAWX = exports.YYE = exports.MAX_FIXED_PRINTOUT_DIGITS = exports.FORCE_FIXED_PRINTOUT = exports.ASSUME_REAL_VARIABLES = exports.BAKE = exports.AUTOEXPAND = exports.LAST_PLAIN_PRINT = exports.LAST_LIST_PRINT = exports.LAST_LATEX_PRINT = exports.LAST_FULL_PRINT = exports.LAST_2DASCII_PRINT = exports.LAST_PRINT = exports.LAST = exports.NIL = exports.ZERO = exports.UNITS = void 0;
+      exports.MSIGN = exports.isidentitymatrix = exports.isinv = exports.istranspose = exports.isinnerordot = exports.isfactorial = exports.ispower = exports.ismultiply = exports.isadd = exports.caddaddr = exports.cdddaddr = exports.caddadr = exports.cddaddr = exports.cadaddr = exports.caddddr = exports.cddddr = exports.cadddr = exports.cdaddr = exports.caddar = exports.cadadr = exports.caaddr = exports.cdddr = exports.cddar = exports.cdadr = exports.cadar = exports.caddr = exports.caadr = exports.cddr = exports.cdar = exports.cadr = exports.caar = exports.cdr = exports.car = exports.issymbol = exports.isNumericAtomOrTensor = exports.istensor = exports.isstr = exports.isNumericAtom = exports.isdouble = exports.isrational = exports.iscons = exports.dotprod_unicode = exports.transpose_unicode = exports.logbuf = exports.mtotal = exports.primetab = exports.parse_time_simplifications = exports.predefinedSymbolsInGlobalScope_doNotTrackInDependencies = exports.MAXDIM = exports.MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE = void 0;
+      exports.evalFloats = exports.evalPolar = exports.doexpand = exports.noexpand = exports.Constants = exports.$ = exports.reset_after_error = exports.MEQUAL = exports.MZERO = void 0;
       var big_integer_1 = __importDefault(require_BigInteger());
       var print_1 = require_print();
       var symbol_1 = require_symbol();
@@ -21185,6 +21307,7 @@ FACTOR=${p8}`);
       exports.RANK = "rank";
       exports.RATIONALIZE = "rationalize";
       exports.REAL = "real";
+      exports.RESULTANT = "resultant";
       exports.ROUND = "round";
       exports.RREF = "rref";
       exports.YYRECT = "rect";
@@ -21903,6 +22026,7 @@ FACTOR=${p8}`);
         "rank",
         "rationalize",
         "real",
+        "resultant",
         "rect",
         "roots",
         "round",

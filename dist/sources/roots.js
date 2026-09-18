@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.roots = exports.keepAssumedRoots = exports.Eval_roots = exports.normalizeEquation = exports.equationToExpr = void 0;
+exports.rootsList = exports.roots = exports.keepAssumedRoots = exports.Eval_roots = exports.normalizeEquation = exports.equationToExpr = void 0;
 const alloc_1 = require("../runtime/alloc");
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
@@ -148,6 +148,7 @@ function rootsList(poly, x) {
     const r = roots(poly, x);
     return defs_1.istensor(r) ? r.tensor.elem : [r];
 }
+exports.rootsList = rootsList;
 // ok to generate these roots take a look at their form
 // in the case of even and odd exponents here:
 // http://www.wolframalpha.com/input/?i=roots+x%5E14+%2B+1

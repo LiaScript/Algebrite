@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_eigenvectors = exports.Eval_eigenvalues = exports.Eval_nullspace = exports.Eval_matrixrank = exports.Eval_rref = void 0;
+exports.matrix = exports.Eval_eigenvectors = exports.Eval_eigenvalues = exports.Eval_nullspace = exports.Eval_matrixrank = exports.Eval_rref = void 0;
 const defs_1 = require("../runtime/defs");
 const alloc_1 = require("../runtime/alloc");
 const run_1 = require("../runtime/run");
@@ -109,6 +109,7 @@ function matrix(rows) {
     tensor_1.check_tensor_dimensions(T);
     return T;
 }
+exports.matrix = matrix;
 // Gauss-Jordan elimination. Returns the reduced rows and the pivot columns.
 // The pivot is the first entry of the column that is not identically zero,
 // so a symbolic entry counts as nonzero, as in other CAS. Symbolic entries

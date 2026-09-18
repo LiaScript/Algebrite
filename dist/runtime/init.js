@@ -86,6 +86,7 @@ const quantity_1 = require("../sources/quantity");
 const quotient_1 = require("../sources/quotient");
 const rationalize_1 = require("../sources/rationalize");
 const real_1 = require("../sources/real");
+const resultant_1 = require("../sources/resultant");
 const rect_1 = require("../sources/rect");
 const roots_1 = require("../sources/roots");
 const round_1 = require("../sources/round");
@@ -312,6 +313,7 @@ function defn() {
     symbol_1.std_symbol(defs_1.RANK, eval_1.Eval_rank);
     symbol_1.std_symbol(defs_1.RATIONALIZE, rationalize_1.Eval_rationalize);
     symbol_1.std_symbol(defs_1.REAL, real_1.Eval_real);
+    symbol_1.std_symbol(defs_1.RESULTANT, resultant_1.Eval_resultant);
     symbol_1.std_symbol(defs_1.YYRECT, rect_1.Eval_rect);
     symbol_1.std_symbol(defs_1.ROOTS, roots_1.Eval_roots);
     symbol_1.std_symbol(defs_1.ROUND, round_1.Eval_round);
