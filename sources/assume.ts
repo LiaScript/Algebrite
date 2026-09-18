@@ -218,7 +218,7 @@ function productFacts(factors: Facts[]): Facts {
 }
 
 // factors each known >= 0 or <= 0 give a product known >= 0 or <= 0,
-// e.g. -a^(1/2) <= 0 for a >= 0
+// e.g. -a^(1/2) <= 0 for a >= 0, and -a^2 <= 0 for real a
 function weakProductSign(factors: Facts[]): Facts {
   if (!factors.every((t) => t.real && (t.negative === false || t.positive === false))) {
     return {};
