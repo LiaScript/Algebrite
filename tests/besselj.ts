@@ -91,6 +91,31 @@ run_test([
   'y=quote(y)',
   '',
 
+  // numeric values (tables of Abramowitz and Stegun)
+  'besselj(1.0,0)',
+  '0.765198...',
+
+  'besselj(1.0,1)',
+  '0.440051...',
+
+  'besselj(2.5,2)',
+  '0.446059...',
+
+  'besselj(10.0,0)',
+  '-0.245936...',
+
+  'besselj(-1.0,1)',
+  '-0.440051...',
+
+  'besselj(1.0,-1)',
+  '-0.440051...',
+
+  'float(besselj(1,0))',
+  '0.765198...',
+
+  'besselj(0.0,1)',
+  '0.0',
+
   // wrong number of arguments
   'besselj(x)',
   'Stop: besselj: expected 2 arguments, got 1',
