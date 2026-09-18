@@ -877,6 +877,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_fix_defint_trig",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_defint_trig.ts",
+)
+
+nodejs_test(
     name = "test_factorpoly",
     data = [
         ":tsc",
