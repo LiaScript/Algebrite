@@ -166,8 +166,9 @@ function yyarg(p1: U): U {
   }
 
   if (ismultiply(p1)) {
-    // product of factors
-    return p1.tail().map(arg).reduce(add, Constants.zero);
+    // product of factors (of a numerator, so no denominators to split
+    // off: arg() would loop on numerator(1.0+1.0*i) = 1.0*(1.0+1.0*i))
+    return p1.tail().map(yyarg).reduce(add, Constants.zero);
   }
 
   if (isadd(p1)) {
