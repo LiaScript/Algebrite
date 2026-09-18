@@ -208,6 +208,16 @@ run_test([
   'factor(-2*x^2-4*x-2)',
   '-2*(x+1)^2',
 
+  // the content of the last factor is pulled out after the sign
+  'factor(-6*x^2-6)',
+  '-6*(x^2+1)',
+
+  'factor(-2/3*(x^2+x+1)^2)',
+  '-2/3*(x^2+x+1)^2',
+
+  'factor(-2*(x^2+2)*(x^2+3))',
+  '-2*(x^2+2)*(x^2+3)',
+
   // irreducible quadratics, repeated and mixed with linear factors
   'factor((x^2+1)^2)',
   '(x^2+1)^2',

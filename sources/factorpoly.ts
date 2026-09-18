@@ -280,20 +280,15 @@ function yyfactorpoly(p1: U, p2: U): U {
     console.log(`POLY=${p1}`);
   }
 
-  p1 = noexpand(yycondense, p1);
-
-  //console.log("new poly with extracted common factor: " + p1)
-  //breakpoint
-
-  // factor out negative sign
+  // factor out negative sign, before condensing: negate() would expand
+  // a condensed -2*(x^2+x+1) back into 2*x^2+2*x+2
 
   if (factpoly_expo > 0 && isnegativeterm(polycoeff[factpoly_expo])) {
-    //prev_expanding = expanding
-    //expanding = 1
-    //expanding = prev_expanding
     p1 = negate(p1);
     p7 = negate_noexpand(p7);
   }
+
+  p1 = noexpand(yycondense, p1);
 
   p7 = multiply_noexpand(p7, p1);
 

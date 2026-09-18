@@ -621,6 +621,10 @@ run_test([
   'roots((x-1)*(x^2-2)^2)',
   '[1,-2^(1/2),2^(1/2)]',
 
+  // negative rational leading coefficient: each root once
+  'roots(-2/3*(x^2+x+1)^2)',
+  '[-1/2-1/2*i*3^(1/2),-1/2+1/2*i*3^(1/2)]',
+
   'roots((x^2-x+1)^2)',
   '[1/2-1/2*i*3^(1/2),1/2+1/2*i*3^(1/2)]',
 
