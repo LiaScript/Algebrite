@@ -74,8 +74,8 @@ export function set_component(RVALUE:U, ...args:U[]):U {
   let k = 0;
   for (let i = 0; i < m; i++) {
     const t = nativeInt(indices[i]);
-    if (t < 1 || t > LVALUE.tensor.dim[i]) {
-      stop('error in indexed assign\n');
+    if (!(t >= 1 && t <= LVALUE.tensor.dim[i])) {
+      stop('error in indexed assign');
     }
     k = k * LVALUE.tensor.dim[i] + t - 1;
   }

@@ -74,4 +74,94 @@ run_test([
 
   'a[b]',
   'a[b]',
+
+  // --------------------------------
+  // indexing matrices and tensors
+  // --------------------------------
+
+  'M=[[1,2,3],[4,5,6]]',
+  '',
+
+  'M[2,3]',
+  '6',
+
+  'M[2]',
+  '[4,5,6]',
+
+  // non-integer or symbolic index: left unevaluated
+  'M[1.5,1]',
+  'M[1.5,1]',
+
+  'M[n,1]',
+  'M[n,1]',
+
+  'M[1,2]=x',
+  '',
+
+  'M',
+  '[[1,x,3],[4,5,6]]',
+
+  'T=[[[1,2],[3,4]],[[5,6],[7,8]]]',
+  '',
+
+  'T[2,1,2]',
+  '6',
+
+  'T[2,1]',
+  '[5,6]',
+
+  'T[2]',
+  '[[5,6],[7,8]]',
+
+  'T[2,2]=[p,q]',
+  '',
+
+  'T',
+  '[[[1,2],[3,4]],[[5,6],[p,q]]]',
+
+  'M[0,1]',
+  'Stop: index out of range',
+
+  'M=[[1,2,3],[4,5,6]]',
+  '',
+
+  'M[3,1]',
+  'Stop: index out of range',
+
+  'M=[[1,2,3],[4,5,6]]',
+  '',
+
+  'M[1,4]',
+  'Stop: index out of range',
+
+  'M=[[1,2,3],[4,5,6]]',
+  '',
+
+  'M[1,1,1]',
+  'Stop: too many indices for tensor',
+
+  // assignments with a wrong index or shape must stop
+  'M=[[1,2,3],[4,5,6]]',
+  '',
+
+  'M[3]=[7,8,9]',
+  'Stop: error in indexed assign',
+
+  'M=[[1,2,3],[4,5,6]]',
+  '',
+
+  'M[n]=[7,8,9]',
+  'Stop: error in indexed assign',
+
+  'M=[[1,2,3],[4,5,6]]',
+  '',
+
+  'M[1]=[7,8]',
+  'Stop: error in indexed assign',
+
+  'M=[[1,2,3],[4,5,6]]',
+  '',
+
+  'M[1,1]=[7,8]',
+  'Stop: error in indexed assign',
 ]);
