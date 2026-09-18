@@ -30,7 +30,7 @@ import { derivative } from './derivative';
 import { Eval } from './eval';
 import { apart } from './expand';
 import { factorial } from './factorial';
-import { isone, isZeroAtomOrTensor } from './is';
+import { isplusone, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { checkArgCount, exponential } from './misc';
 import { divide, multiply, negate } from './multiply';
@@ -94,7 +94,7 @@ function laplace(f: U, t: U, s: U): U {
   const result =
     dep.length === 1 ? single(dep[0], t, s) : productRule(dep, t, s);
   return result === null
-    ? isone(c)
+    ? isplusone(c)
       ? unevaluated
       : multiply(c, makeList(symbol(LAPLACE), product(dep), t, s))
     : multiply(c, result);
@@ -215,19 +215,26 @@ function invlaplace(F: U, s: U, t: U): U {
     return F.tail().reduce((acc: U, G: U) => add(acc, invlaplace(G, s, t)), Constants.zero);
   }
 
-  // exp(-t0 s + c) G(s) -> exp(c) heaviside(t - t0) g(t - t0)
+  // exp(-t0 s + c) G(s) -> exp(c) heaviside(t - t0) g(t - t0), t0 >= 0;
+  // an impulse in g is only delayed, dirac(t - t0) needs no heaviside
   const fs = factors(F);
   const e = fs.findIndex((g) => isexp(g) && linear(caddr(g), s));
   if (e >= 0) {
     const [a, c] = linear(caddr(fs[e]), s);
     const t0 = negate(a);
     const g = invlaplace(product(fs.filter((_, i) => i !== e)), s, t);
-    if (Find(g, symbol(INVLAPLACE))) {
+    if (Find(g, symbol(INVLAPLACE)) || cmp_values(t0, Constants.zero) === -1) {
       return makeList(symbol(INVLAPLACE), F, s, t);
     }
+    const step = call('heaviside', subtract(t, t0));
+    const shifted = Eval(subst(g, t, subtract(t, t0)));
+    const terms = isadd(shifted) ? shifted.tail() : [shifted];
     return multiply(
-      multiply(exponential(c), call('heaviside', subtract(t, t0))),
-      Eval(subst(g, t, subtract(t, t0)))
+      exponential(c),
+      terms.reduce(
+        (acc: U, g: U) => add(acc, Find(g, symbol(DIRAC)) ? g : multiply(step, g)),
+        Constants.zero
+      )
     );
   }
 
@@ -238,6 +245,9 @@ function invlaplace(F: U, s: U, t: U): U {
 
 // One partial fraction: c/(b1 s + b0)^n or (alpha s + beta)/(b2 s^2 + b1 s + b0).
 function invterm(G: U, s: U, t: U): U {
+  if (!Find(G, s)) {
+    return invlaplace(G, s, t);
+  }
   const unevaluated = makeList(symbol(INVLAPLACE), G, s, t);
   // the s-dependent factor with a negative integer exponent is the
   // denominator base^n; power() is avoided, it would expand (s+1)^3
