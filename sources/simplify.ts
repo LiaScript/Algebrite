@@ -372,9 +372,10 @@ function f3(p1: U): U {
 function f10(p1: U): U {
   const carp1 = car(p1);
   if (carp1 === symbol(MULTIPLY) || isinnerordot(p1)) {
-    // both operands a transpose?
+    // both operands a transpose? (two operands, a third one would be lost)
 
     if (
+      length(p1) === 3 &&
       car(car(cdr(p1))) === symbol(TRANSPOSE) &&
       car(car(cdr(cdr(p1)))) === symbol(TRANSPOSE)
     ) {

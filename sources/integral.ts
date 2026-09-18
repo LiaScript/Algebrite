@@ -114,7 +114,7 @@ const itab: string[] = [
   // 31
   'f(x/(a+b*x)^2,1/b^2*(log(a+b*x)+a/(a+b*x)))',
   // 33
-  'f(x^2/(a+b*x),1/b^2*(1/2*(a+b*x)^2-2*a*(a+b*x)+a^2*log(a+b*x)))',
+  'f(x^2/(a+b*x),x^2/(2*b)-a*x/b^2+a^2*log(a+b*x)/b^3)',
   // 34
   'f(x^2/(a+b*x)^2,1/b^3*(a+b*x-2*a*log(a+b*x)-a^2/(a+b*x)))',
   // 35
@@ -201,8 +201,9 @@ const itab: string[] = [
   'f(x/sqrt(a+b*x),-2/3*(2*a-b*x)*sqrt(a+b*x)/b^2)',
   //133
   'f(x^2/sqrt(a+b*x),2/15*(8*a^2-4*a*b*x+3*b^2*x^2)*sqrt(a+b*x)/b^3)',
-  //135
-  'f(1/x*1/sqrt(a+b*x),1/sqrt(a)*log((sqrt(a+b*x)-sqrt(a))/(sqrt(a+b*x)+sqrt(a))),a>0)',
+  //135: (s-sqrt(a))/(s+sqrt(a)) = (s-sqrt(a))^2/(b*x) with s = sqrt(a+b*x);
+  // abs(x) keeps the log real on both sides of 0
+  'f(1/x*1/sqrt(a+b*x),1/sqrt(a)*log((sqrt(a+b*x)-sqrt(a))^2/abs(x)),a>0)',
   //136
   'f(1/x*1/sqrt(a+b*x),2/sqrt(-a)*arctan(sqrt(-(a+b*x)/a)),a<0)',
   //137
@@ -212,13 +213,13 @@ const itab: string[] = [
   //157
   'f(1/sqrt(x^2+a),log(x+sqrt(x^2+a)))',
   //158
-  'f(1/x*1/sqrt(x^2+a),arcsec(x/sqrt(-a))/sqrt(-a),a<0)',
+  'f(1/x*1/sqrt(x^2+a),arctan(sqrt(x^2+a)/sqrt(-a))/sqrt(-a),a<0)',
   //159
   'f(1/x*1/sqrt(x^2+a),-1/sqrt(a)*log((sqrt(a)+sqrt(x^2+a))/x),a>0)',
   //160
   'f(sqrt(x^2+a)/x,sqrt(x^2+a)-sqrt(a)*log((sqrt(a)+sqrt(x^2+a))/x),a>0)',
   //161
-  'f(sqrt(x^2+a)/x,sqrt(x^2+a)-sqrt(-a)*arcsec(x/sqrt(-a)),a<0)',
+  'f(sqrt(x^2+a)/x,sqrt(x^2+a)-sqrt(-a)*arctan(sqrt(x^2+a)/sqrt(-a)),a<0)',
   //162
   'f(x/sqrt(x^2+a),sqrt(x^2+a))',
   //163
@@ -248,7 +249,7 @@ const itab: string[] = [
   //174
   'f(1/x^3*1/sqrt(x^2+a),-1/2*sqrt(x^2+a)/a/x^2+1/2*log((sqrt(a)+sqrt(x^2+a))/x)/a^(3/2),a>0)',
   //175
-  'f(1/x^3*1/sqrt(x^2-a),1/2*sqrt(x^2-a)/a/x^2+1/2*1/(a^(3/2))*arcsec(x/(a^(1/2))),a>0)',
+  'f(1/x^3*1/sqrt(x^2-a),1/2*sqrt(x^2-a)/a/x^2+1/2*1/(a^(3/2))*arctan(sqrt(x^2-a)/a^(1/2)),a>0)',
   //176+
   'f(x^2*sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/6*x*(x^2+a^(1/3))^(5/2)-1/24*a^(1/3)*x*(x^2+a^(1/3))^(3/2)-1/16*a^(2/3)*x*sqrt(x^2+a^(1/3))-1/16*a*log(x+sqrt(x^2+a^(1/3))),a>0)',
   //176-
@@ -264,10 +265,10 @@ const itab: string[] = [
   //200+
   'f(sqrt(a-x^2),1/2*(x*sqrt(a-x^2)+a*arcsin(x/sqrt(abs(a)))))',
   //201    (seems to be handled somewhere else)
-  //202
-  'f(1/x*1/sqrt(a-x^2),-1/sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/x),a>0)',
+  //202: abs(x), like the other logs, is real for x < 0 as well
+  'f(1/x*1/sqrt(a-x^2),-1/sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/abs(x)),a>0)',
   //203
-  'f(sqrt(a-x^2)/x,sqrt(a-x^2)-sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/x),a>0)',
+  'f(sqrt(a-x^2)/x,sqrt(a-x^2)-sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/abs(x)),a>0)',
   //204
   'f(x/sqrt(a-x^2),-sqrt(a-x^2))',
   //205
@@ -283,7 +284,7 @@ const itab: string[] = [
   //216
   'f(sqrt(a-x^2)/x^2,-sqrt(a-x^2)/x-arcsin(x/sqrt(a)),a>0)',
   //217
-  'f(sqrt(a-x^2)/x^3,-1/2*sqrt(a-x^2)/x^2+1/2*log((sqrt(a)+sqrt(a-x^2))/x)/sqrt(a),a>0)',
+  'f(sqrt(a-x^2)/x^3,-1/2*sqrt(a-x^2)/x^2+1/2*log((sqrt(a)+sqrt(a-x^2))/abs(x))/sqrt(a),a>0)',
   //218
   'f(sqrt(a-x^2)/x^4,-1/3*(a-x^2)^(3/2)/a/x^3,a>0)',
   // 273
@@ -861,7 +862,7 @@ var hashed_itab: { [key: string]: string[] } = {
   '0.455026': ['f(x/(a+b*x),x/b-a*log(a+b*x)/b/b)'],
   '0.216732': ['f(x/(a+b*x)^2,1/b^2*(log(a+b*x)+a/(a+b*x)))'],
   '0.434695': [
-    'f(x^2/(a+b*x),1/b^2*(1/2*(a+b*x)^2-2*a*(a+b*x)+a^2*log(a+b*x)))',
+    'f(x^2/(a+b*x),x^2/(2*b)-a*x/b^2+a^2*log(a+b*x)/b^3)',
   ],
   '0.207048': ['f(x^2/(a+b*x)^2,1/b^3*(a+b*x-2*a*log(a+b*x)-a^2/(a+b*x)))'],
   '2.650781': [
@@ -914,7 +915,7 @@ var hashed_itab: { [key: string]: string[] } = {
     'f(x^2/sqrt(a+b*x),2/15*(8*a^2-4*a*b*x+3*b^2*x^2)*sqrt(a+b*x)/b^3)',
   ],
   '0.722428': [
-    'f(1/x*1/sqrt(a+b*x),1/sqrt(a)*log((sqrt(a+b*x)-sqrt(a))/(sqrt(a+b*x)+sqrt(a))),a>0)',
+    'f(1/x*1/sqrt(a+b*x),1/sqrt(a)*log((sqrt(a+b*x)-sqrt(a))^2/abs(x)),a>0)',
     'f(1/x*1/sqrt(a+b*x),2/sqrt(-a)*arctan(sqrt(-(a+b*x)/a)),a<0)',
   ],
   '0.756216': [
@@ -927,14 +928,14 @@ var hashed_itab: { [key: string]: string[] } = {
     'f(sqrt(a*x^2+b),x*sqrt(a*x^2+b)/2+b*arcsin(x*sqrt(-a/b))/2/sqrt(-a),and(number(a<0),a<0))',
   ],
   '0.729886': [
-    'f(1/x*1/sqrt(x^2+a),arcsec(x/sqrt(-a))/sqrt(-a),a<0)',
+    'f(1/x*1/sqrt(x^2+a),arctan(sqrt(x^2+a)/sqrt(-a))/sqrt(-a),a<0)',
     'f(1/x*1/sqrt(x^2+a),-1/sqrt(a)*log((sqrt(a)+sqrt(x^2+a))/x),a>0)',
-    'f(1/x*1/sqrt(a-x^2),-1/sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/x),a>0)',
+    'f(1/x*1/sqrt(a-x^2),-1/sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/abs(x)),a>0)',
   ],
   '1.501230': [
     'f(sqrt(x^2+a)/x,sqrt(x^2+a)-sqrt(a)*log((sqrt(a)+sqrt(x^2+a))/x),a>0)',
-    'f(sqrt(x^2+a)/x,sqrt(x^2+a)-sqrt(-a)*arcsec(x/sqrt(-a)),a<0)',
-    'f(sqrt(a-x^2)/x,sqrt(a-x^2)-sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/x),a>0)',
+    'f(sqrt(x^2+a)/x,sqrt(x^2+a)-sqrt(-a)*arctan(sqrt(x^2+a)/sqrt(-a)),a<0)',
+    'f(sqrt(a-x^2)/x,sqrt(a-x^2)-sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/abs(x)),a>0)',
   ],
   '0.666120': [
     'f(x/sqrt(x^2+a),sqrt(x^2+a))',
@@ -967,7 +968,7 @@ var hashed_itab: { [key: string]: string[] } = {
     'f(x^3*sqrt(x^2+a),(1/5*x^2-2/15*a)*(x^2+a)^(3/2),and(number(a>0),a>0))',
     'f(x^3*sqrt(x^2+a),(x^2+a)^(5/2)/5-a*(x^2+a)^(3/2)/3,and(number(a<0),a<0))',
     'f(x^3*sqrt(a-x^2),(-1/5*x^2-2/15*a)*(a-x^2)^(3/2),a>0)',
-    'f(sqrt(a-x^2)/x^3,-1/2*sqrt(a-x^2)/x^2+1/2*log((sqrt(a)+sqrt(a-x^2))/x)/sqrt(a),a>0)',
+    'f(sqrt(a-x^2)/x^3,-1/2*sqrt(a-x^2)/x^2+1/2*log((sqrt(a)+sqrt(a-x^2))/abs(x))/sqrt(a),a>0)',
     'f(sqrt(a-x^2)/x^4,-1/3*(a-x^2)^(3/2)/a/x^3,a>0)',
   ],
   '0.636358': [
@@ -977,7 +978,7 @@ var hashed_itab: { [key: string]: string[] } = {
   '0.652928': [
     'f(x^3/sqrt(x^2+a),1/3*(x^2+a)^(3/2)-a*sqrt(x^2+a))',
     'f(1/x^3*1/sqrt(x^2+a),-1/2*sqrt(x^2+a)/a/x^2+1/2*log((sqrt(a)+sqrt(x^2+a))/x)/a^(3/2),a>0)',
-    'f(1/x^3*1/sqrt(x^2-a),1/2*sqrt(x^2-a)/a/x^2+1/2*1/(a^(3/2))*arcsec(x/(a^(1/2))),a>0)',
+    'f(1/x^3*1/sqrt(x^2-a),1/2*sqrt(x^2-a)/a/x^2+1/2*1/(a^(3/2))*arctan(sqrt(x^2-a)/a^(1/2)),a>0)',
   ],
   '0.764022': [
     'f(1/x^2*1/sqrt(x^2+a),-sqrt(x^2+a)/a/x)',

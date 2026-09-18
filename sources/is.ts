@@ -587,18 +587,35 @@ export function isminusoneovertwo(p: BaseAtom): boolean {
   return equalq(p as U, -1, 2);
 }
 
-// p == 1/sqrt(2) ?
+// p == 1/sqrt(2) ? In either spelling, 2^(-1/2) or 1/2*2^(1/2), and the
+// whole product: 1/2*2^(1/2)*y is something else
 export function isoneoversqrttwo(p: BaseAtom): boolean {
-  return ispower(p) && equaln(cadr(p), 2) && equalq(caddr(p), -1, 2);
+  return (
+    (ispower(p) && equaln(cadr(p), 2) && equalq(caddr(p), -1, 2)) ||
+    isHalfSqrtTwo(p, 1)
+  );
 }
 
 // p == -1/sqrt(2) ?
 export function isminusoneoversqrttwo(p: BaseAtom): boolean {
   return (
+    (ismultiply(p) &&
+      equaln(cadr(p), -1) &&
+      isoneoversqrttwo(caddr(p)) &&
+      length(p) === 3) ||
+    isHalfSqrtTwo(p, -1)
+  );
+}
+
+// p == sign/2*2^(1/2) ?
+function isHalfSqrtTwo(p: BaseAtom, sign: number): boolean {
+  return (
     ismultiply(p) &&
-    equaln(cadr(p), -1) &&
-    isoneoversqrttwo(caddr(p)) &&
-    length(p) === 3
+    length(p) === 3 &&
+    equalq(cadr(p), sign, 2) &&
+    ispower(caddr(p)) &&
+    equaln(cadr(caddr(p)), 2) &&
+    isoneovertwo(caddr(caddr(p)))
   );
 }
 
