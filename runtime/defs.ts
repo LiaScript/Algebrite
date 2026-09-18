@@ -318,6 +318,7 @@ export const SSD = 'ssd';
 export const RANDOM = 'random';
 export const TRIGEXPAND = 'trigexpand';
 export const TRIGSIMP = 'trigsimp';
+export const NSOLVE = 'nsolve';
 export const MAX = 'max';
 export const MIN = 'min';
 export const MOD = 'mod';

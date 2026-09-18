@@ -88,6 +88,7 @@ import { Eval_log } from '../sources/log';
 import { Eval_lookup } from '../sources/lookup';
 import { Eval_mean, Eval_median, Eval_random, Eval_sd, Eval_ssd, Eval_svariance, Eval_variance } from '../sources/stats';
 import { Eval_trigexpand } from '../sources/trigexpand';
+import { Eval_nsolve } from '../sources/nsolve';
 import { Eval_max, Eval_min } from '../sources/minmax';
 import { Eval_mod } from '../sources/mod';
 import { Eval_multiply } from '../sources/multiply';
@@ -245,6 +246,7 @@ import {
   RANDOM,
   TRIGEXPAND,
   TRIGSIMP,
+  NSOLVE,
   MAX,
   MAX_FIXED_PRINTOUT_DIGITS,
   METAA,
@@ -539,6 +541,7 @@ export function defn() {
   std_symbol(RANDOM, Eval_random);
   std_symbol(TRIGEXPAND, Eval_trigexpand);
   std_symbol(TRIGSIMP, Eval_trigsimp);
+  std_symbol(NSOLVE, Eval_nsolve);
   std_symbol(MAX, Eval_max);
   std_symbol(MIN, Eval_min);
   std_symbol(MOD, Eval_mod);

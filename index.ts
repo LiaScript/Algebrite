@@ -275,6 +275,7 @@ const builtin_fns = [
   'random',
   'trigexpand',
   'trigsimp',
+  'nsolve',
   'max',
   'min',
   'mod',

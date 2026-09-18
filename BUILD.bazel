@@ -1194,3 +1194,12 @@ nodejs_test(
     ],
     entry_point = ":tests/trigexpand.ts",
 )
+
+nodejs_test(
+    name = "test_nsolve",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/nsolve.ts",
+)
