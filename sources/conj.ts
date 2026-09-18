@@ -1,7 +1,8 @@
-import { cadr, Constants, U } from '../runtime/defs';
+import { cadr, Constants, iscons, ispower, istensor, U } from '../runtime/defs';
 import { Find } from '../runtime/find';
 import { clockform } from './clock';
 import { Eval } from './eval';
+import { isminusone } from './is';
 import { negate } from './multiply';
 import { polar } from './polar';
 import { subst } from './subst';
@@ -23,13 +24,33 @@ Returns the complex conjugate of z.
 
 */
 export function Eval_conj(p1: U) {
-  p1 = Eval(cadr(p1));
+  return conj(Eval(cadr(p1)));
+}
+
+// conjugate of an evaluated expression
+export function conj(p1: U): U {
+  // Symbols are real, so only powers of -1 (i is (-1)^(1/2)) are complex.
+  // Without any, the value is real: going through polar would lose the
+  // sign, since arg() assumes symbols positive (conj(a-b) gave abs(a-b)).
+  if (!hasPowerOfMinusOne(p1)) {
+    return p1;
+  }
   if (!Find(p1, Constants.imaginaryunit)) {
     // example: (-1)^(1/3)
     return clockform(conjugate(polar(p1)));
   } else {
     return conjugate(p1);
   }
+}
+
+function hasPowerOfMinusOne(p: U): boolean {
+  if (ispower(p) && isminusone(cadr(p))) {
+    return true;
+  }
+  if (istensor(p)) {
+    return p.tensor.elem.some(hasPowerOfMinusOne);
+  }
+  return iscons(p) && p.tail().some(hasPowerOfMinusOne);
 }
 
 // careful is you pass this one an expression with

@@ -46,4 +46,21 @@ run_test([
 
   'conj([1+i,2-3*i])',
   '[1-i,2+3*i]',
+
+  // symbols are real: an expression without powers of -1 is its own
+  // conjugate, whatever its sign (conj(a-b) used to be abs(a-b))
+  'conj(a-b)',
+  'a-b',
+
+  'conj(-x)',
+  '-x',
+
+  'conj(x^2-y)',
+  '-y+x^2',
+
+  'conj(sin(x)-2)',
+  '-2+sin(x)',
+
+  'conj([a-b,x])',
+  '[a-b,x]',
 ]);
