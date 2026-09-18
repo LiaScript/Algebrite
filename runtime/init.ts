@@ -24,6 +24,7 @@ import { Eval_cofactor } from '../sources/cofactor';
 import { Eval_condense } from '../sources/condense';
 import { Eval_conj } from '../sources/conj';
 import { Eval_contract } from '../sources/contract';
+import { Eval_cross, Eval_curl, Eval_div } from '../sources/cross';
 import { Eval_cos } from '../sources/cos';
 import { Eval_cosh } from '../sources/cosh';
 import { Eval_decomp } from '../sources/decomp';
@@ -171,6 +172,8 @@ import {
   CONJ,
   Constants,
   CONTRACT,
+  CROSS,
+  CURL,
   CONVERT,
   COS,
   COSH,
@@ -185,6 +188,7 @@ import {
   DIM,
   DIMENSIONOF,
   DIRAC,
+  DIV,
   DIVISORS,
   DO,
   DOT,
@@ -363,37 +367,6 @@ export function init() {
   defn();
 }
 
-/* cross =====================================================================
-
-Tags
-----
-scripting, JS, internal, treenode, general concept, script_defined
-
-Parameters
-----------
-u,v
-
-General description
--------------------
-Returns the cross product of vectors u and v.
-
-*/
-
-/* curl =====================================================================
-
-Tags
-----
-scripting, JS, internal, treenode, general concept, script_defined
-
-Parameters
-----------
-u
-
-General description
--------------------
-Returns the curl of vector u.
-
-*/
 const defn_str = [
   'version="' + version + '"',
   'e=exp(1)',
@@ -408,12 +381,6 @@ const defn_str = [
   'maxFixedPrintoutDigits=6',
   'printLeaveEAlone=1',
   'printLeaveXAlone=0',
-  // cross definition
-  'cross(u,v)=[u[2]*v[3]-u[3]*v[2],u[3]*v[1]-u[1]*v[3],u[1]*v[2]-u[2]*v[1]]',
-  // curl definition
-  'curl(v)=[d(v[3],y)-d(v[2],z),d(v[1],z)-d(v[3],x),d(v[2],x)-d(v[1],y)]',
-  // div definition
-  'div(v)=d(v[1],x)+d(v[2],y)+d(v[3],z)',
   // Note that we use the mathematics / Javascript / Mathematica
   // convention that "log" is indeed the natural logarithm.
   //
@@ -479,6 +446,8 @@ export function defn() {
   std_symbol(CONDENSE, Eval_condense);
   std_symbol(CONJ, Eval_conj);
   std_symbol(CONTRACT, Eval_contract);
+  std_symbol(CROSS, Eval_cross);
+  std_symbol(CURL, Eval_curl);
   std_symbol(CONVERT, Eval_convert);
   std_symbol(COS, Eval_cos);
   std_symbol(COSH, Eval_cosh);
@@ -491,6 +460,7 @@ export function defn() {
   std_symbol(DIM, Eval_dim);
   std_symbol(DIMENSIONOF, Eval_dimensionof);
   std_symbol(DIRAC, Eval_dirac);
+  std_symbol(DIV, Eval_div);
   std_symbol(DIVISORS, Eval_divisors);
   std_symbol(DO, Eval_do);
   std_symbol(DOT, Eval_inner);
