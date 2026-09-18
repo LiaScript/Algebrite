@@ -865,7 +865,6 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/fix_integral_heuristic.ts",
-    entry_point = ":tests/fix_limit.ts",
 )
 
 nodejs_test(
