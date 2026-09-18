@@ -1284,3 +1284,30 @@ nodejs_test(
     ],
     entry_point = ":tests/draw.ts",
 )
+
+nodejs_test(
+    name = "test_factorial",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/factorial.ts",
+)
+
+nodejs_test(
+    name = "test_sqrt",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/sqrt.ts",
+)
+
+nodejs_test(
+    name = "test_number",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/number.ts",
+)
