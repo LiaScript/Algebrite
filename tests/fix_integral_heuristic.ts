@@ -4,7 +4,8 @@ import { run_test } from '../test-harness';
 //
 // ok3(F,p,q,r) is the check of tests/integral_gaps.ts: the derivative of
 // integral(F,x) equals F at x = p, q, r and the antiderivative is real there
-// (imaginary part < 10^-12). The points are taken on EVERY real branch of
+// (imaginary part < 10^-12). Here it is a pair of statements, so that the
+// integral is computed once (a function argument is evaluated at every use). The points are taken on EVERY real branch of
 // the integrand, left and right of the roots of the radicand, so that a
 // missing abs in a log shows up. The explicit antiderivatives and the defint
 // values were checked with python mpmath (30 digits, diff and quad).
@@ -13,10 +14,15 @@ const helpers = [
   '',
   'all3(G,F,p,q,r)=and(okat(G,F,p),okat(G,F,q),okat(G,F,r))',
   '',
-  'ok3(F,p,q,r)=all3(integral(F,x),F,p,q,r)',
-  '',
   'near(u,v)=abs(float(u)-v)<10^(-9)',
   '',
+];
+
+const ok3 = (F: string, p: string, q: string, r: string) => [
+  `G=integral(${F},x)`,
+  '',
+  `all3(G,${F},${p},${q},${r})`,
+  '1',
 ];
 
 // 0. The root cause of the stack overflow: gcd multiplied the gcds of all
@@ -50,7 +56,7 @@ run_test([
   '51*a+9*3^(1/2)*x*z-3*3^(1/2)*z+2*3^(1/2)*z^3',
 
   'condense(3*3^(1/2)*z+3*3^(1/2)*a)',
-  '3*3^(1/2)*(a+z)',
+  '3*3^(1/2)*(z+a)',
 
   'numerator(51*a+9*3^(1/2)*x*z-3*3^(1/2)*z+2*3^(1/2)*z^3)',
   '51*a+9*3^(1/2)*x*z-3*3^(1/2)*z+2*3^(1/2)*z^3',
@@ -84,89 +90,70 @@ run_test([
 run_test([
   ...helpers,
 
-  'ok3((3*x+2)*sqrt(3*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('(3*x+2)*sqrt(3*x^2-2*x+6)', '-2', '0', '3'),
 
   // mpmath.quad
   'near(defint((3*x+2)*sqrt(3*x^2-2*x+6),x,0,2),29.3454162007982481)',
   '1',
 
-  'ok3((3*x+2)*sqrt(3*x^2-2*x+1),-2,0,3)',
-  '1',
+  ...ok3('(3*x+2)*sqrt(3*x^2-2*x+1)', '-2', '0', '3'),
 
-  'ok3((3*x+2)*sqrt(3*x^2+x+1),-2,0,3)',
-  '1',
+  ...ok3('(3*x+2)*sqrt(3*x^2+x+1)', '-2', '0', '3'),
 
-  'ok3((3*x+2)*sqrt(3*x^2+x+6),-2,0,3)',
-  '1',
+  ...ok3('(3*x+2)*sqrt(3*x^2+x+6)', '-2', '0', '3'),
 
   // the expanded form
-  'ok3(3*x*sqrt(3*x^2-2*x+6)+2*sqrt(3*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('3*x*sqrt(3*x^2-2*x+6)+2*sqrt(3*x^2-2*x+6)', '-2', '0', '3'),
 
   // these worked before
-  'ok3((x+1)*sqrt(3*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('(x+1)*sqrt(3*x^2-2*x+6)', '-2', '0', '3'),
 
-  'ok3((3*x+2)*sqrt(2*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('(3*x+2)*sqrt(2*x^2-2*x+6)', '-2', '0', '3'),
 ]);
 
 // other leading coefficients, linear factors and shapes
 run_test([
   ...helpers,
 
-  'ok3((2*x-1)*sqrt(2*x^2+3*x+4),-2,0,3)',
-  '1',
+  ...ok3('(2*x-1)*sqrt(2*x^2+3*x+4)', '-2', '0', '3'),
 
-  'ok3((5*x+3)*sqrt(5*x^2-x+2),-2,0,3)',
-  '1',
+  ...ok3('(5*x+3)*sqrt(5*x^2-x+2)', '-2', '0', '3'),
 
-  'ok3((x-2)*sqrt(1/2*x^2+x+3),-2,0,3)',
-  '1',
+  ...ok3('(x-2)*sqrt(1/2*x^2+x+3)', '-2', '0', '3'),
 
-  'ok3((-3*x+1)*sqrt(3*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('(-3*x+1)*sqrt(3*x^2-2*x+6)', '-2', '0', '3'),
 
-  'ok3(x*sqrt(3*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('x*sqrt(3*x^2-2*x+6)', '-2', '0', '3'),
 
-  'ok3(sqrt(3*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('sqrt(3*x^2-2*x+6)', '-2', '0', '3'),
 
-  'ok3(1/sqrt(3*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('1/sqrt(3*x^2-2*x+6)', '-2', '0', '3'),
 
-  'ok3(x/sqrt(3*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('x/sqrt(3*x^2-2*x+6)', '-2', '0', '3'),
 
-  'ok3(x^2/sqrt(3*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('x^2/sqrt(3*x^2-2*x+6)', '-2', '0', '3'),
 
-  'ok3((3*x+2)/sqrt(3*x^2-2*x+6),-2,0,3)',
-  '1',
+  ...ok3('(3*x+2)/sqrt(3*x^2-2*x+6)', '-2', '0', '3'),
 ]);
 
 // a < 0: 6-2*x-3*x^2 is positive between (-1-sqrt(19))/3 = -1.79 and 1.12
 run_test([
   ...helpers,
 
-  'ok3((3*x+2)*sqrt(6-2*x-3*x^2),-1,0,1/2)',
-  '1',
+  ...ok3('(3*x+2)*sqrt(6-2*x-3*x^2)', '-1', '0', '1/2'),
 
-  'ok3(sqrt(6-2*x-3*x^2),-1,0,1/2)',
-  '1',
+  ...ok3('sqrt(6-2*x-3*x^2)', '-1', '0', '1/2'),
 
-  'ok3(1/sqrt(6-2*x-3*x^2),-1,0,1/2)',
-  '1',
+  ...ok3('1/sqrt(6-2*x-3*x^2)', '-1', '0', '1/2'),
 
-  'ok3(x/sqrt(6-2*x-3*x^2),-1,0,1/2)',
-  '1',
+  ...ok3('x/sqrt(6-2*x-3*x^2)', '-1', '0', '1/2'),
 
-  'ok3(x^2/sqrt(6-2*x-3*x^2),-1,0,1/2)',
-  '1',
+  ...ok3('x^2/sqrt(6-2*x-3*x^2)', '-1', '0', '1/2'),
 
   // another variable name
+  'integral(1/sqrt(y^2-4*y-6),y)',
+  'log(abs(2-y-(y^2-4*y-6)^(1/2)))',
+
   'G=integral((3*t+2)*sqrt(3*t^2-2*t+6),t)',
   '',
 
@@ -179,25 +166,20 @@ run_test([
   ...helpers,
 
   // roots of 3*x^2-x: 0 and 1/3
-  'ok3(x^2/sqrt(3*x^2-x),-3,-1,-1/2)',
-  '1',
+  ...ok3('x^2/sqrt(3*x^2-x)', '-3', '-1', '-1/2'),
 
-  'ok3(x^2/sqrt(3*x^2-x),1,2,5)',
-  '1',
+  ...ok3('x^2/sqrt(3*x^2-x)', '1', '2', '5'),
 
-  'ok3(x^2/sqrt(3*x^2-2*x),-3,-1,-1/2)',
-  '1',
+  ...ok3('x^2/sqrt(3*x^2-2*x)', '-3', '-1', '-1/2'),
 ]);
 
 run_test([
   ...helpers,
 
   // pole at 6^(-1/3) = 0.55
-  'ok3(x^4/(6*x^3-1),-2,0,2)',
-  '1',
+  ...ok3('x^4/(6*x^3-1)', '-2', '0', '2'),
 
-  'ok3(x/(6*x^3-1),-2,0,2)',
-  '1',
+  ...ok3('x/(6*x^3-1)', '-2', '0', '2'),
 ]);
 
 // 2. A log of (linear + sqrt(quadratic)) had no abs when the quadratic has
@@ -212,48 +194,41 @@ run_test([
   'integral(1/sqrt(x^2-4*x-6),x)',
   'log(abs(2-x-(x^2-4*x-6)^(1/2)))',
 
-  'ok3(1/sqrt(x^2-4*x-6),-5,-3,-2)',
-  '1',
+  ...ok3('1/sqrt(x^2-4*x-6)', '-5', '-3', '-2'),
 
-  'ok3(1/sqrt(x^2-4*x-6),6,8,10)',
-  '1',
+  ...ok3('1/sqrt(x^2-4*x-6)', '6', '8', '10'),
 
   // mpmath.quad
   'near(defint(1/sqrt(x^2-4*x-6),x,-5,-2),0.719618953570393736)',
   '1',
 
-  // roots 0 and 2/5
-  'ok3(1/sqrt(5*x^2-2*x),-3,-1,-1/2)',
-  '1',
+  // roots 0 and 2/5. abs() takes the content 1/5 out of the argument; the
+  // log(5) it leaves is a constant of integration and is dropped
+  'integral(1/sqrt(5*x^2-2*x),x)',
+  'log(abs(5^(1/2)-5*(5*x^2-2*x)^(1/2)-5*5^(1/2)*x))/(5^(1/2))',
 
-  'ok3(1/sqrt(5*x^2-2*x),1,2,5)',
-  '1',
+  ...ok3('1/sqrt(5*x^2-2*x)', '-3', '-1', '-1/2'),
+
+  ...ok3('1/sqrt(5*x^2-2*x)', '1', '2', '5'),
 
   // roots (5-sqrt(41))/2 = -0.70 and 5.70
-  'ok3(x^2/sqrt(x^2-5*x-4),-4,-2,-1)',
-  '1',
+  ...ok3('x^2/sqrt(x^2-5*x-4)', '-4', '-2', '-1'),
 
-  'ok3(x^2/sqrt(x^2-5*x-4),6,8,10)',
-  '1',
+  ...ok3('x^2/sqrt(x^2-5*x-4)', '6', '8', '10'),
 
   // roots -3/2 and -1
-  'ok3(sqrt(2*x^2+5*x+3),-4,-3,-2)',
-  '1',
+  ...ok3('sqrt(2*x^2+5*x+3)', '-4', '-3', '-2'),
 
-  'ok3(sqrt(2*x^2+5*x+3),0,1,3)',
-  '1',
+  ...ok3('sqrt(2*x^2+5*x+3)', '0', '1', '3'),
 
   'near(defint(sqrt(2*x^2+5*x+3),x,-4,-2),4.89174078314042808)',
   '1',
 
-  'ok3(x*sqrt(x^2-4*x-6),-5,-3,-2)',
-  '1',
+  ...ok3('x*sqrt(x^2-4*x-6)', '-5', '-3', '-2'),
 
-  'ok3((2*x-3)/sqrt(x^2-4*x-6),-5,-3,-2)',
-  '1',
+  ...ok3('(2*x-3)/sqrt(x^2-4*x-6)', '-5', '-3', '-2'),
 
-  'ok3(1/sqrt(x^2-3*x+1),-3,-1,0)',
-  '1',
+  ...ok3('1/sqrt(x^2-3*x+1)', '-3', '-1', '0'),
 ]);
 
 // symbolic coefficients
@@ -309,39 +284,39 @@ run_test([
   'integral(1/sqrt(tan(x)),x)',
   'arctan(-1+2^(1/2)*tan(x)^(1/2))/(2^(1/2))+arctan(1+2^(1/2)*tan(x)^(1/2))/(2^(1/2))-log(1+tan(x)-2^(1/2)*tan(x)^(1/2))/(2*2^(1/2))+log(1+tan(x)+2^(1/2)*tan(x)^(1/2))/(2*2^(1/2))',
 
-  'ok3(1/sqrt(tan(x)),1/2,1,3/2)',
-  '1',
+  ...ok3('1/sqrt(tan(x))', '1/2', '1', '3/2'),
 
-  'ok3(1/sqrt(tan(x)),-3,-5/2,-2)',
-  '1',
+  ...ok3('1/sqrt(tan(x))', '-3', '-5/2', '-2'),
 
   // mpmath.quad
   'near(defint(1/sqrt(tan(x)),x,1/2,1),0.524603001503764189)',
   '1',
 
-  'ok3(sqrt(2*tan(x)),1/2,1,3/2)',
-  '1',
+  ...ok3('sqrt(2*tan(x))', '1/2', '1', '3/2'),
 
-  'ok3(sqrt(2*tan(x)),-3,-5/2,-2)',
-  '1',
+  ...ok3('sqrt(2*tan(x))', '-3', '-5/2', '-2'),
 
   'near(defint(sqrt(2*tan(x)),x,1/2,1),0.688949065789883628)',
   '1',
 
-  'ok3(1/sqrt(3*tan(x)),1/2,1,3/2)',
-  '1',
+  ...ok3('1/sqrt(3*tan(x))', '1/2', '1', '3/2'),
 
   'near(defint(1/sqrt(3*tan(x)),x,1/2,1),0.302879684135883904)',
   '1',
 
-  'ok3(sqrt(tan(x)/2),1/2,1,3/2)',
-  '1',
+  ...ok3('sqrt(tan(x)/2)', '1/2', '1', '3/2'),
 
-  'ok3(1/sqrt(tan(2*x+1)),0,-1/5,-2)',
-  '1',
+  ...ok3('1/sqrt(tan(2*x+1))', '0', '-1/5', '-2'),
 
-  'ok3(5/sqrt(tan(x)),1/2,1,3/2)',
-  '1',
+  ...ok3('5/sqrt(tan(x))', '1/2', '1', '3/2'),
+
+  // the logs cancel
+  'integral(sqrt(tan(x))+1/sqrt(tan(x)),x)',
+  '2^(1/2)*arctan(-1+2^(1/2)*tan(x)^(1/2))+2^(1/2)*arctan(1+2^(1/2)*tan(x)^(1/2))',
+
+  // a negative factor stays inside the root
+  'integral(1/sqrt(-2*tan(x)),x)',
+  'Stop: integral: sorry, could not find a solution',
 
   // unchanged
   'integral(sqrt(tan(x)),x)',
