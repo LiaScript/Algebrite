@@ -67,6 +67,7 @@ const lookup_1 = require("../sources/lookup");
 const stats_1 = require("../sources/stats");
 const trigexpand_1 = require("../sources/trigexpand");
 const nsolve_1 = require("../sources/nsolve");
+const dsolve_1 = require("../sources/dsolve");
 const laplace_1 = require("../sources/laplace");
 const at_1 = require("../sources/at");
 const assume_1 = require("../sources/assume");
@@ -219,7 +220,7 @@ function defn() {
     symbol_1.std_symbol(defs_1.DO, eval_1.Eval_do);
     symbol_1.std_symbol(defs_1.DOT, inner_1.Eval_inner);
     symbol_1.std_symbol(defs_1.DRAW, draw_1.Eval_draw);
-    symbol_1.std_symbol(defs_1.DSOLVE);
+    symbol_1.std_symbol(defs_1.DSOLVE, dsolve_1.Eval_dsolve);
     symbol_1.std_symbol(defs_1.ERF, erf_1.Eval_erf);
     symbol_1.std_symbol(defs_1.ERFC, erfc_1.Eval_erfc);
     symbol_1.std_symbol(defs_1.EIGEN, eigen_1.Eval_eigen);

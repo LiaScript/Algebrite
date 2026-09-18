@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_invlaplace = exports.Eval_laplace = void 0;
+exports.invlaplace = exports.laplace = exports.linear = exports.Eval_invlaplace = exports.Eval_laplace = void 0;
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
 const symbol_1 = require("../runtime/symbol");
@@ -52,6 +52,7 @@ function linear(u, x) {
     }
     return [a, eval_1.Eval(subst_1.subst(u, x, defs_1.Constants.zero))];
 }
+exports.linear = linear;
 // ---------------------------------------------------------------- laplace
 function laplace(f, t, s) {
     const unevaluated = list_1.makeList(symbol_1.symbol(defs_1.LAPLACE), f, t, s);
@@ -71,6 +72,7 @@ function laplace(f, t, s) {
             : multiply_1.multiply(c, list_1.makeList(symbol_1.symbol(defs_1.LAPLACE), product(dep), t, s))
         : multiply_1.multiply(c, result);
 }
+exports.laplace = laplace;
 // Products of t-dependent factors: shift theorem and multiplication by t^n.
 function productRule(dep, t, s) {
     const e = dep.findIndex((g) => isexp(g) && linear(defs_1.caddr(g), t));
@@ -191,6 +193,7 @@ function invlaplace(F, s, t) {
     const terms = defs_1.isadd(parts) ? parts.tail() : [parts];
     return terms.reduce((acc, G) => add_1.add(acc, invterm(G, s, t)), defs_1.Constants.zero);
 }
+exports.invlaplace = invlaplace;
 // One partial fraction: c/(b1 s + b0)^n or (alpha s + beta)/(b2 s^2 + b1 s + b0).
 function invterm(G, s, t) {
     if (!find_1.Find(G, s)) {

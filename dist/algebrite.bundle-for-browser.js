@@ -9803,7 +9803,7 @@ FACTOR=${p8}`);
     "bazel-out/k8-fastbuild/bin/sources/eval.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.evalList = exports.Eval_predicate = exports.Eval_unit = exports.Eval_subst = exports.Eval_stop = exports.Eval_sqrt = exports.Eval_setq = exports.Eval_rank = exports.Eval_quote = exports.Eval_operator = exports.Eval_number = exports.Eval_invg = exports.Eval_inv = exports.Eval_index = exports.Eval_hilbert = exports.Eval_hermite = exports.Eval_factorpoly = exports.Eval_factorial = exports.Eval_exp = exports.Eval_Eval = exports.Eval_dsolve = exports.Eval_do = exports.Eval_divisors = exports.Eval_dim = exports.Eval_det = exports.Eval_check = exports.Eval_binding = exports.Eval_cons = exports.Eval_sym = exports.Eval = exports.evaluate_integer = void 0;
+      exports.evalList = exports.Eval_predicate = exports.Eval_unit = exports.Eval_subst = exports.Eval_stop = exports.Eval_sqrt = exports.Eval_setq = exports.Eval_rank = exports.Eval_quote = exports.Eval_operator = exports.Eval_number = exports.Eval_invg = exports.Eval_inv = exports.Eval_index = exports.Eval_hilbert = exports.Eval_hermite = exports.Eval_factorpoly = exports.Eval_factorial = exports.Eval_exp = exports.Eval_Eval = exports.Eval_do = exports.Eval_divisors = exports.Eval_dim = exports.Eval_det = exports.Eval_check = exports.Eval_binding = exports.Eval_cons = exports.Eval_sym = exports.Eval = exports.evaluate_integer = void 0;
       var _1 = require_sources();
       var alloc_1 = require_alloc();
       var defs_1 = require_defs();
@@ -9952,13 +9952,6 @@ FACTOR=${p8}`);
         return result;
       }
       exports.Eval_do = Eval_do;
-      function Eval_dsolve(p1) {
-        const a = Eval(defs_1.cadr(p1));
-        const b = Eval(defs_1.caddr(p1));
-        const c = Eval(defs_1.cadddr(p1));
-        run_1.stop("dsolve");
-      }
-      exports.Eval_dsolve = Eval_dsolve;
       function Eval_Eval(p1) {
         let tmp = Eval(defs_1.cadr(p1));
         p1 = defs_1.cddr(p1);
@@ -15004,7 +14997,7 @@ FACTOR=${p8}`);
     "bazel-out/k8-fastbuild/bin/sources/laplace.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.Eval_invlaplace = exports.Eval_laplace = void 0;
+      exports.invlaplace = exports.laplace = exports.linear = exports.Eval_invlaplace = exports.Eval_laplace = void 0;
       var defs_1 = require_defs();
       var find_1 = require_find();
       var symbol_1 = require_symbol();
@@ -15053,6 +15046,7 @@ FACTOR=${p8}`);
         }
         return [a, eval_1.Eval(subst_1.subst(u, x, defs_1.Constants.zero))];
       }
+      exports.linear = linear;
       function laplace(f, t, s) {
         const unevaluated = list_1.makeList(symbol_1.symbol(defs_1.LAPLACE), f, t, s);
         if (!find_1.Find(f, t)) {
@@ -15067,6 +15061,7 @@ FACTOR=${p8}`);
         const result = dep.length === 1 ? single(dep[0], t, s) : productRule(dep, t, s);
         return result === null ? is_1.isplusone(c) ? unevaluated : multiply_1.multiply(c, list_1.makeList(symbol_1.symbol(defs_1.LAPLACE), product(dep), t, s)) : multiply_1.multiply(c, result);
       }
+      exports.laplace = laplace;
       function productRule(dep, t, s) {
         const e = dep.findIndex((g) => isexp(g) && linear(defs_1.caddr(g), t));
         if (e >= 0) {
@@ -15171,6 +15166,7 @@ FACTOR=${p8}`);
         const terms = defs_1.isadd(parts) ? parts.tail() : [parts];
         return terms.reduce((acc, G) => add_1.add(acc, invterm(G, s, t)), defs_1.Constants.zero);
       }
+      exports.invlaplace = invlaplace;
       function invterm(G, s, t) {
         if (!find_1.Find(G, s)) {
           return invlaplace(G, s, t);
@@ -15228,6 +15224,661 @@ FACTOR=${p8}`);
           q = multiply_1.multiply(f, derivative_1.derivative(q, k));
         }
         return [eval_1.Eval(subst_1.subst(p, k, c)), eval_1.Eval(subst_1.subst(q, k, c))];
+      }
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/resultant.js
+  var require_resultant = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/resultant.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.resultant = exports.Eval_resultant = void 0;
+      var defs_1 = require_defs();
+      var symbol_1 = require_symbol();
+      var coeff_1 = require_coeff();
+      var degree_1 = require_degree();
+      var det_1 = require_det();
+      var eval_1 = require_eval();
+      var guess_1 = require_guess();
+      var is_1 = require_is();
+      function Eval_resultant(p1) {
+        const f = eval_1.Eval(defs_1.cadr(p1));
+        const g = eval_1.Eval(defs_1.caddr(p1));
+        const arg = eval_1.Eval(defs_1.cadddr(p1));
+        const x = arg === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(f) : arg;
+        degree_1.checkpoly("resultant", f, x);
+        degree_1.checkpoly("resultant", g, x);
+        return resultant(f, g, x);
+      }
+      exports.Eval_resultant = Eval_resultant;
+      function resultant(f, g, x) {
+        var _a;
+        if (is_1.isZeroAtomOrTensor(f) || is_1.isZeroAtomOrTensor(g)) {
+          return defs_1.Constants.zero;
+        }
+        const a = coeff_1.coeff(f, x).reverse();
+        const b = coeff_1.coeff(g, x).reverse();
+        const m = a.length - 1;
+        const n = b.length - 1;
+        const size = m + n;
+        const elems = [];
+        for (let i = 0; i < size; i++) {
+          const [c, shift] = i < n ? [a, i] : [b, i - n];
+          for (let j = 0; j < size; j++) {
+            elems.push((_a = c[j - shift]) !== null && _a !== void 0 ? _a : defs_1.Constants.zero);
+          }
+        }
+        return det_1.determinant(elems, size);
+      }
+      exports.resultant = resultant;
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/rref.js
+  var require_rref = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/rref.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.matrix = exports.Eval_eigenvectors = exports.Eval_eigenvalues = exports.Eval_nullspace = exports.Eval_matrixrank = exports.Eval_rref = void 0;
+      var defs_1 = require_defs();
+      var alloc_1 = require_alloc();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var bignum_1 = require_bignum();
+      var det_1 = require_det();
+      var eval_1 = require_eval();
+      var is_1 = require_is();
+      var multiply_1 = require_multiply();
+      var roots_1 = require_roots();
+      var simplify_1 = require_simplify();
+      var tensor_1 = require_tensor();
+      function Eval_rref(p1) {
+        const [rows] = rowReduce(matrixArg(p1, "rref"));
+        return matrix(rows);
+      }
+      exports.Eval_rref = Eval_rref;
+      function Eval_matrixrank(p1) {
+        const [, pivots] = rowReduce(matrixArg(p1, "matrixrank"));
+        return bignum_1.integer(pivots.length);
+      }
+      exports.Eval_matrixrank = Eval_matrixrank;
+      function Eval_nullspace(p1) {
+        const M = matrixArg(p1, "nullspace");
+        const basis = nullBasis(M);
+        return matrix(basis.length ? basis : [new Array(M.dim[1]).fill(defs_1.Constants.zero)]);
+      }
+      exports.Eval_nullspace = Eval_nullspace;
+      function nullBasis(M) {
+        const n = M.dim[1];
+        const [rows, pivots] = rowReduce(M);
+        const basis = [];
+        for (let free = 0; free < n; free++) {
+          if (pivots.includes(free)) {
+            continue;
+          }
+          const v = new Array(n).fill(defs_1.Constants.zero);
+          v[free] = defs_1.Constants.one;
+          pivots.forEach((col, i) => v[col] = multiply_1.negate(rows[i][free]));
+          basis.push(v);
+        }
+        return basis;
+      }
+      function Eval_eigenvalues(p1) {
+        return list(eigenvalues(squareArg(p1, "eigenvalues")));
+      }
+      exports.Eval_eigenvalues = Eval_eigenvalues;
+      function Eval_eigenvectors(p1) {
+        const M = squareArg(p1, "eigenvectors");
+        return matrix([].concat(...eigenvalues(M).map((lambda) => nullBasis(shift(M, lambda)))));
+      }
+      exports.Eval_eigenvectors = Eval_eigenvectors;
+      function eigenvalues(M) {
+        const x = symbol_1.symbol(defs_1.SECRETX);
+        const r = roots_1.roots(det_1.det(shift(M, x)), x);
+        return defs_1.istensor(r) ? r.tensor.elem : [r];
+      }
+      function shift(M, lambda) {
+        const n = M.dim[0];
+        return matrix(Array.from({ length: n }, (_, i) => M.elem.slice(i * n, (i + 1) * n).map((e, j) => i === j ? add_1.subtract(e, lambda) : e)));
+      }
+      function squareArg(p1, name) {
+        const M = eval_1.Eval(defs_1.cadr(p1));
+        if (!defs_1.istensor(M) || M.ndim !== 2 || M.dim[0] !== M.dim[1]) {
+          run_1.stop(name + ": square matrix expected");
+        }
+        return M;
+      }
+      function list(elems) {
+        const T = alloc_1.alloc_tensor(elems.length);
+        T.ndim = 1;
+        T.dim = [elems.length];
+        T.elem = elems;
+        return T;
+      }
+      function matrixArg(p1, name) {
+        const M = eval_1.Eval(defs_1.cadr(p1));
+        if (!defs_1.istensor(M) || M.ndim !== 2) {
+          run_1.stop(name + ": matrix expected");
+        }
+        return M;
+      }
+      function matrix(rows) {
+        const n = rows[0].length;
+        const T = alloc_1.alloc_tensor(rows.length * n);
+        T.ndim = 2;
+        T.dim = [rows.length, n];
+        T.elem = [].concat(...rows);
+        tensor_1.check_tensor_dimensions(T);
+        return T;
+      }
+      exports.matrix = matrix;
+      function rowReduce(M) {
+        const tidy = (e) => defs_1.isNumericAtom(e) ? e : simplify_1.simplify(e);
+        const [m, n] = M.dim;
+        const R = [];
+        for (let i = 0; i < m; i++) {
+          R.push(M.elem.slice(i * n, (i + 1) * n));
+        }
+        const pivots = [];
+        for (let c = 0, r = 0; c < n && r < m; c++) {
+          const p = R.findIndex((row, i) => i >= r && !is_1.isZeroAtomOrTensor(row[c]));
+          if (p < 0) {
+            continue;
+          }
+          [R[r], R[p]] = [R[p], R[r]];
+          const pivot = R[r][c];
+          R[r] = R[r].map((e) => tidy(multiply_1.divide(e, pivot)));
+          for (let i = 0; i < m; i++) {
+            const f = R[i][c];
+            if (i !== r && !is_1.isZeroAtomOrTensor(f)) {
+              R[i] = R[i].map((e, j) => tidy(add_1.subtract(e, multiply_1.multiply(f, R[r][j]))));
+            }
+          }
+          pivots.push(c);
+          r++;
+        }
+        return [R, pivots];
+      }
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/solve.js
+  var require_solve = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/solve.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.solveLinearSystem = exports.Eval_solve = void 0;
+      var defs_1 = require_defs();
+      var alloc_1 = require_alloc();
+      var run_1 = require_run();
+      var find_1 = require_find();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var derivative_1 = require_derivative();
+      var det_1 = require_det();
+      var eval_1 = require_eval();
+      var inner_1 = require_inner();
+      var inv_1 = require_inv();
+      var is_1 = require_is();
+      var multiply_1 = require_multiply();
+      var assume_1 = require_assume();
+      var coeff_1 = require_coeff();
+      var misc_1 = require_misc();
+      var resultant_1 = require_resultant();
+      var roots_1 = require_roots();
+      var rref_1 = require_rref();
+      var scan_1 = require_scan();
+      var simplify_1 = require_simplify();
+      var subst_1 = require_subst();
+      var tensor_1 = require_tensor();
+      function Eval_solve(p1) {
+        const eqsArg = defs_1.cadr(p1);
+        const vars = eval_1.Eval(defs_1.caddr(p1));
+        if (defs_1.istensor(eqsArg) || defs_1.istensor(vars)) {
+          const eqs = defs_1.istensor(eqsArg) ? scan_1.build_tensor(eqsArg.elem.map(roots_1.equationToExpr)) : eval_1.Eval(eqsArg);
+          if (!defs_1.istensor(eqs)) {
+            run_1.stop("solve: a list of variables needs a list of equations");
+          }
+          return solveLinearSystem(eqs, defs_1.istensor(vars) ? vars : scan_1.build_tensor(vars === symbol_1.symbol(defs_1.NIL) ? freeSymbols(eqs) : [vars]));
+        }
+        const [POLY1, X1] = roots_1.normalizeEquation(p1);
+        if (!is_1.ispolyexpandedform(POLY1, X1)) {
+          run_1.stop("solve: 1st argument is not a polynomial in the variable " + X1 + " \u2014 solve() currently only supports polynomial equations");
+        }
+        return roots_1.keepAssumedRoots(roots_1.roots(POLY1, X1), X1, "solve");
+      }
+      exports.Eval_solve = Eval_solve;
+      function freeSymbols(p) {
+        const acc = [];
+        symbol_1.collectUserSymbols(p, acc);
+        return acc;
+      }
+      function solveLinearSystem(eqs, vars) {
+        const n = vars.nelem;
+        if (!vars.elem.every(defs_1.issymbol) || new Set(vars.elem).size !== n) {
+          run_1.stop("solve: variables must be distinct symbols");
+        }
+        if (eqs.nelem !== n) {
+          run_1.stop("solve: need as many equations as variables");
+        }
+        const A = alloc_1.alloc_tensor(n * n);
+        A.ndim = 2;
+        A.dim = [n, n];
+        const b = alloc_1.alloc_tensor(n);
+        b.ndim = 1;
+        b.dim = [n];
+        const exprs = eqs.elem.map((e) => defs_1.car(e) === symbol_1.symbol(defs_1.TESTEQ) ? add_1.subtract(defs_1.cadr(e), defs_1.caddr(e)) : e);
+        let linear = true;
+        exprs.forEach((eq, i) => {
+          let rebuilt = eval_1.Eval(vars.elem.reduce((acc, v) => subst_1.subst(acc, v, defs_1.Constants.zero), eq));
+          b.elem[i] = multiply_1.negate(rebuilt);
+          vars.elem.forEach((v, j) => {
+            const c = derivative_1.derivative(eq, v);
+            A.elem[i * n + j] = c;
+            rebuilt = add_1.add(rebuilt, multiply_1.multiply(c, v));
+          });
+          linear = linear && is_1.isZeroAtomOrTensor(simplify_1.simplify(add_1.subtract(rebuilt, eq)));
+        });
+        if (!linear) {
+          return solvePolySystemMatrix(exprs, vars.elem);
+        }
+        tensor_1.check_tensor_dimensions(A);
+        tensor_1.check_tensor_dimensions(b);
+        if (is_1.isZeroAtomOrTensor(det_1.det(A))) {
+          run_1.stop("solve: system has no unique solution");
+        }
+        const solution = inner_1.inner(inv_1.inv(A), b);
+        vars.elem.forEach((v, i) => {
+          if (assume_1.violatesAssumptions(solution.elem[i], v)) {
+            run_1.stop(`solve: no solution satisfies the assumptions about ${v}`);
+          }
+        });
+        return solution;
+      }
+      exports.solveLinearSystem = solveLinearSystem;
+      function solvePolySystemMatrix(eqs, vars) {
+        eqs.forEach((e) => vars.forEach((v) => {
+          if (find_1.Find(e, v) && !is_1.ispolyexpandedform(e, v)) {
+            run_1.stop("solve: system is not polynomial in the given variables");
+          }
+        }));
+        const rows = solvePolySystem(eqs, vars).sort(cmpRows).filter((r, i, all) => i === 0 || cmpRows(r, all[i - 1]) !== 0);
+        if (rows.length === 0) {
+          run_1.stop("solve: system has no solution");
+        }
+        const kept = rows.filter((r) => !r.some((value, i) => assume_1.violatesAssumptions(value, vars[i])));
+        if (kept.length === 0) {
+          run_1.stop("solve: no solution satisfies the assumptions about " + vars.join(","));
+        }
+        return rref_1.matrix(kept);
+      }
+      function cmpRows(a, b) {
+        for (let i = 0; i < a.length; i++) {
+          const c = misc_1.cmp_expr(a[i], b[i]);
+          if (c !== 0) {
+            return c;
+          }
+        }
+        return 0;
+      }
+      function solvePolySystem(eqs, vars) {
+        const v = vars[vars.length - 1];
+        const rest = vars.slice(0, -1);
+        const partials = rest.length === 0 ? [[]] : solvePolySystem(eliminate(eqs, v), rest);
+        const rows = [];
+        for (const partial of partials) {
+          const sub = eqs.map((e) => eval_1.Eval(rest.reduce((acc, w, i) => subst_1.subst(acc, w, partial[i]), e)));
+          const pivot = pivotFor(sub, v);
+          if (pivot === void 0) {
+            if (sub.every((e) => is_1.isZeroAtomOrTensor(simplify_1.simplify(e)))) {
+              run_1.stop("solve: system has infinitely many solutions");
+            }
+            continue;
+          }
+          for (const r of roots_1.rootsList(pivot, v)) {
+            if (sub.every((e) => is_1.isZeroAtomOrTensor(simplify_1.simplify(eval_1.Eval(subst_1.subst(e, v, r)))))) {
+              rows.push([...partial, r]);
+            }
+          }
+        }
+        return rows;
+      }
+      function eliminate(eqs, v) {
+        const pivot = pivotFor(eqs, v);
+        return eqs.filter((e) => e !== pivot).map((g) => {
+          if (!find_1.Find(g, v)) {
+            return g;
+          }
+          const r = resultant_1.resultant(pivot, g, v);
+          if (is_1.isZeroAtomOrTensor(r)) {
+            run_1.stop("solve: system has infinitely many solutions");
+          }
+          return r;
+        });
+      }
+      function pivotFor(eqs, v) {
+        const degree = (e) => coeff_1.coeff(e, v).length;
+        return eqs.filter((e) => find_1.Find(e, v)).reduce((best, e) => best === void 0 || degree(e) < degree(best) ? e : best, void 0);
+      }
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/dsolve.js
+  var require_dsolve = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/dsolve.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.dsolve = exports.Eval_dsolve = void 0;
+      var defs_1 = require_defs();
+      var find_1 = require_find();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var add_1 = require_add();
+      var at_1 = require_at();
+      var bignum_1 = require_bignum();
+      var coeff_1 = require_coeff();
+      var derivative_1 = require_derivative();
+      var eval_1 = require_eval();
+      var imag_1 = require_imag();
+      var integral_1 = require_integral();
+      var assume_1 = require_assume();
+      var is_1 = require_is();
+      var laplace_1 = require_laplace();
+      var misc_1 = require_misc();
+      var multiply_1 = require_multiply();
+      var numerator_1 = require_numerator();
+      var power_1 = require_power();
+      var real_1 = require_real();
+      var roots_1 = require_roots();
+      var scan_1 = require_scan();
+      var simplify_1 = require_simplify();
+      var solve_1 = require_solve();
+      var subst_1 = require_subst();
+      function Eval_dsolve(p1) {
+        misc_1.checkArgCount(p1, 2, 3);
+        const ode = roots_1.equationToExpr(defs_1.cadr(p1));
+        const Y = eval_1.Eval(defs_1.caddr(p1));
+        if (!defs_1.iscons(Y) || !defs_1.issymbol(defs_1.cadr(Y)) || defs_1.cddr(Y) !== symbol_1.symbol(defs_1.NIL)) {
+          run_1.stop("dsolve: 2nd argument must be a function call like y(x)");
+        }
+        const ics = defs_1.cadddr(p1);
+        const conds = ics === symbol_1.symbol(defs_1.NIL) ? [] : conditions(ics, Y);
+        const sols = dsolve(ode, Y, conds);
+        if (sols.length === 0) {
+          run_1.stop("dsolve: no solution satisfies the initial conditions");
+        }
+        return sols.length === 1 ? sols[0] : scan_1.build_tensor(sols);
+      }
+      exports.Eval_dsolve = Eval_dsolve;
+      function conditions(ics, Y) {
+        const elems = defs_1.istensor(ics) ? ics.tensor.elem : [ics];
+        return elems.map((e) => {
+          if (defs_1.car(e) !== symbol_1.symbol(defs_1.SETQ) && defs_1.car(e) !== symbol_1.symbol(defs_1.TESTEQ)) {
+            run_1.stop("dsolve: initial conditions must look like y(0)=1");
+          }
+          const lhs = eval_1.Eval(defs_1.cadr(e));
+          const value = eval_1.Eval(defs_1.caddr(e));
+          if (defs_1.car(lhs) === defs_1.car(Y) && defs_1.cddr(lhs) === symbol_1.symbol(defs_1.NIL)) {
+            return { order: 0, at: defs_1.cadr(lhs), value };
+          }
+          const order2 = defs_1.car(lhs) === symbol_1.symbol(defs_1.AT) ? at_1.primeOrder(defs_1.cadr(lhs), defs_1.caddr(lhs)) : 0;
+          if (order2 === 0) {
+            run_1.stop("dsolve: initial conditions must look like y(0)=1 or y'(0)=1");
+          }
+          return { order: order2, at: defs_1.cadddr(lhs), value };
+        });
+      }
+      var constant = (i) => symbol_1.usr_symbol("C" + i);
+      var terms = (p) => defs_1.isadd(p) ? p.tail() : [p];
+      var factors = (p) => defs_1.ismultiply(p) ? p.tail() : [p];
+      var isZero = (p) => is_1.isZeroAtomOrTensor(simplify_1.simplify(p));
+      var freeOf = (p, ...xs) => xs.every((x) => !find_1.Find(p, x));
+      function dsolve(ode, Y, conds) {
+        var _a, _b;
+        const x = defs_1.cadr(Y);
+        const n = order(ode, Y, x);
+        if (n === 0) {
+          run_1.stop("dsolve: 1st argument has no derivative of " + Y);
+        }
+        const y = symbol_1.usr_symbol("$y");
+        const ds = Array.from({ length: n }, (_, k) => symbol_1.usr_symbol("$d" + (k + 1)));
+        let E = ode;
+        for (let k = n; k >= 1; k--) {
+          let dk = Y;
+          for (let i = 0; i < k; i++) {
+            dk = new defs_1.Cons(symbol_1.symbol(defs_1.DERIVATIVE), new defs_1.Cons(dk, new defs_1.Cons(x, symbol_1.symbol(defs_1.NIL))));
+          }
+          E = subst_1.subst(E, dk, ds[k - 1]);
+        }
+        E = eval_1.Eval(subst_1.subst(E, Y, y));
+        if (find_1.Find(E, defs_1.car(Y))) {
+          run_1.stop("dsolve: " + defs_1.car(Y) + " must only appear as " + Y + " and its derivatives");
+        }
+        if (n === 1) {
+          const lin = laplace_1.linear(E, ds[0]);
+          if (lin !== null && !isZero(lin[0])) {
+            const f = multiply_1.divide(multiply_1.negate(lin[1]), lin[0]);
+            const sol2 = (_b = (_a = firstOrderLinear(f, y, x, conds)) !== null && _a !== void 0 ? _a : separable(f, y, x, conds, Y)) !== null && _b !== void 0 ? _b : bernoulli(f, y, x, conds);
+            if (sol2 !== null) {
+              return sol2;
+            }
+          }
+        }
+        const sol = constantCoefficients(E, [y, ...ds], x, conds);
+        if (sol !== null) {
+          return sol;
+        }
+        run_1.stop("dsolve: only separable, first-order linear, Bernoulli or linear equations with constant coefficients are supported");
+      }
+      exports.dsolve = dsolve;
+      function order(p, Y, x) {
+        if (defs_1.car(p) === symbol_1.symbol(defs_1.DERIVATIVE)) {
+          const k = at_1.primeOrder(p, x);
+          let inner = p;
+          for (let i = 0; i < k; i++) {
+            inner = defs_1.cadr(inner);
+          }
+          if (k > 0 && defs_1.car(inner) === defs_1.car(Y)) {
+            return k;
+          }
+        }
+        return defs_1.iscons(p) ? Math.max(0, ...p.tail().map((q) => order(q, Y, x)), order(defs_1.car(p), Y, x)) : 0;
+      }
+      function firstOrderLinear(f, y, x, conds) {
+        const lin = laplace_1.linear(f, y);
+        if (lin === null) {
+          return null;
+        }
+        const [a, b] = lin;
+        const mu = expOf(integral_1.integral(multiply_1.negate(a), x), x);
+        const sol = multiply_1.divide(add_1.add(integral_1.integral(multiply_1.multiply(mu, b), x), constant(1)), mu);
+        return [fit(sol, x, 1, conds)];
+      }
+      function separable(f, y, x, conds, Y) {
+        let g = null;
+        let h = null;
+        for (const x0 of [1, 2, 3]) {
+          h = eval_1.Eval(subst_1.subst(f, x, bignum_1.integer(x0)));
+          if (!isZero(h)) {
+            g = simplify_1.simplify(multiply_1.divide(f, h));
+            break;
+          }
+        }
+        if (g === null || find_1.Find(g, y)) {
+          return null;
+        }
+        const G = integral_1.integral(multiply_1.divide(defs_1.Constants.one, h), y);
+        const F = integral_1.integral(g, x);
+        const t0 = terms(G).find((t) => factors(t).some(isLog));
+        const k = t0 && multiply_1.divide(t0, factors(t0).find(isLog));
+        const atan = factors(G).find((p) => defs_1.car(p) === symbol_1.symbol(defs_1.ARCTAN));
+        const ka = atan && multiply_1.divide(G, atan);
+        let H = add_1.subtract(G, F);
+        if (t0 && freeOf(k, x, y)) {
+          H = multiply_1.multiply(expOf(multiply_1.divide(G, k), x, y), misc_1.exponential(multiply_1.negate(multiply_1.divide(F, k))));
+        }
+        let C = conds.length === 0 ? constant(1) : initialConstant(H, y, x, conds);
+        if (!t0 && atan && freeOf(ka, x, y)) {
+          H = add_1.subtract(defs_1.cadr(atan), eval_1.Eval(makeCall(defs_1.TAN, multiply_1.divide(add_1.add(F, C), ka))));
+          C = defs_1.Constants.zero;
+        }
+        const lin = laplace_1.linear(H, y);
+        let sols;
+        if (lin !== null && !isZero(lin[0])) {
+          sols = [multiply_1.divide(add_1.subtract(C, lin[1]), lin[0])];
+        } else {
+          const p = numerator_1.numerator(add_1.subtract(H, C));
+          if (!is_1.ispolyexpandedform(p, y)) {
+            run_1.stop("dsolve: can only give the implicit solution " + eval_1.Eval(subst_1.subst(H, y, Y)) + " = " + C);
+          }
+          sols = polyRoots(p, y);
+        }
+        return keepSatisfying(sols.map(simplify_1.simplify), x, conds);
+      }
+      function bernoulli(f, y, x, conds) {
+        let k = null;
+        let a = defs_1.Constants.zero;
+        let b = defs_1.Constants.zero;
+        for (const t of terms(f)) {
+          const e = eval_1.Eval(multiply_1.divide(multiply_1.multiply(y, derivative_1.derivative(t, y)), t));
+          if (!freeOf(e, x, y) || isZero(e)) {
+            return null;
+          }
+          if (isZero(add_1.subtract(e, defs_1.Constants.one))) {
+            a = add_1.add(a, multiply_1.divide(t, y));
+          } else if (k === null || isZero(add_1.subtract(e, k))) {
+            k = e;
+            b = add_1.add(b, multiply_1.divide(t, power_1.power(y, k)));
+          } else {
+            return null;
+          }
+        }
+        if (k === null) {
+          return null;
+        }
+        const m = add_1.subtract(defs_1.Constants.one, k);
+        const vconds = conds.map((c) => {
+          if (c.order > 0) {
+            run_1.stop("dsolve: initial conditions of a Bernoulli equation must look like y(0)=1");
+          }
+          return Object.assign(Object.assign({}, c), { value: power_1.power(c.value, m) });
+        });
+        const [v] = firstOrderLinear(add_1.add(multiply_1.multiply(multiply_1.multiply(m, a), y), multiply_1.multiply(m, b)), y, x, vconds);
+        const root = power_1.power(v, multiply_1.divide(defs_1.Constants.one, m));
+        const sols = is_1.iseveninteger(m) ? [multiply_1.negate(root), root] : [root];
+        return keepSatisfying(sols, x, conds);
+      }
+      function constantCoefficients(E, vars, x, conds) {
+        const a = [];
+        let rest = E;
+        for (const v of vars) {
+          const lin = laplace_1.linear(rest, v);
+          if (lin === null || !freeOf(lin[0], x, ...vars)) {
+            return null;
+          }
+          a.push(lin[0]);
+          rest = lin[1];
+        }
+        const q = multiply_1.negate(rest);
+        if (!freeOf(q, ...vars)) {
+          return null;
+        }
+        const r = symbol_1.usr_symbol("$r");
+        const P = a.reduce((acc, ak, k) => add_1.add(acc, multiply_1.multiply(ak, power_1.power(r, bignum_1.integer(k)))), defs_1.Constants.zero);
+        const rs = roots_1.roots(P, r);
+        const basis = [];
+        for (const root of defs_1.istensor(rs) ? rs.tensor.elem : [rs]) {
+          const m = multiplicity(P, r, root);
+          const im = imag_1.imag(root);
+          let fs;
+          if (assume_1.isNegative(im) && assume_1.isReal(real_1.real(root))) {
+            continue;
+          }
+          if (assume_1.isPositive(im) && assume_1.isReal(real_1.real(root))) {
+            const e = misc_1.exponential(multiply_1.multiply(real_1.real(root), x));
+            const wx = multiply_1.multiply(im, x);
+            fs = [multiply_1.multiply(e, eval_1.Eval(makeCall(defs_1.COS, wx))), multiply_1.multiply(e, eval_1.Eval(makeCall(defs_1.SIN, wx)))];
+          } else {
+            fs = [misc_1.exponential(multiply_1.multiply(root, x))];
+          }
+          for (let j = 0; j < m; j++) {
+            for (const f of fs) {
+              basis.push(multiply_1.multiply(power_1.power(x, bignum_1.integer(j)), f));
+            }
+          }
+        }
+        if (basis.length !== vars.length - 1) {
+          run_1.stop("dsolve: could not find all roots of " + P);
+        }
+        let sol = basis.reduce((acc, f, i) => add_1.add(acc, multiply_1.multiply(constant(i + 1), f)), defs_1.Constants.zero);
+        if (!isZero(q)) {
+          const s = symbol_1.usr_symbol("$s");
+          const yp = laplace_1.invlaplace(multiply_1.divide(laplace_1.laplace(q, x, s), eval_1.Eval(subst_1.subst(P, r, s))), s, x);
+          if (find_1.Find(yp, symbol_1.symbol(defs_1.LAPLACE)) || find_1.Find(yp, symbol_1.symbol(defs_1.INVLAPLACE))) {
+            run_1.stop("dsolve: no particular solution for the right side " + q);
+          }
+          const particular = terms(yp).filter((t) => !basis.some((b) => freeOf(multiply_1.divide(t, b), x)));
+          sol = particular.reduce(add_1.add, sol);
+        }
+        return [fit(sol, x, basis.length, conds)];
+      }
+      function multiplicity(P, r, root) {
+        let m = 0;
+        for (let p = P; isZero(eval_1.Eval(subst_1.subst(p, r, root))); p = derivative_1.derivative(p, r)) {
+          m++;
+        }
+        return Math.max(m, 1);
+      }
+      var isLog = (p) => defs_1.car(p) === symbol_1.symbol(defs_1.LOG);
+      function polyRoots(p, y) {
+        const cs = coeff_1.coeff(p, y);
+        const n = cs.length - 1;
+        if (n > 1 && cs.slice(1, n).every(isZero)) {
+          const root = power_1.power(multiply_1.negate(multiply_1.divide(cs[0], cs[n])), bignum_1.rational(1, n));
+          return n % 2 === 0 ? [multiply_1.negate(root), root] : [root];
+        }
+        const r = roots_1.roots(p, y);
+        return defs_1.istensor(r) ? r.tensor.elem : [r];
+      }
+      function expOf(I, ...vars) {
+        return terms(I).reduce((acc, t) => {
+          const log = factors(t).find(isLog);
+          const k = log && multiply_1.divide(t, log);
+          return multiply_1.multiply(acc, log && freeOf(k, ...vars) ? power_1.power(stripAbs(defs_1.cadr(log)), k) : misc_1.exponential(t));
+        }, defs_1.Constants.one);
+      }
+      var makeCall = (name, arg) => new defs_1.Cons(symbol_1.symbol(name), new defs_1.Cons(arg, symbol_1.symbol(defs_1.NIL)));
+      function stripAbs(p) {
+        const strip = (q) => defs_1.car(q) === symbol_1.symbol(defs_1.ABS) ? strip(defs_1.cadr(q)) : defs_1.iscons(q) ? new defs_1.Cons(strip(defs_1.car(q)), strip(defs_1.cdr(q))) : q;
+        return eval_1.Eval(strip(p));
+      }
+      function fit(sol, x, n, conds) {
+        if (conds.length === 0) {
+          return sol;
+        }
+        const Cs = Array.from({ length: n }, (_, i) => constant(i + 1));
+        const eqs = conds.map((c) => add_1.subtract(atOrder(sol, x, c), c.value));
+        const values = solve_1.solveLinearSystem(scan_1.build_tensor(eqs), scan_1.build_tensor(Cs));
+        const vs = defs_1.istensor(values) ? values.tensor.elem : [values];
+        return simplify_1.simplify(Cs.reduce((acc, C, i) => eval_1.Eval(subst_1.subst(acc, C, vs[i])), sol));
+      }
+      function initialConstant(H, y, x, conds) {
+        if (conds.length !== 1 || conds[0].order !== 0) {
+          run_1.stop("dsolve: a first-order equation takes one initial condition y(x0)=y0");
+        }
+        return eval_1.Eval(subst_1.subst(subst_1.subst(H, y, conds[0].value), x, conds[0].at));
+      }
+      function keepSatisfying(sols, x, conds) {
+        return sols.filter((sol) => conds.every((c) => isZero(add_1.subtract(atOrder(sol, x, c), c.value))));
+      }
+      function atOrder(sol, x, c) {
+        let d = sol;
+        for (let i = 0; i < c.order; i++) {
+          d = derivative_1.derivative(d, x);
+        }
+        return at_1.at(d, x, c.at);
       }
     }
   });
@@ -15742,53 +16393,6 @@ FACTOR=${p8}`);
     }
   });
 
-  // bazel-out/k8-fastbuild/bin/sources/resultant.js
-  var require_resultant = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/resultant.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.resultant = exports.Eval_resultant = void 0;
-      var defs_1 = require_defs();
-      var symbol_1 = require_symbol();
-      var coeff_1 = require_coeff();
-      var degree_1 = require_degree();
-      var det_1 = require_det();
-      var eval_1 = require_eval();
-      var guess_1 = require_guess();
-      var is_1 = require_is();
-      function Eval_resultant(p1) {
-        const f = eval_1.Eval(defs_1.cadr(p1));
-        const g = eval_1.Eval(defs_1.caddr(p1));
-        const arg = eval_1.Eval(defs_1.cadddr(p1));
-        const x = arg === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(f) : arg;
-        degree_1.checkpoly("resultant", f, x);
-        degree_1.checkpoly("resultant", g, x);
-        return resultant(f, g, x);
-      }
-      exports.Eval_resultant = Eval_resultant;
-      function resultant(f, g, x) {
-        var _a;
-        if (is_1.isZeroAtomOrTensor(f) || is_1.isZeroAtomOrTensor(g)) {
-          return defs_1.Constants.zero;
-        }
-        const a = coeff_1.coeff(f, x).reverse();
-        const b = coeff_1.coeff(g, x).reverse();
-        const m = a.length - 1;
-        const n = b.length - 1;
-        const size = m + n;
-        const elems = [];
-        for (let i = 0; i < size; i++) {
-          const [c, shift] = i < n ? [a, i] : [b, i - n];
-          for (let j = 0; j < size; j++) {
-            elems.push((_a = c[j - shift]) !== null && _a !== void 0 ? _a : defs_1.Constants.zero);
-          }
-        }
-        return det_1.determinant(elems, size);
-      }
-      exports.resultant = resultant;
-    }
-  });
-
   // bazel-out/k8-fastbuild/bin/sources/round.js
   var require_round = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/round.js"(exports) {
@@ -15825,135 +16429,6 @@ FACTOR=${p8}`);
     }
   });
 
-  // bazel-out/k8-fastbuild/bin/sources/rref.js
-  var require_rref = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/rref.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.matrix = exports.Eval_eigenvectors = exports.Eval_eigenvalues = exports.Eval_nullspace = exports.Eval_matrixrank = exports.Eval_rref = void 0;
-      var defs_1 = require_defs();
-      var alloc_1 = require_alloc();
-      var run_1 = require_run();
-      var symbol_1 = require_symbol();
-      var add_1 = require_add();
-      var bignum_1 = require_bignum();
-      var det_1 = require_det();
-      var eval_1 = require_eval();
-      var is_1 = require_is();
-      var multiply_1 = require_multiply();
-      var roots_1 = require_roots();
-      var simplify_1 = require_simplify();
-      var tensor_1 = require_tensor();
-      function Eval_rref(p1) {
-        const [rows] = rowReduce(matrixArg(p1, "rref"));
-        return matrix(rows);
-      }
-      exports.Eval_rref = Eval_rref;
-      function Eval_matrixrank(p1) {
-        const [, pivots] = rowReduce(matrixArg(p1, "matrixrank"));
-        return bignum_1.integer(pivots.length);
-      }
-      exports.Eval_matrixrank = Eval_matrixrank;
-      function Eval_nullspace(p1) {
-        const M = matrixArg(p1, "nullspace");
-        const basis = nullBasis(M);
-        return matrix(basis.length ? basis : [new Array(M.dim[1]).fill(defs_1.Constants.zero)]);
-      }
-      exports.Eval_nullspace = Eval_nullspace;
-      function nullBasis(M) {
-        const n = M.dim[1];
-        const [rows, pivots] = rowReduce(M);
-        const basis = [];
-        for (let free = 0; free < n; free++) {
-          if (pivots.includes(free)) {
-            continue;
-          }
-          const v = new Array(n).fill(defs_1.Constants.zero);
-          v[free] = defs_1.Constants.one;
-          pivots.forEach((col, i) => v[col] = multiply_1.negate(rows[i][free]));
-          basis.push(v);
-        }
-        return basis;
-      }
-      function Eval_eigenvalues(p1) {
-        return list(eigenvalues(squareArg(p1, "eigenvalues")));
-      }
-      exports.Eval_eigenvalues = Eval_eigenvalues;
-      function Eval_eigenvectors(p1) {
-        const M = squareArg(p1, "eigenvectors");
-        return matrix([].concat(...eigenvalues(M).map((lambda) => nullBasis(shift(M, lambda)))));
-      }
-      exports.Eval_eigenvectors = Eval_eigenvectors;
-      function eigenvalues(M) {
-        const x = symbol_1.symbol(defs_1.SECRETX);
-        const r = roots_1.roots(det_1.det(shift(M, x)), x);
-        return defs_1.istensor(r) ? r.tensor.elem : [r];
-      }
-      function shift(M, lambda) {
-        const n = M.dim[0];
-        return matrix(Array.from({ length: n }, (_, i) => M.elem.slice(i * n, (i + 1) * n).map((e, j) => i === j ? add_1.subtract(e, lambda) : e)));
-      }
-      function squareArg(p1, name) {
-        const M = eval_1.Eval(defs_1.cadr(p1));
-        if (!defs_1.istensor(M) || M.ndim !== 2 || M.dim[0] !== M.dim[1]) {
-          run_1.stop(name + ": square matrix expected");
-        }
-        return M;
-      }
-      function list(elems) {
-        const T = alloc_1.alloc_tensor(elems.length);
-        T.ndim = 1;
-        T.dim = [elems.length];
-        T.elem = elems;
-        return T;
-      }
-      function matrixArg(p1, name) {
-        const M = eval_1.Eval(defs_1.cadr(p1));
-        if (!defs_1.istensor(M) || M.ndim !== 2) {
-          run_1.stop(name + ": matrix expected");
-        }
-        return M;
-      }
-      function matrix(rows) {
-        const n = rows[0].length;
-        const T = alloc_1.alloc_tensor(rows.length * n);
-        T.ndim = 2;
-        T.dim = [rows.length, n];
-        T.elem = [].concat(...rows);
-        tensor_1.check_tensor_dimensions(T);
-        return T;
-      }
-      exports.matrix = matrix;
-      function rowReduce(M) {
-        const tidy = (e) => defs_1.isNumericAtom(e) ? e : simplify_1.simplify(e);
-        const [m, n] = M.dim;
-        const R = [];
-        for (let i = 0; i < m; i++) {
-          R.push(M.elem.slice(i * n, (i + 1) * n));
-        }
-        const pivots = [];
-        for (let c = 0, r = 0; c < n && r < m; c++) {
-          const p = R.findIndex((row, i) => i >= r && !is_1.isZeroAtomOrTensor(row[c]));
-          if (p < 0) {
-            continue;
-          }
-          [R[r], R[p]] = [R[p], R[r]];
-          const pivot = R[r][c];
-          R[r] = R[r].map((e) => tidy(multiply_1.divide(e, pivot)));
-          for (let i = 0; i < m; i++) {
-            const f = R[i][c];
-            if (i !== r && !is_1.isZeroAtomOrTensor(f)) {
-              R[i] = R[i].map((e, j) => tidy(add_1.subtract(e, multiply_1.multiply(f, R[r][j]))));
-            }
-          }
-          pivots.push(c);
-          r++;
-        }
-        return [R, pivots];
-      }
-    }
-  });
-
   // bazel-out/k8-fastbuild/bin/sources/shape.js
   var require_shape = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/shape.js"(exports) {
@@ -15986,166 +16461,6 @@ FACTOR=${p8}`);
           p2.tensor.elem[i] = bignum_1.integer(p1.tensor.dim[i]);
         }
         return p2;
-      }
-    }
-  });
-
-  // bazel-out/k8-fastbuild/bin/sources/solve.js
-  var require_solve = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/solve.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.Eval_solve = void 0;
-      var defs_1 = require_defs();
-      var alloc_1 = require_alloc();
-      var run_1 = require_run();
-      var find_1 = require_find();
-      var symbol_1 = require_symbol();
-      var add_1 = require_add();
-      var derivative_1 = require_derivative();
-      var det_1 = require_det();
-      var eval_1 = require_eval();
-      var inner_1 = require_inner();
-      var inv_1 = require_inv();
-      var is_1 = require_is();
-      var multiply_1 = require_multiply();
-      var assume_1 = require_assume();
-      var coeff_1 = require_coeff();
-      var misc_1 = require_misc();
-      var resultant_1 = require_resultant();
-      var roots_1 = require_roots();
-      var rref_1 = require_rref();
-      var scan_1 = require_scan();
-      var simplify_1 = require_simplify();
-      var subst_1 = require_subst();
-      var tensor_1 = require_tensor();
-      function Eval_solve(p1) {
-        const eqsArg = defs_1.cadr(p1);
-        const vars = eval_1.Eval(defs_1.caddr(p1));
-        if (defs_1.istensor(eqsArg) || defs_1.istensor(vars)) {
-          const eqs = defs_1.istensor(eqsArg) ? scan_1.build_tensor(eqsArg.elem.map(roots_1.equationToExpr)) : eval_1.Eval(eqsArg);
-          if (!defs_1.istensor(eqs)) {
-            run_1.stop("solve: a list of variables needs a list of equations");
-          }
-          return solveLinearSystem(eqs, defs_1.istensor(vars) ? vars : scan_1.build_tensor(vars === symbol_1.symbol(defs_1.NIL) ? freeSymbols(eqs) : [vars]));
-        }
-        const [POLY1, X1] = roots_1.normalizeEquation(p1);
-        if (!is_1.ispolyexpandedform(POLY1, X1)) {
-          run_1.stop("solve: 1st argument is not a polynomial in the variable " + X1 + " \u2014 solve() currently only supports polynomial equations");
-        }
-        return roots_1.keepAssumedRoots(roots_1.roots(POLY1, X1), X1, "solve");
-      }
-      exports.Eval_solve = Eval_solve;
-      function freeSymbols(p) {
-        const acc = [];
-        symbol_1.collectUserSymbols(p, acc);
-        return acc;
-      }
-      function solveLinearSystem(eqs, vars) {
-        const n = vars.nelem;
-        if (!vars.elem.every(defs_1.issymbol) || new Set(vars.elem).size !== n) {
-          run_1.stop("solve: variables must be distinct symbols");
-        }
-        if (eqs.nelem !== n) {
-          run_1.stop("solve: need as many equations as variables");
-        }
-        const A = alloc_1.alloc_tensor(n * n);
-        A.ndim = 2;
-        A.dim = [n, n];
-        const b = alloc_1.alloc_tensor(n);
-        b.ndim = 1;
-        b.dim = [n];
-        const exprs = eqs.elem.map((e) => defs_1.car(e) === symbol_1.symbol(defs_1.TESTEQ) ? add_1.subtract(defs_1.cadr(e), defs_1.caddr(e)) : e);
-        let linear = true;
-        exprs.forEach((eq, i) => {
-          let rebuilt = eval_1.Eval(vars.elem.reduce((acc, v) => subst_1.subst(acc, v, defs_1.Constants.zero), eq));
-          b.elem[i] = multiply_1.negate(rebuilt);
-          vars.elem.forEach((v, j) => {
-            const c = derivative_1.derivative(eq, v);
-            A.elem[i * n + j] = c;
-            rebuilt = add_1.add(rebuilt, multiply_1.multiply(c, v));
-          });
-          linear = linear && is_1.isZeroAtomOrTensor(simplify_1.simplify(add_1.subtract(rebuilt, eq)));
-        });
-        if (!linear) {
-          return solvePolySystemMatrix(exprs, vars.elem);
-        }
-        tensor_1.check_tensor_dimensions(A);
-        tensor_1.check_tensor_dimensions(b);
-        if (is_1.isZeroAtomOrTensor(det_1.det(A))) {
-          run_1.stop("solve: system has no unique solution");
-        }
-        const solution = inner_1.inner(inv_1.inv(A), b);
-        vars.elem.forEach((v, i) => {
-          if (assume_1.violatesAssumptions(solution.elem[i], v)) {
-            run_1.stop(`solve: no solution satisfies the assumptions about ${v}`);
-          }
-        });
-        return solution;
-      }
-      function solvePolySystemMatrix(eqs, vars) {
-        eqs.forEach((e) => vars.forEach((v) => {
-          if (find_1.Find(e, v) && !is_1.ispolyexpandedform(e, v)) {
-            run_1.stop("solve: system is not polynomial in the given variables");
-          }
-        }));
-        const rows = solvePolySystem(eqs, vars).sort(cmpRows).filter((r, i, all) => i === 0 || cmpRows(r, all[i - 1]) !== 0);
-        if (rows.length === 0) {
-          run_1.stop("solve: system has no solution");
-        }
-        const kept = rows.filter((r) => !r.some((value, i) => assume_1.violatesAssumptions(value, vars[i])));
-        if (kept.length === 0) {
-          run_1.stop("solve: no solution satisfies the assumptions about " + vars.join(","));
-        }
-        return rref_1.matrix(kept);
-      }
-      function cmpRows(a, b) {
-        for (let i = 0; i < a.length; i++) {
-          const c = misc_1.cmp_expr(a[i], b[i]);
-          if (c !== 0) {
-            return c;
-          }
-        }
-        return 0;
-      }
-      function solvePolySystem(eqs, vars) {
-        const v = vars[vars.length - 1];
-        const rest = vars.slice(0, -1);
-        const partials = rest.length === 0 ? [[]] : solvePolySystem(eliminate(eqs, v), rest);
-        const rows = [];
-        for (const partial of partials) {
-          const sub = eqs.map((e) => eval_1.Eval(rest.reduce((acc, w, i) => subst_1.subst(acc, w, partial[i]), e)));
-          const pivot = pivotFor(sub, v);
-          if (pivot === void 0) {
-            if (sub.every((e) => is_1.isZeroAtomOrTensor(simplify_1.simplify(e)))) {
-              run_1.stop("solve: system has infinitely many solutions");
-            }
-            continue;
-          }
-          for (const r of roots_1.rootsList(pivot, v)) {
-            if (sub.every((e) => is_1.isZeroAtomOrTensor(simplify_1.simplify(eval_1.Eval(subst_1.subst(e, v, r)))))) {
-              rows.push([...partial, r]);
-            }
-          }
-        }
-        return rows;
-      }
-      function eliminate(eqs, v) {
-        const pivot = pivotFor(eqs, v);
-        return eqs.filter((e) => e !== pivot).map((g) => {
-          if (!find_1.Find(g, v)) {
-            return g;
-          }
-          const r = resultant_1.resultant(pivot, g, v);
-          if (is_1.isZeroAtomOrTensor(r)) {
-            run_1.stop("solve: system has infinitely many solutions");
-          }
-          return r;
-        });
-      }
-      function pivotFor(eqs, v) {
-        const degree = (e) => coeff_1.coeff(e, v).length;
-        return eqs.filter((e) => find_1.Find(e, v)).reduce((best, e) => best === void 0 || degree(e) < degree(best) ? e : best, void 0);
       }
     }
   });
@@ -16529,6 +16844,7 @@ FACTOR=${p8}`);
       var stats_1 = require_stats();
       var trigexpand_1 = require_trigexpand();
       var nsolve_1 = require_nsolve();
+      var dsolve_1 = require_dsolve();
       var laplace_1 = require_laplace();
       var at_1 = require_at();
       var assume_1 = require_assume();
@@ -16669,7 +16985,7 @@ FACTOR=${p8}`);
         symbol_1.std_symbol(defs_1.DO, eval_1.Eval_do);
         symbol_1.std_symbol(defs_1.DOT, inner_1.Eval_inner);
         symbol_1.std_symbol(defs_1.DRAW, draw_1.Eval_draw);
-        symbol_1.std_symbol(defs_1.DSOLVE);
+        symbol_1.std_symbol(defs_1.DSOLVE, dsolve_1.Eval_dsolve);
         symbol_1.std_symbol(defs_1.ERF, erf_1.Eval_erf);
         symbol_1.std_symbol(defs_1.ERFC, erfc_1.Eval_erfc);
         symbol_1.std_symbol(defs_1.EIGEN, eigen_1.Eval_eigen);

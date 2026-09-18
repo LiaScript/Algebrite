@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.evalList = exports.Eval_predicate = exports.Eval_unit = exports.Eval_subst = exports.Eval_stop = exports.Eval_sqrt = exports.Eval_setq = exports.Eval_rank = exports.Eval_quote = exports.Eval_operator = exports.Eval_number = exports.Eval_invg = exports.Eval_inv = exports.Eval_index = exports.Eval_hilbert = exports.Eval_hermite = exports.Eval_factorpoly = exports.Eval_factorial = exports.Eval_exp = exports.Eval_Eval = exports.Eval_dsolve = exports.Eval_do = exports.Eval_divisors = exports.Eval_dim = exports.Eval_det = exports.Eval_check = exports.Eval_binding = exports.Eval_cons = exports.Eval_sym = exports.Eval = exports.evaluate_integer = void 0;
+exports.evalList = exports.Eval_predicate = exports.Eval_unit = exports.Eval_subst = exports.Eval_stop = exports.Eval_sqrt = exports.Eval_setq = exports.Eval_rank = exports.Eval_quote = exports.Eval_operator = exports.Eval_number = exports.Eval_invg = exports.Eval_inv = exports.Eval_index = exports.Eval_hilbert = exports.Eval_hermite = exports.Eval_factorpoly = exports.Eval_factorial = exports.Eval_exp = exports.Eval_Eval = exports.Eval_do = exports.Eval_divisors = exports.Eval_dim = exports.Eval_det = exports.Eval_check = exports.Eval_binding = exports.Eval_cons = exports.Eval_sym = exports.Eval = exports.evaluate_integer = void 0;
 const _1 = require(".");
 const alloc_1 = require("../runtime/alloc");
 const defs_1 = require("../runtime/defs");
@@ -255,14 +255,6 @@ function Eval_do(p1) {
     return result;
 }
 exports.Eval_do = Eval_do;
-function Eval_dsolve(p1) {
-    const a = Eval(defs_1.cadr(p1));
-    const b = Eval(defs_1.caddr(p1));
-    const c = Eval(defs_1.cadddr(p1));
-    run_1.stop('dsolve');
-    //return dsolve(a, b, c);
-}
-exports.Eval_dsolve = Eval_dsolve;
 // for example, Eval(f,x,2)
 function Eval_Eval(p1) {
     let tmp = Eval(defs_1.cadr(p1));

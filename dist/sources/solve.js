@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_solve = void 0;
+exports.solveLinearSystem = exports.Eval_solve = void 0;
 const defs_1 = require("../runtime/defs");
 const alloc_1 = require("../runtime/alloc");
 const run_1 = require("../runtime/run");
@@ -109,6 +109,7 @@ function solveLinearSystem(eqs, vars) {
     });
     return solution;
 }
+exports.solveLinearSystem = solveLinearSystem;
 // Solutions as a matrix, one row per solution, even for a single one.
 function solvePolySystemMatrix(eqs, vars) {
     eqs.forEach((e) => vars.forEach((v) => {
