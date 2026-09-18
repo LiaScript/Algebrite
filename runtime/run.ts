@@ -53,6 +53,11 @@ export function stop(s: string): never {
   //if (draw_flag == 2)
   //  longjmp(draw_stop_return, 1)
   //else
+  // A fallback method that catches every error and then gives up with a
+  // message of its own (solve: no solution) would hide the timeout.
+  if (defs.timedOut) {
+    s = timeoutMessage();
+  }
   defs.errorMessage += 'Stop: ';
   defs.errorMessage += s;
   //breakpoint
@@ -909,7 +914,19 @@ export function top_level_eval(expr:U) {
   defs.expanding = !isZeroAtomOrTensor(get_binding(shouldAutoexpand));
 
   const originalArgument = expr;
-  let evalledArgument = Eval(expr);
+  let evalledArgument: U;
+  try {
+    evalledArgument = Eval(expr);
+    // a timeout that a fallback method caught and answered with an
+    // unevaluated result
+    if (defs.timedOut) {
+      stop(timeoutMessage());
+    }
+  } finally {
+    // the scanner multiplies too (-1): the next statement must not be read
+    // under the expired deadline of this one
+    defs.deadline = 0;
+  }
 
   // "draw", "for" and "setq" return "nil", there is no result to print
   if (evalledArgument === symbol(NIL)) {
@@ -958,9 +975,13 @@ export function check_esc_flag() {
     Date.now() > defs.deadline
   ) {
     escTicks = 255;
-    stop(`time limit of ${defs.timelimit} s exceeded, see timelimit`);
+    defs.timedOut = true;
+    stop(timeoutMessage());
   }
 }
+
+const timeoutMessage = () =>
+  `time limit of ${defs.timelimit} s exceeded, see timelimit`;
 
 // timelimit=20: seconds one top-level statement may run, 0 or a symbol: no
 // limit
@@ -969,6 +990,7 @@ function startTimelimit() {
   defs.timelimit = isNumericAtom(limit) ? nativeDouble(limit) : 0;
   defs.deadline =
     defs.timelimit > 0 ? Date.now() + 1000 * defs.timelimit : 0;
+  defs.timedOut = false;
 }
 
 // this is called when the whole notebook is re-run

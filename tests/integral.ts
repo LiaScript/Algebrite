@@ -51,7 +51,9 @@ run_test([
   '0',
 
   //20
-  'integral(1/sqrt(a+x^2),x)-(log(x+(a+x^2)^(1/2)))',
+  // abs: for a < 0 the argument is negative on the branch x < -sqrt(-a),
+  // where log(abs(...)) is the real antiderivative
+  'integral(1/sqrt(a+x^2),x)-(log(abs(x+(a+x^2)^(1/2))))',
   '0',
 
   //27
@@ -75,7 +77,9 @@ run_test([
   '0',
 
   //33
-  'integral(X^2/(A+B*X),X)-1/B^2*(1/2*(A+B*X)^2-2*A*(A+B*X)+A^2*log(abs(A+B*X)))',
+  // 1/B^3, not 1/B^2: d/dX (X^2/(2*B)-A*X/B^2+A^2*log(A+B*X)/B^3)
+  // = (B*X*(A+B*X)-A*(A+B*X)+A^2)/(B^2*(A+B*X)) = X^2/(A+B*X)
+  'integral(X^2/(A+B*X),X)-(X^2/(2*B)-A*X/B^2+A^2*log(abs(A+B*X))/B^3)',
   '0',
 
   //34
@@ -231,7 +235,9 @@ run_test([
   '0',
 
   //134
-  'integral(1/X*1/sqrt(2+B*X),X)-1/sqrt(2)*log((sqrt(2+B*X)-sqrt(2))/(sqrt(2+B*X)+sqrt(2)))',
+  // (s-sqrt(2))/(s+sqrt(2)) = (s-sqrt(2))^2/(B*X) with s = sqrt(2+B*X): the
+  // same up to the constant log(B), and abs(X) keeps it real where s < sqrt(2)
+  'integral(1/X*1/sqrt(2+B*X),X)-1/sqrt(2)*log((sqrt(2+B*X)-sqrt(2))^2/abs(X))',
   '0',
 
   //136
@@ -243,15 +249,19 @@ run_test([
   '0',
 
   //156
-  'integral(sqrt(X^2+A),X)-1/2*(X*sqrt(X^2+A)+A*log(X+sqrt(X^2+A)))',
+  // from here on: log(abs(X+sqrt(X^2+A))). For A < 0 the argument is negative on
+  // the branch X < -sqrt(-A), where log(abs(...)) is the real antiderivative
+  'integral(sqrt(X^2+A),X)-1/2*(X*sqrt(X^2+A)+A*log(abs(X+sqrt(X^2+A))))',
   '0',
 
   //157
-  'integral(1/sqrt(X^2+A),X)-log(X+sqrt(X^2+A))',
+  'integral(1/sqrt(X^2+A),X)-log(abs(X+sqrt(X^2+A)))',
   '0',
 
   //158
-  'integral(1/X*1/sqrt(X^2-2),X)-arcsec(X/sqrt(2))/sqrt(2)',
+  // not arcsec(X/sqrt(2))/sqrt(2): its derivative has abs(X), so the sign
+  // was wrong for X < 0 (defint over (-3,-2): -0.208254, arcsec gave +0.208254)
+  'integral(1/X*1/sqrt(X^2-2),X)-arctan(sqrt(X^2-2)/sqrt(2))/sqrt(2)',
   '0',
 
   //159
@@ -263,7 +273,7 @@ run_test([
   '0',
 
   //161
-  'integral(sqrt(X^2-2)/X,X)-sqrt(X^2-2)+sqrt(2)*arcsec(X/sqrt(2))',
+  'integral(sqrt(X^2-2)/X,X)-sqrt(X^2-2)+sqrt(2)*arctan(sqrt(X^2-2)/sqrt(2))',
   '0',
 
   //162
@@ -294,7 +304,7 @@ run_test([
   //"0",
 
   //168
-  'integral(X^2*sqrt(X^2+A),X)-1/4*X*(X^2+A)^(3/2)+1/8*A*X*sqrt(X^2+A)+1/8*A^2*log(X+sqrt(X^2+A))',
+  'integral(X^2*sqrt(X^2+A),X)-1/4*X*(X^2+A)^(3/2)+1/8*A*X*sqrt(X^2+A)+1/8*A^2*log(abs(X+sqrt(X^2+A)))',
   '0',
 
   //169
@@ -306,7 +316,7 @@ run_test([
   '0',
 
   //171
-  'integral(X^2/sqrt(X^2+A),X)-1/2*X*sqrt(X^2+A)+1/2*A*log(X+sqrt(X^2+A))',
+  'integral(X^2/sqrt(X^2+A),X)-1/2*X*sqrt(X^2+A)+1/2*A*log(abs(X+sqrt(X^2+A)))',
   '0',
 
   //172
@@ -322,7 +332,7 @@ run_test([
   '0',
 
   //175
-  'integral(1/X^3*1/sqrt(X^2-2),X)-1/2*sqrt(X^2-2)/2/X^2-1/2*1/(2^(3/2))*arcsec(X/(2^(1/2)))',
+  'integral(1/X^3*1/sqrt(X^2-2),X)-1/2*sqrt(X^2-2)/2/X^2-1/2*1/(2^(3/2))*arctan(sqrt(X^2-2)/2^(1/2))',
   '0',
 
   //176+
@@ -338,7 +348,7 @@ run_test([
 -1/6*X*(X^2-2^2)^(5/2)\
 -1/24*(2^2)*X*(X^2-2^2)^(3/2)\
 +1/16*(2^4)X*sqrt(X^2-2^2)\
--1/16*(2^6)*log(X+sqrt(X^2-2^2))`,
+-1/16*(2^6)*log(abs(X+sqrt(X^2-2^2)))`,
   '0',
 
   //177+
@@ -374,12 +384,12 @@ run_test([
   '0',
 
   //202
-  'integral(1/X*1/sqrt(7-X^2),X)+1/sqrt(7)*log((sqrt(7)+sqrt(7-X^2))/X)',
+  'integral(1/X*1/sqrt(7-X^2),X)+1/sqrt(7)*log((sqrt(7)+sqrt(7-X^2))/abs(X))',
   '0',
 
   //203
   `integral(sqrt(7-X^2)/X,X)\
--sqrt(7-X^2)+sqrt(7)*log((sqrt(7)+sqrt(7-X^2))/X)`,
+-sqrt(7-X^2)+sqrt(7)*log((sqrt(7)+sqrt(7-X^2))/abs(X))`,
   '0',
 
   //204
@@ -423,7 +433,7 @@ run_test([
   //217
   `integral(sqrt(7-X^2)/X^3,X)\
 +1/2*sqrt(7-X^2)/X^2\
--1/2*log((sqrt(7)+sqrt(7-X^2))/X)/sqrt(7)`,
+-1/2*log((sqrt(7)+sqrt(7-X^2))/abs(X))/sqrt(7)`,
   '0',
 
   //218
@@ -432,7 +442,7 @@ run_test([
   '0',
 
   //273
-  'integral(sqrt(7*X^2+C),X)-X*sqrt(7*X^2+C)/2-C*log(X*sqrt(7)+sqrt(7*X^2+C))/2/sqrt(7)',
+  'integral(sqrt(7*X^2+C),X)-X*sqrt(7*X^2+C)/2-C*log(abs(X*sqrt(7)+sqrt(7*X^2+C)))/2/sqrt(7)',
   '0',
 
   //274

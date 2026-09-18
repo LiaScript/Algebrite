@@ -10,6 +10,7 @@ import {
   ispower,
   isdouble,
   isfactorial,
+  ismultiply,
   isNumericAtom,
   isrational,
   issymbol,
@@ -24,14 +25,17 @@ import {
   collectUserSymbols,
   get_binding,
   set_binding,
-  symbol
+  symbol,
+  usr_symbol
 } from '../runtime/symbol';
 import { add, subtract } from './add';
-import { integer, nativeInt } from './bignum';
+import { integer, nativeInt, rational } from './bignum';
 import { coeff } from './coeff';
 import { Eval, evaluate_integer } from './eval';
+import { factorpoly } from './factorpoly';
 import {
   equaln,
+  isinteger,
   isnegativenumber,
   isposint,
   ispolyexpandedform,
@@ -49,6 +53,7 @@ import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { simplify } from './simplify';
 import { subst } from './subst';
+import { makeList } from './list';
 import { checkArgCount, equal, exponential, yyexpand } from './misc';
 import { isInteger, isPositive } from './assume';
 import { binomial } from './binomial';
@@ -122,12 +127,18 @@ function symbolicSum(p1: U, body: U, x: U): U {
     if ([a, b].some((p) => isNumericAtom(p) && isNaN(nativeInt(p)))) {
       return p1;
     }
+    if (hasIntegerPole(f, x, a)) {
+      stop('divide by zero');
+    }
     const row = binomialRow(f, x, a, b);
     if (row) {
       return row;
     }
     let terms = isadd(f) ? f.tail() : [f];
     const isPoly = (t: U) => !Find(t, x) || ispolyexpandedform(t, x);
+    if (b === symbol(INF)) {
+      return infiniteSum(p1, terms, x, a);
+    }
 
     // rational terms are summed together: their partial fractions may telescope
     const rationalTerms = terms.filter((t) => !isPoly(t) && isRationalIn(t, x));
@@ -141,11 +152,6 @@ function symbolicSum(p1: U, body: U, x: U): U {
           return telescoped;
         }
       }
-    }
-
-    if (b === symbol(INF)) {
-      const rest = infiniteSum(p1, terms, x, a);
-      return rest === p1 ? p1 : add(telescoped, rest);
     }
 
     let result = polynomialSum(
@@ -228,7 +234,7 @@ function lowerValue(z: U, t: U, x: U, a: U): U | null {
 // sum_{x=a}^{inf} t = lim z - z(a). With t(x+1)/t(x) -> rho, abs(rho) < 1,
 // t decays geometrically and so does z, a rational multiple of t; for
 // rho = 1 the limit of z is tried, a symbolic rho (x^k) is left alone.
-function gosperSeries(t: U, x: U, a: U): U | null {
+function gosperSeries(t: U, x: U, a: U): Series {
   const z = antidifference(t, x, [a]);
   if (!z) {
     return null;
@@ -249,7 +255,7 @@ function gosperSeries(t: U, x: U, a: U): U | null {
     ? Infinity
     : Math.abs(toNumber(rho));
   if (size > 1) {
-    stop('sum: the series diverges');
+    return DIVERGES;
   }
   const end = size < 1 ? Constants.zero : size === 1 ? atInf(z) : null;
   if (!end || Find(end, symbol(INF)) || Find(end, x)) {
@@ -381,32 +387,85 @@ function powerSums(n: U, maxP: number): U[] {
   return S;
 }
 
-// sum_{x=a}^{inf}: each term must be geometric (t(a)/(1-r)), a p-series
-// c/x^s (through zeta) or an exponential series c*r^x/x! (c*exp(r)); the
-// first terms a lower bound skips are subtracted. A term that does not go to
-// 0 makes the series diverge; anything else is returned unevaluated.
+// a value, null when there is no closed form, or the series diverges
+const DIVERGES = 'diverges';
+type Series = U | null | typeof DIVERGES;
+
+// sum_{x=a}^{inf}: the polynomial and rational terms are summed together,
+// each other term must be geometric (t(a)/(1-r)), an exponential series
+// c*r^x/x! (c*exp(r)) or have an antidifference. Divergence is judged on the
+// whole summand: one divergent part among convergent ones makes the series
+// diverge, next to a part without closed form it says nothing, 1/x and
+// -log(1+1/x) add up to Euler's constant.
 function infiniteSum(p1: U, terms: U[], x: U, a: U): U {
-  let result: U = Constants.zero;
-  for (const t of terms) {
-    if (isZeroAtomOrTensor(t)) {
-      continue;
+  const isRational = (t: U) =>
+    !Find(t, x) || ispolyexpandedform(t, x) || isRationalIn(t, x);
+  const parts = terms
+    .filter((t) => !isRational(t) && !isZeroAtomOrTensor(t))
+    .map((t) => ({ t, g: infiniteTerm(t, x, a) || gosperSeries(t, x, a) }));
+  const R = terms.filter(isRational).reduce(add, Constants.zero);
+  if (!isZeroAtomOrTensor(R)) {
+    parts.push(...rationalSeries(R, x, a));
+  }
+  if (parts.some((p) => p.g === null)) {
+    return p1;
+  }
+  const result = parts.reduce(
+    (acc: U, p) => (p.g === DIVERGES ? acc : add(acc, p.g)),
+    Constants.zero
+  );
+  const divergent = parts.filter((p) => p.g === DIVERGES).map((p) => p.t);
+  if (divergent.length > 1) {
+    // 2^x - 2^(x+1)/2: parts the evaluator did not combine may cancel.
+    // ponytail: parts that simplify keeps apart are taken to grow differently
+    // (x, 1/x, 2^x, x!), so their sum diverges as well
+    const D = simplify(divergent.reduce(add, Constants.zero));
+    const left = isadd(D) ? D.tail() : [D];
+    if (isZeroAtomOrTensor(D)) {
+      return result;
     }
-    if (!Find(t, x) || ispolyexpandedform(t, x)) {
-      stop('sum: the series diverges');
+    if (left.length < divergent.length) {
+      const rest = infiniteSum(p1, left, x, a);
+      return rest === p1 ? p1 : add(result, rest);
     }
-    const g = infiniteTerm(t, x, a) || gosperSeries(t, x, a);
-    if (!g) {
-      return p1;
-    }
-    result = add(result, g);
+  }
+  if (divergent.length > 0) {
+    stop('sum: the series diverges');
   }
   return result;
+}
+
+// A rational summand converges when the degree of its denominator exceeds
+// the degree of the numerator by 2 or more, whatever its partial fractions
+// do one by one: 1/(x*(2*x+1)) = 1/x - 2/(2*x+1). Then the partial fractions
+// with a simple pole are summed together, the others one by one as p-series
+// c/x^s through zeta.
+function rationalSeries(R: U, x: U, a: U): { t: U; g: Series }[] {
+  const q = rationalize(R);
+  const degree = (p: U) => coeff(yyexpand(p), x).length - 1;
+  if (degree(denominator(q)) - degree(numerator(q)) < 2) {
+    return [{ t: R, g: DIVERGES }];
+  }
+  const P = apart(R, x);
+  const fractions = isadd(P) ? P.tail() : [P];
+  const simple = fractions.filter((t) => degree(denominator(t)) === 1);
+  const parts = fractions
+    .filter((t) => !simple.includes(t))
+    .map((t) => {
+      const g = Find(t, x) ? infiniteTerm(t, x, a) || gosperSeries(t, x, a) : null;
+      return { t, g: g === DIVERGES ? null : g };
+    });
+  if (simple.length > 0) {
+    const t = simple.reduce(add, Constants.zero);
+    parts.push({ t, g: telescope(t, x, a, symbol(INF)) });
+  }
+  return parts;
 }
 
 // more terms than this are not subtracted from a known series
 const MAX_SKIPPED = 1000;
 
-function infiniteTerm(t: U, x: U, a: U): U | null {
+function infiniteTerm(t: U, x: U, a: U): Series {
   const at = (v: U) => Eval(subst(t, x, v));
   const next = at(add(x, Constants.one));
   // the terms below the lower bound, for series known from 0 or 1 on
@@ -426,7 +485,7 @@ function infiniteTerm(t: U, x: U, a: U): U | null {
   if (!Find(r, x)) {
     const f = zzfloat(r);
     if (isdouble(f) && Math.abs(f.d) >= 1) {
-      stop('sum: the series diverges');
+      return DIVERGES;
     }
     return simplify(divide(at(a), subtract(Constants.one, r)));
   }
@@ -467,7 +526,7 @@ function infiniteTerm(t: U, x: U, a: U): U | null {
   const s = simplify(negate(divide(multiply(x, derivative(t, x)), t)));
   if (isposint(s)) {
     if (equaln(s, 1)) {
-      stop('sum: the series diverges');
+      return DIVERGES;
     }
     const c = simplify(multiply(t, power(x, s)));
     const head = skipped(1);
@@ -541,9 +600,12 @@ function isRationalIn(t: U, x: U): boolean {
 //   sum 1/(x+m0+d) = H(b+m0) - H(a+m0-1)
 //                    + sum_{j=1..d} 1/(b+m0+j) - sum_{j=1..d} 1/(a+m0-1+j),
 // so the harmonic parts cancel when the coefficients of the group add up to
-// 0 and a finite number of terms is left. With b = inf the terms in b vanish;
-// a group that does not add up to 0 diverges there. null when R has another
-// shape.
+// 0 and a finite number of terms is left. With b = inf the terms in b vanish,
+// and the groups that do not add up to 0 (the caller has checked that the
+// series converges, so all of them together do) give
+//   sum_{x>=a} sum_i c_i/(x+m_i) = -sum_i c_i*digamma(a+m_i),
+// exactly where digamma is known up to Euler's constant, which drops out.
+// null when R has another shape.
 function telescope(R: U, x: U, a: U, b: U): U | null {
   const infinite = b === symbol(INF);
   const P = apart(R, x);
@@ -563,6 +625,7 @@ function telescope(R: U, x: U, a: U, b: U): U | null {
   const frac = (m: Num) => subtract(m, integer(Math.floor(toNumber(m))));
   let result: U = Constants.zero;
   const done: U[] = [];
+  const loose: { c: U; m: Num }[] = [];
   for (const f of fractions) {
     const key = frac(f.m);
     if (done.some((d) => equal(d, key))) {
@@ -572,10 +635,11 @@ function telescope(R: U, x: U, a: U, b: U): U | null {
     const group = fractions.filter((g) => equal(frac(g.m), key));
     const total = group.reduce((acc: U, g) => add(acc, g.c), Constants.zero);
     if (!isZeroAtomOrTensor(simplify(total))) {
-      if (infinite) {
-        stop('sum: the series diverges');
+      if (!infinite) {
+        return null;
       }
-      return null;
+      loose.push(...group);
+      continue;
     }
     const m0 = group.reduce((min, g) => (toNumber(g.m) < toNumber(min) ? g.m : min), group[0].m);
     for (const g of group) {
@@ -589,7 +653,92 @@ function telescope(R: U, x: U, a: U, b: U): U | null {
       }
     }
   }
-  return result;
+  if (loose.length === 0) {
+    return result;
+  }
+  const total = loose.reduce((acc: U, g) => add(acc, g.c), Constants.zero);
+  if (!isZeroAtomOrTensor(simplify(total))) {
+    return null;
+  }
+  const at = loose.map((g) => add(a, g.m));
+  const exact = at.map(digammaPlusEuler);
+  const psi = exact.every((v) => v !== null)
+    ? exact
+    : at.map((v) => makeList(usr_symbol('digamma'), v));
+  return loose.reduce(
+    (acc: U, g, i) => subtract(acc, multiply(g.c, psi[i])),
+    result
+  );
+}
+
+// digamma(r) + Euler's constant for r = n + p/q with q = 1, 2, 3, 4 or 6,
+// from Gauss's digamma theorem
+//   digamma(p/q) = -gamma - log(2*q) - pi/2*cot(pi*p/q)
+//                  + 2*sum_{j<q/2} cos(2*pi*j*p/q)*log(sin(pi*j/q))
+// and digamma(r+1) = digamma(r) + 1/r. null for other r and at the poles.
+function digammaPlusEuler(r: U): U | null {
+  if (!isrational(r)) {
+    return null;
+  }
+  const q = nativeInt(denominator(r));
+  let n = Math.floor(toNumber(r));
+  let f: U = subtract(r, integer(n)); // 0 < f <= 1
+  if (isZeroAtomOrTensor(f)) {
+    f = Constants.one;
+    n--;
+  }
+  if (![1, 2, 3, 4, 6].includes(q) || (q === 1 && n < 0) || Math.abs(n) > MAX_SKIPPED) {
+    return null;
+  }
+  const log = (k: number) => logarithm(integer(k));
+  const root3Pi = multiply(power(integer(3), rational(1, 2)), symbol(PI));
+  const [piTerm, logs]: U[] = {
+    1: [Constants.zero, Constants.zero],
+    2: [Constants.zero, multiply(integer(2), log(2))],
+    3: [divide(root3Pi, integer(6)), multiply(rational(3, 2), log(3))],
+    4: [divide(symbol(PI), integer(2)), multiply(integer(3), log(2))],
+    6: [
+      divide(root3Pi, integer(2)),
+      add(multiply(integer(2), log(2)), multiply(rational(3, 2), log(3)))
+    ]
+  }[q];
+  let value = subtract(2 * toNumber(f) < 1 ? negate(piTerm) : piTerm, logs);
+  for (let j = 0; j < n; j++) {
+    value = add(value, divide(Constants.one, add(f, integer(j))));
+  }
+  for (let j = 1; j <= -n; j++) {
+    value = subtract(value, divide(Constants.one, subtract(f, integer(j))));
+  }
+  return value;
+}
+
+// a pole of the summand at an integer from the lower limit on: the closed
+// forms would step over it, 1/(x*(x+1)) from -5 on has no sum
+function hasIntegerPole(f: U, x: U, a: U): boolean {
+  const from = nativeInt(a);
+  if (isNaN(from)) {
+    return false;
+  }
+  // the factors of p without their numeric exponents; x^s is left alone
+  const bases = (p: U): U[] =>
+    (ismultiply(p) ? p.tail() : [p])
+      .filter((q) => !ispower(q) || isNumericAtom(caddr(q)))
+      .map((q) => (ispower(q) ? cadr(q) : q));
+  const isPole = (p: U) => {
+    const c = Find(p, x) && ispolyexpandedform(p, x) ? coeff(p, x) : [];
+    const root = c.length === 2 && negate(divide(c[0], c[1]));
+    return root && isrational(root) && isinteger(root) && toNumber(root) >= from;
+  };
+  return bases(denominator(f)).some((p) => {
+    if (!Find(p, x) || !ispolyexpandedform(p, x)) {
+      return false;
+    }
+    const c = coeff(p, x);
+    // rational roots are linear factors; symbolic coefficients are left alone
+    return c.length > 2 && c.every((k) => isrational(k))
+      ? bases(factorpoly(p, x)).some(isPole)
+      : isPole(p);
+  });
 }
 
 function toNumber(p: U): number {

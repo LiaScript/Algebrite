@@ -796,6 +796,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_fix_arctan_table",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_arctan_table.ts",
+)
+
+nodejs_test(
     name = "test_floor",
     data = [
         ":tsc",
@@ -829,6 +838,33 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/float.ts",
+)
+
+nodejs_test(
+    name = "test_fix_sum_dsolve",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_sum_dsolve.ts",
+)
+
+nodejs_test(
+    name = "test_fix_limit",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_limit.ts",
+)
+
+nodejs_test(
+    name = "test_fix_integral_heuristic",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_integral_heuristic.ts",
 )
 
 nodejs_test(

@@ -98,3 +98,108 @@ test('timelimit is per statement', (t) => {
   t.is(true, Date.now() - start < 3000);
   run('clearall');
 });
+
+// A fallback method that catches every error must not turn a timeout into
+// its own message: solve said "no solution", float(x, n) "cannot evaluate".
+// Both statements run for 2 to 3 seconds without a limit.
+run_test([
+  'timelimit=0.5',
+  '',
+
+  'solve(2*cos(x)^3-sqrt(2)*cos(x)^2+cos(x)^2/2-sqrt(2)*cos(x)/4-cos(x)/4+sqrt(2)/8=0,x,n)',
+  'Stop: time limit of 0.5 s exceeded, see timelimit',
+
+  'float(zeta(3),300)',
+  'Stop: time limit of 0.5 s exceeded, see timelimit',
+
+  // and the next statement is fine
+  'solve(cos(x)=1/2,x,n)',
+  '[-1/3*pi+2*n*pi,1/3*pi+2*n*pi]',
+]);
+
+// loops that do not pass through Eval
+run_test([
+  'timelimit=1',
+  '',
+
+  // Buchberger's algorithm on a hard system ran for more than 15 minutes
+  'groebner([x^5+y^4+z^3-1,x^3+y^3+z^2-1,x^4+y^2*z+z^5-x*y*z],[x,y,z])',
+  'Stop: time limit of 1 s exceeded, see timelimit',
+
+  'mod((10^7)!,10^9+7)',
+  'Stop: time limit of 1 s exceeded, see timelimit',
+
+  // the statement right after a timeout: reading -1 multiplies, and did so
+  // under the expired deadline
+  'groebner([x*y-1,x-y],[x,y])',
+  '[x-y,-1+y^2]',
+
+  '-x-1',
+  '-x-1',
+]);
+
+// One big-integer power cannot be interrupted, so the size of the result is
+// checked first: 2^(10^8) took 28 s, (1+1/10^6)^(10^7) 95 s.
+run_test([
+  '2^(10^8)',
+  'Stop: power: the result would have more than 1000000 digits',
+
+  '3^(10^7)',
+  'Stop: power: the result would have more than 1000000 digits',
+
+  '(1+1/10^6)^(10^7)',
+  'Stop: power: the result would have more than 1000000 digits',
+
+  'mod(7^(10^8),10^9+7)',
+  'Stop: power: the result would have more than 1000000 digits',
+
+  // powermod does not build the power
+  'powermod(7,10^8,10^9+7)',
+  '755909328',
+
+  // 301030 digits are fine
+  'mod(2^(10^6),1000)',
+  '376',
+
+  '(-2)^(10^8)',
+  'Stop: power: the result would have more than 1000000 digits',
+
+  '2^(-10^8)',
+  'Stop: power: the result would have more than 1000000 digits',
+
+  // floats have their own range
+  '2.0^(10^8)',
+  'inf',
+]);
+
+// factorial multiplies balanced halves: 20000! took 7 s as a running product
+run_test([
+  'timelimit=10',
+  '',
+
+  'mod(20000!,10^9+7)',
+  '368774859',
+
+  // (the tests run on node 14, whose big integers multiply slowly: bigger
+  // factorials, (10^6)! in 1.2 s instead of 792 s, only show on a current V8)
+  'mod(50000!,10^9+7)',
+  '737935835',
+
+  'mod(3000!,10^9+7)',
+  '341406877',
+
+  '10!',
+  '3628800',
+
+  '0!',
+  '1',
+
+  '1!',
+  '1',
+
+  '2!',
+  '2',
+
+  '25!',
+  '15511210043330985984000000',
+]);
