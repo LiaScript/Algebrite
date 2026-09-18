@@ -21,6 +21,7 @@ import {
 } from '../runtime/defs';
 import { check_esc_flag, stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
+import { facts } from './assume';
 import { add_numbers } from './bignum';
 import { Eval } from './eval';
 import { isminusone, isZeroAtom, isZeroAtomOrTensor } from './is';
@@ -67,7 +68,8 @@ export function Eval_add(p1: Cons) {
 }
 
 // With an inf term present, inf-inf stops, and finite numbers and repeated
-// infs are absorbed. Terms with symbols are kept: a symbol could be infinite.
+// infs are absorbed. Terms with symbols are kept, a symbol could be
+// infinite, unless their sign is known from the assumptions (1/a, a > 0).
 function absorbIntoInfinity(terms: U[]): U[] {
   const inf = symbol(INF);
   const signOf = (t: U): Sign =>
@@ -91,9 +93,14 @@ function absorbIntoInfinity(terms: U[]): U[] {
   if (sign === 0) {
     return terms;
   }
-  const rest = terms.filter((t) => signOf(t) === 0 && !isNumericAtom(t));
+  const rest = terms.filter((t) => signOf(t) === 0 && !isNumericAtom(t) && !hasKnownSign(t));
   rest.push(sign === 1 ? inf : negate(inf));
   return rest;
+}
+
+function hasKnownSign(t: U): boolean {
+  const f = facts(t);
+  return !!(f.positive || f.negative || f.zero);
 }
 
 // Add terms, returns one expression.

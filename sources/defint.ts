@@ -20,6 +20,7 @@ import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
 import { subtract } from './add';
+import { isNonzero, isPositive } from './assume';
 import { derivative } from './derivative';
 import { Eval } from './eval';
 import { zzfloat } from './float';
@@ -29,7 +30,7 @@ import { ispolyfactoredorexpandedform } from './is';
 import { limit } from './limit';
 import { makeList } from './list';
 import { equal, length } from './misc';
-import { negate } from './multiply';
+import { divide, negate } from './multiply';
 import { real } from './real';
 import { simplify } from './simplify';
 import { subst } from './subst';
@@ -126,21 +127,30 @@ function toNumber(p: U): number {
 // confirmed on the simplified integrand, (x^2-1)/(x-1) has no pole.
 // ponytail: poles closer than ~1e-4 to a bound are taken as endpoint poles
 function checkNoInteriorPole(f: U, X: U, a: U, b: U) {
-  const [lo, hi] = [toNumber(a), toNumber(b)].sort((u, v) => u - v);
+  const [[lo, loU], [hi, hiU]] = [[toNumber(a), a] as const, [toNumber(b), b] as const].sort(
+    (u, v) => u[0] - v[0]
+  );
   if (isNaN(lo) || isNaN(hi)) {
     return;
   }
-  const inside = (r: number) => {
+  const inside: Inside = (r: number) => {
     const tol = 1e-4 * Math.max(1, Math.abs(r));
     return r > lo + tol && r < hi - tol;
   };
+  // a symbolic pole, e.g. x = a with a > 0 in (0,inf): only when the
+  // assumptions say it is strictly inside
+  inside.symbolic = (r: U) =>
+    (lo === -Infinity || isPositive(subtract(r, loU)) === true) &&
+    (hi === Infinity || isPositive(subtract(hiU, r)) === true);
   const pole = poleIn(f, X, inside);
   if (pole !== undefined && poleIn(simplify(f), X, inside) !== undefined) {
     stop(`defint: the integrand has a pole at ${X} = ${pole} inside the interval`);
   }
 }
 
-function poleIn(p: U, X: U, inside: (r: number) => boolean): string | undefined {
+type Inside = ((r: number) => boolean) & { symbolic?: (r: U) => boolean };
+
+function poleIn(p: U, X: U, inside: Inside): string | undefined {
   if (!iscons(p) || !Find(p, X)) {
     return undefined;
   }
@@ -170,7 +180,7 @@ function poleIn(p: U, X: U, inside: (r: number) => boolean): string | undefined 
 }
 
 // a zero of the polynomial, sin(linear) or cos(linear) g inside, as text
-function zerosIn(g: U, X: U, inside: (r: number) => boolean): string | undefined {
+function zerosIn(g: U, X: U, inside: Inside): string | undefined {
   const head = car(g);
   if (head === symbol(SIN) || head === symbol(COS)) {
     // u = alpha*x + beta = k*pi (sin) or pi/2 + k*pi (cos)
@@ -197,7 +207,7 @@ function zerosIn(g: U, X: U, inside: (r: number) => boolean): string | undefined
   try {
     roots = Eval(makeList(symbol(NROOTS), g, X));
   } catch (e) {
-    return undefined; // symbolic coefficients
+    return symbolicLinearZeroIn(g, X, inside); // symbolic coefficients
   }
   for (const z of istensor(roots) ? roots.elem : [roots]) {
     const re = zzfloat(real(z));
@@ -212,4 +222,14 @@ function zerosIn(g: U, X: U, inside: (r: number) => boolean): string | undefined
     }
   }
   return undefined;
+}
+
+// the zero of alpha*x + beta with symbolic alpha != 0 and beta, as text
+function symbolicLinearZeroIn(g: U, X: U, inside: Inside): string | undefined {
+  const alpha = derivative(g, X);
+  if (Find(alpha, X) || isNonzero(alpha) !== true) {
+    return undefined;
+  }
+  const r = negate(divide(subst(g, X, Constants.zero), alpha));
+  return inside.symbolic?.(r) ? `${r}` : undefined;
 }
