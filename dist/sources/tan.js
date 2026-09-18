@@ -10,6 +10,8 @@ const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
 const quantity_1 = require("./quantity");
+const add_1 = require("./add");
+const sin_1 = require("./sin");
 // Tangent function of numerical and symbolic arguments
 function Eval_tan(p1) {
     return tangent(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), 'tan'));
@@ -18,6 +20,17 @@ exports.Eval_tan = Eval_tan;
 function tangent(p1) {
     if (defs_1.car(p1) === symbol_1.symbol(defs_1.ARCTAN)) {
         return defs_1.cadr(p1);
+    }
+    // tan has period pi: tan(k*pi) = 0 and tan(x + k*pi) = tan(x) for
+    // integer k
+    if (sin_1.integerTimesPi(p1)) {
+        return defs_1.Constants.zero;
+    }
+    if (defs_1.isadd(p1)) {
+        const B = p1.tail().find((t) => sin_1.integerTimesPi(t));
+        if (B) {
+            return tangent(add_1.subtract(p1, B));
+        }
     }
     if (defs_1.isdouble(p1)) {
         let d = Math.tan(p1.d);

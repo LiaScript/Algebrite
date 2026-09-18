@@ -13,6 +13,7 @@ const inner_1 = require("./inner");
 const inv_1 = require("./inv");
 const is_1 = require("./is");
 const multiply_1 = require("./multiply");
+const assume_1 = require("./assume");
 const roots_1 = require("./roots");
 const scan_1 = require("./scan");
 const simplify_1 = require("./simplify");
@@ -47,7 +48,7 @@ function Eval_solve(p1) {
             X1 +
             ' — solve() currently only supports polynomial equations');
     }
-    return roots_1.roots(POLY1, X1);
+    return roots_1.keepAssumedRoots(roots_1.roots(POLY1, X1), X1, 'solve');
 }
 exports.Eval_solve = Eval_solve;
 // Variables in order of first appearance.
@@ -91,5 +92,11 @@ function solveLinearSystem(eqs, vars) {
     if (is_1.isZeroAtomOrTensor(det_1.det(A))) {
         run_1.stop('solve: system has no unique solution');
     }
-    return inner_1.inner(inv_1.inv(A), b);
+    const solution = inner_1.inner(inv_1.inv(A), b);
+    vars.elem.forEach((v, i) => {
+        if (assume_1.violatesAssumptions(solution.elem[i], v)) {
+            run_1.stop(`solve: no solution satisfies the assumptions about ${v}`);
+        }
+    });
+    return solution;
 }

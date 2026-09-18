@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.absval = exports.abs = exports.absValFloat = exports.Eval_abs = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
 const run_1 = require("../runtime/run");
@@ -139,6 +140,14 @@ function absval(p1) {
             console.log(` --> ABS of ${input} : ${p1}`);
         }
         return p1;
+    }
+    // a sign known from the assumptions (or derived, like exp(x) > 0)
+    const known = assume_1.facts(p1);
+    if (known.real && known.negative === false) {
+        return p1;
+    }
+    if (known.negative) {
+        return multiply_1.negate(p1);
     }
     // ??? should there be a shortcut case here for the imaginary unit?
     // now handle decomposition cases ----------------------------------------------

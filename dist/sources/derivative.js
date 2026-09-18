@@ -275,8 +275,9 @@ function dpower(p1, p2) {
     return multiply_1.multiply(add_1.add(multiply_1.multiply(arg1, deriv_1), multiply_1.multiply(log_1, deriv_2)), p1);
 }
 function dlog(p1, p2) {
-    const deriv = derivative(defs_1.cadr(p1), p2);
-    return multiply_1.divide(deriv, defs_1.cadr(p1));
+    // d log|u| = u'/u as for log(u); via abs it would be sgn(u) u'/|u|
+    const u = defs_1.car(defs_1.cadr(p1)) === symbol_1.symbol(defs_1.ABS) ? defs_1.cadr(defs_1.cadr(p1)) : defs_1.cadr(p1);
+    return multiply_1.divide(derivative(u, p2), u);
 }
 //  derivative of derivative
 //

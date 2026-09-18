@@ -224,6 +224,8 @@ function defn() {
     symbol_1.std_symbol(defs_1.EIGEN, eigen_1.Eval_eigen);
     symbol_1.std_symbol(defs_1.EIGENVAL, eigen_1.Eval_eigenval);
     symbol_1.std_symbol(defs_1.EIGENVEC, eigen_1.Eval_eigenvec);
+    symbol_1.std_symbol(defs_1.EIGENVALUES, rref_1.Eval_eigenvalues);
+    symbol_1.std_symbol(defs_1.EIGENVECTORS, rref_1.Eval_eigenvectors);
     symbol_1.std_symbol(defs_1.EVAL, eval_1.Eval_Eval);
     symbol_1.std_symbol(defs_1.EXP, eval_1.Eval_exp);
     symbol_1.std_symbol(defs_1.EXPAND, expand_1.Eval_expand);

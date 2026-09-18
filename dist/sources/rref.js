@@ -1,14 +1,17 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_nullspace = exports.Eval_matrixrank = exports.Eval_rref = void 0;
+exports.Eval_eigenvectors = exports.Eval_eigenvalues = exports.Eval_nullspace = exports.Eval_matrixrank = exports.Eval_rref = void 0;
 const defs_1 = require("../runtime/defs");
 const alloc_1 = require("../runtime/alloc");
 const run_1 = require("../runtime/run");
+const symbol_1 = require("../runtime/symbol");
 const add_1 = require("./add");
 const bignum_1 = require("./bignum");
+const det_1 = require("./det");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const multiply_1 = require("./multiply");
+const roots_1 = require("./roots");
 const simplify_1 = require("./simplify");
 const tensor_1 = require("./tensor");
 // rref(M): reduced row echelon form, exact arithmetic.
@@ -29,6 +32,11 @@ exports.Eval_matrixrank = Eval_matrixrank;
 // single row, since there is no empty-list value.
 function Eval_nullspace(p1) {
     const M = matrixArg(p1, 'nullspace');
+    const basis = nullBasis(M);
+    return matrix(basis.length ? basis : [new Array(M.dim[1]).fill(defs_1.Constants.zero)]);
+}
+exports.Eval_nullspace = Eval_nullspace;
+function nullBasis(M) {
     const n = M.dim[1];
     const [rows, pivots] = rowReduce(M);
     const basis = [];
@@ -41,9 +49,50 @@ function Eval_nullspace(p1) {
         pivots.forEach((col, i) => (v[col] = multiply_1.negate(rows[i][free])));
         basis.push(v);
     }
-    return matrix(basis.length ? basis : [new Array(n).fill(defs_1.Constants.zero)]);
+    return basis;
 }
-exports.Eval_nullspace = Eval_nullspace;
+// eigenvalues(M): the distinct roots of det(M-x*I), for any square matrix
+// whose characteristic polynomial roots() can factor. (eigenval is the
+// numerical one for symmetric matrices.)
+function Eval_eigenvalues(p1) {
+    return list(eigenvalues(squareArg(p1, 'eigenvalues')));
+}
+exports.Eval_eigenvalues = Eval_eigenvalues;
+// eigenvectors(M): the rows are a basis of each eigenspace, grouped in the
+// order of eigenvalues(M). Fewer than n rows: M is not diagonalizable.
+// ponytail: an eigenvalue whose M-lambda*I is not recognised as singular
+// (nested radicals of a cubic) silently contributes no row.
+function Eval_eigenvectors(p1) {
+    const M = squareArg(p1, 'eigenvectors');
+    return matrix([].concat(...eigenvalues(M).map((lambda) => nullBasis(shift(M, lambda)))));
+}
+exports.Eval_eigenvectors = Eval_eigenvectors;
+function eigenvalues(M) {
+    const x = symbol_1.symbol(defs_1.SECRETX);
+    const r = roots_1.roots(det_1.det(shift(M, x)), x);
+    return defs_1.istensor(r) ? r.tensor.elem : [r];
+}
+// M - lambda*I
+function shift(M, lambda) {
+    const n = M.dim[0];
+    return matrix(Array.from({ length: n }, (_, i) => M.elem
+        .slice(i * n, (i + 1) * n)
+        .map((e, j) => (i === j ? add_1.subtract(e, lambda) : e))));
+}
+function squareArg(p1, name) {
+    const M = eval_1.Eval(defs_1.cadr(p1));
+    if (!defs_1.istensor(M) || M.ndim !== 2 || M.dim[0] !== M.dim[1]) {
+        run_1.stop(name + ': square matrix expected');
+    }
+    return M;
+}
+function list(elems) {
+    const T = alloc_1.alloc_tensor(elems.length);
+    T.ndim = 1;
+    T.dim = [elems.length];
+    T.elem = elems;
+    return T;
+}
 function matrixArg(p1, name) {
     const M = eval_1.Eval(defs_1.cadr(p1));
     if (!defs_1.istensor(M) || M.ndim !== 2) {

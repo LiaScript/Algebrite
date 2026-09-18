@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Eval_mod = void 0;
+const assume_1 = require("./assume");
+const multiply_1 = require("./multiply");
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
@@ -18,6 +20,10 @@ exports.Eval_mod = Eval_mod;
 function mod(p1, p2) {
     if (is_1.isZeroAtomOrTensor(p2)) {
         run_1.stop('mod function: divide by zero');
+    }
+    // mod(k*m, m) = 0 for integers k and m, with k known from the assumptions
+    if (!defs_1.isNumericAtom(p1) && is_1.isinteger(p2) && assume_1.isInteger(multiply_1.divide(p1, p2))) {
+        return defs_1.Constants.zero;
     }
     if (!defs_1.isNumericAtom(p1) || !defs_1.isNumericAtom(p2)) {
         return list_1.makeList(symbol_1.symbol(defs_1.MOD), p1, p2);

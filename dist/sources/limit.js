@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.limit = exports.Eval_limit = void 0;
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
+const assume_1 = require("./assume");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
@@ -84,18 +85,25 @@ exports.limit = limit;
 // x -> +-inf becomes t -> 0 from the right with x = +-1/t (X is reused as t).
 // Numerator and denominator are rationalized separately so the powers of t
 // cancel; rationalizing the whole quotient leaves nested fractions behind.
+// Near +inf, x is positive (near -inf negative), and t -> 0 from the right
+// is positive: rules like log(1/t) = -log(t) need to know that.
 function limitAtInfinity(F, X, sign) {
-    const direct = atInfinity(F, X, sign);
-    if (direct !== undefined) {
-        return direct;
-    }
-    const lhopital = lhopitalAtInfinity(F, X, sign);
-    if (lhopital !== undefined) {
-        return lhopital;
-    }
-    const at = (p) => rationalize_1.rationalize(eval_1.Eval(subst_1.subst(p, X, multiply_1.divide(sign, X))));
-    const G = multiply_1.divide(at(numerator_1.numerator(F)), at(denominator_1.denominator(F)));
-    return limitAt(G, X, defs_1.Constants.zero, [1]);
+    const near = is_1.isnegativenumber(sign) ? 'negative' : 'positive';
+    return assume_1.withSign(X, near, () => {
+        const direct = atInfinity(F, X, sign);
+        if (direct !== undefined) {
+            return direct;
+        }
+        const lhopital = lhopitalAtInfinity(F, X, sign);
+        if (lhopital !== undefined) {
+            return lhopital;
+        }
+        return assume_1.withSign(X, 'positive', () => {
+            const at = (p) => rationalize_1.rationalize(eval_1.Eval(subst_1.subst(p, X, multiply_1.divide(sign, X))));
+            const G = multiply_1.divide(at(numerator_1.numerator(F)), at(denominator_1.denominator(F)));
+            return limitAt(G, X, defs_1.Constants.zero, [1]);
+        });
+    });
 }
 const isInfinite = (p) => p === symbol_1.symbol(defs_1.INF) || misc_1.equal(p, multiply_1.negate(symbol_1.symbol(defs_1.INF)));
 // F at x = +-inf: substituted, with the functions that have a value at
@@ -107,6 +115,16 @@ function atInfinity(F, X, sign) {
         const v = resolveInf(subst_1.subst(F, X, multiply_1.multiply(sign, symbol_1.symbol(defs_1.INF))));
         if (!find_1.Find(v, symbol_1.symbol(defs_1.INF)) || isInfinite(v)) {
             return v;
+        }
+        // +-inf plus real terms without inf: in a limit the other symbols are
+        // constants, so those terms are finite (log(a)+inf is inf for a > 0)
+        if (defs_1.isadd(v)) {
+            const infinite = v.tail().filter(isInfinite);
+            const rest = v.tail().filter((t) => !isInfinite(t));
+            if (infinite.length === 1 &&
+                rest.every((t) => !find_1.Find(t, symbol_1.symbol(defs_1.INF)) && assume_1.isReal(t) === true)) {
+                return infinite[0];
+            }
         }
         // inf times a nonzero constant, e.g. inf*pi
         const f = float_1.zzfloat(v);
@@ -145,6 +163,13 @@ function resolveInf(p) {
                 (isInfinite(arg) || is_1.isZeroAtomOrTensor(arg)))) {
             run_1.stop('limit: indeterminate power');
         }
+        // inf^a for a of known sign
+        if (arg === inf && !find_1.Find(exponent, inf)) {
+            const e = assume_1.facts(exponent);
+            if (e.positive || e.negative) {
+                return e.positive ? inf : defs_1.Constants.zero;
+            }
+        }
         if (isInfinite(exponent)) {
             const base = arg === symbol_1.symbol(defs_1.E) ? bignum_1.double(Math.E) : float_1.zzfloat(arg);
             if (defs_1.isdouble(base) && base.d > 0) {
@@ -175,7 +200,21 @@ function resolveInf(p) {
                 }
         }
     }
-    return eval_1.Eval(list_1.makeList(head, ...args));
+    return signedInf(eval_1.Eval(list_1.makeList(head, ...args)));
+}
+// c*inf is inf or -inf when the sign of c is known (a*inf with a > 0,
+// inf/a, pi*inf); otherwise it is left as it is
+function signedInf(p) {
+    if (!defs_1.ismultiply(p)) {
+        return p;
+    }
+    const factors = p.tail();
+    const rest = factors.filter((f) => f !== symbol_1.symbol(defs_1.INF));
+    if (rest.length !== factors.length - 1 || rest.some((f) => find_1.Find(f, symbol_1.symbol(defs_1.INF)))) {
+        return p;
+    }
+    const c = assume_1.facts(multiply_1.multiply_all(rest));
+    return c.positive ? symbol_1.symbol(defs_1.INF) : c.negative ? multiply_1.negate(symbol_1.symbol(defs_1.INF)) : p;
 }
 // L'Hopital directly in x for inf/inf and 0/0 at infinity (x*exp(-x) is
 // x/exp(x)); undefined when it does not come to a result.
@@ -211,6 +250,11 @@ function infiniteLimit(F, X, A, sides) {
     const eps = 1e-6 * Math.max(1, Math.abs(a.d));
     const positive = sides.map((side) => {
         const v = float_1.zzfloat(subst_1.subst(F, X, bignum_1.double(a.d + side * eps)));
+        // symbolic: the sign may be known from the assumptions (a/x, a > 0)
+        const known = defs_1.isdouble(v) ? undefined : assume_1.facts(v);
+        if ((known === null || known === void 0 ? void 0 : known.positive) || (known === null || known === void 0 ? void 0 : known.negative)) {
+            return known.positive;
+        }
         if (!defs_1.isdouble(v)) {
             run_1.stop('limit: could not determine a real sign beside the point — try a one-sided limit');
         }

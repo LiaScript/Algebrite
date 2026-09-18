@@ -5,6 +5,7 @@ const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
+const assume_1 = require("./assume");
 const derivative_1 = require("./derivative");
 const eval_1 = require("./eval");
 const float_1 = require("./float");
@@ -22,6 +23,12 @@ function Eval_nsolve(p1) {
     const x = xArg === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(f) : xArg;
     const start = eval_1.Eval(defs_1.cadddr(p1));
     const fn = (v) => toNumber(subst_1.subst(f, x, bignum_1.double(v)));
+    const checked = (root) => {
+        if (assume_1.approxViolatesAssumptions(root, 0, x)) {
+            run_1.stop(`nsolve: the root found contradicts the assumptions about ${x}, try another start value`);
+        }
+        return bignum_1.double(root);
+    };
     if (defs_1.istensor(start)) {
         if (start.nelem !== 2) {
             run_1.stop('nsolve: interval must be [a,b]');
@@ -31,15 +38,15 @@ function Eval_nsolve(p1) {
         const fa = fn(a);
         const fb = fn(b);
         if (fa === 0 || fb === 0) {
-            return bignum_1.double(fa === 0 ? a : b);
+            return checked(fa === 0 ? a : b);
         }
-        return bignum_1.double(Math.sign(fa) * Math.sign(fb) < 0
+        return checked(Math.sign(fa) * Math.sign(fb) < 0
             ? bisection(fn, a, b, fa, fb)
             : secant(fn, a, b));
     }
     const df = derivative_1.derivative(f, x);
     const x0 = start === symbol_1.symbol(defs_1.NIL) ? 0 : toNumber(start);
-    return bignum_1.double(newton(fn, (v) => toNumber(subst_1.subst(df, x, bignum_1.double(v))), x0));
+    return checked(newton(fn, (v) => toNumber(subst_1.subst(df, x, bignum_1.double(v))), x0));
 }
 exports.Eval_nsolve = Eval_nsolve;
 function toNumber(p) {

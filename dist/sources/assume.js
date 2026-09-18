@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Eval_assumptions = exports.Eval_forget = exports.Eval_assume = exports.Eval_isinteger = exports.Eval_isnonzero = exports.Eval_isnegative = exports.Eval_ispositive = exports.Eval_isreal = exports.isInteger = exports.isNonzero = exports.isNegative = exports.isPositive = exports.isReal = exports.facts = exports.clearAssumptions = void 0;
+exports.approxViolatesAssumptions = exports.violatesAssumptions = exports.Eval_assumptions = exports.Eval_forget = exports.Eval_assume = exports.Eval_isinteger = exports.Eval_isnonzero = exports.Eval_isnegative = exports.Eval_ispositive = exports.Eval_isreal = exports.isInteger = exports.isNonzero = exports.isNegative = exports.isPositive = exports.isReal = exports.allSymbolsReal = exports.facts = exports.withSign = exports.clearAssumptions = void 0;
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
+const coeff_1 = require("./coeff");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const list_1 = require("./list");
@@ -14,6 +15,7 @@ const PROPERTIES = {
     negative: { negative: true },
     nonzero: { zero: false },
     integer: { integer: true },
+    complex: { complex: true },
 };
 // by symbol name, so clearall (which recreates the symbols) can't leave
 // stale entries; reset by clearAssumptions()
@@ -22,6 +24,29 @@ function clearAssumptions() {
     assumptions = new Map();
 }
 exports.clearAssumptions = clearAssumptions;
+// Runs f with the bound variable x temporarily assumed positive or
+// negative (x -> inf in a limit is large and positive); what the user
+// assumed about x is restored afterwards.
+function withSign(x, sign, f) {
+    if (!defs_1.issymbol(x)) {
+        return f();
+    }
+    const name = x.printname;
+    const old = assumptions.get(name);
+    assumptions.set(name, close(PROPERTIES[sign]));
+    try {
+        return f();
+    }
+    finally {
+        if (old === undefined) {
+            assumptions.delete(name);
+        }
+        else {
+            assumptions.set(name, old);
+        }
+    }
+}
+exports.withSign = withSign;
 // ------------------------------------------------------------------ facts
 // Adds the facts implied by the known ones; null on a contradiction.
 function close(f) {
@@ -52,6 +77,9 @@ function close(f) {
             if (!set('real', true))
                 return null;
         }
+        if (r.complex && r.real) {
+            return null;
+        }
         if (r.real) {
             // a real number is exactly one of positive, negative, zero
             const known = [r.positive, r.negative, r.zero];
@@ -76,6 +104,7 @@ const merge = (a, b) => {
 const realFacts = (d) => close({ real: true, integer: Math.floor(d) === d, positive: d > 0, negative: d < 0, zero: d === 0 });
 // Facts about an evaluated expression.
 function facts(p) {
+    var _a;
     if (defs_1.isrational(p)) {
         return close(Object.assign(Object.assign({}, realFacts(Math.sign(p.q.a.toJSNumber()))), { integer: is_1.isinteger(p) }));
     }
@@ -86,7 +115,11 @@ function facts(p) {
         return symbolFacts(p);
     }
     if (defs_1.isadd(p)) {
-        return sumFacts(p.tail().map(facts));
+        const f = sumFacts(p.tail().map(facts));
+        if (f.positive === undefined && f.negative === undefined) {
+            return (_a = close(Object.assign(Object.assign({}, f), quadraticFacts(p)))) !== null && _a !== void 0 ? _a : f;
+        }
+        return f;
     }
     if (defs_1.ismultiply(p)) {
         return productFacts(p.tail().map(facts));
@@ -98,16 +131,25 @@ function facts(p) {
 }
 exports.facts = facts;
 function symbolFacts(p) {
+    var _a;
     if (p === symbol_1.symbol(defs_1.PI) || p === symbol_1.symbol(defs_1.E)) {
         return close({ positive: true });
     }
     const assumed = assumptions.get(p.printname);
-    if (assumed) {
-        return assumed;
-    }
-    const realByDefault = !is_1.isZeroAtomOrTensor(symbol_1.get_binding(symbol_1.symbol(defs_1.ASSUME_REAL_VARIABLES)));
-    return realByDefault && isFreeVariable(p) ? { real: true } : {};
+    const realByDefault = !is_1.isZeroAtomOrTensor(symbol_1.get_binding(symbol_1.symbol(defs_1.ASSUME_REAL_VARIABLES))) &&
+        isFreeVariable(p) &&
+        !(assumed === null || assumed === void 0 ? void 0 : assumed.complex);
+    const base = realByDefault ? { real: true } : {};
+    return assumed ? (_a = close(Object.assign(Object.assign({}, base), assumed))) !== null && _a !== void 0 ? _a : assumed : base;
 }
+// every symbol in p is known to be real (for rules that treat symbols as
+// real numbers, like conj(x) = x; not for a symbol assumed complex)
+function allSymbolsReal(p) {
+    const vars = [];
+    symbol_1.collectUserSymbols(p, vars);
+    return vars.every((v) => facts(v).real === true);
+}
+exports.allSymbolsReal = allSymbolsReal;
 // a variable, not a named constant or a function
 function isFreeVariable(p) {
     return symbol_1.get_binding(p) === p && p.keyword == null;
@@ -116,6 +158,25 @@ function isFreeVariable(p) {
 // then the whole is not real either
 const oneNonReal = (parts, others) => parts.filter((t) => t.real === false).length === 1 &&
     parts.every((t) => t.real === false || others(t));
+// a*x^2+b*x+c with numbers a, b, c and b^2-4ac < 0 has no real root, so
+// for real x it has the sign of a (x^2+x+1 > 0)
+function quadraticFacts(p) {
+    const vars = [];
+    symbol_1.collectUserSymbols(p, vars);
+    const x = vars[0];
+    if (vars.length !== 1 || facts(x).real !== true || !is_1.ispolyexpandedform(p, x)) {
+        return {};
+    }
+    const k = coeff_1.coeff(p, x);
+    if (k.length !== 3 || !k.every((c) => defs_1.isrational(c) || defs_1.isdouble(c))) {
+        return {};
+    }
+    const [c, b, a] = k.map((n) => (defs_1.isdouble(n) ? n.d : n.q.a.toJSNumber() / n.q.b.toJSNumber()));
+    if (b * b - 4 * a * c >= 0) {
+        return {};
+    }
+    return a > 0 ? { positive: true } : { negative: true };
+}
 function sumFacts(terms) {
     var _a;
     const all = (key) => terms.every((t) => t[key] === true);
@@ -157,7 +218,17 @@ function productFacts(factors) {
         const negatives = factors.filter((t) => t.negative).length;
         f[negatives % 2 ? 'negative' : 'positive'] = true;
     }
+    Object.assign(f, weakProductSign(factors));
     return (_b = close(f)) !== null && _b !== void 0 ? _b : {};
+}
+// factors each known >= 0 or <= 0 give a product known >= 0 or <= 0,
+// e.g. -a^(1/2) <= 0 for a >= 0, and -a^2 <= 0 for real a
+function weakProductSign(factors) {
+    if (!factors.every((t) => t.real && (t.negative === false || t.positive === false))) {
+        return {};
+    }
+    const nonpositive = factors.filter((t) => t.positive === false).length;
+    return { real: true, [nonpositive % 2 ? 'positive' : 'negative']: false };
 }
 function powerFacts(base, exponent) {
     var _a, _b;
@@ -212,6 +283,9 @@ function functionFacts(p) {
     if (f === symbol_1.symbol(defs_1.ABS)) {
         return (_a = close({ real: true, negative: false, zero: arg.zero })) !== null && _a !== void 0 ? _a : {};
     }
+    if (isRoundingFunction(f) && arg.real) {
+        return { real: true, integer: true };
+    }
     if (arg.real) {
         if (f === symbol_1.symbol(defs_1.COSH))
             return (_b = close({ positive: true })) !== null && _b !== void 0 ? _b : {};
@@ -223,6 +297,10 @@ function functionFacts(p) {
         return { real: true };
     }
     return {};
+}
+// floor, ceiling and round give integers
+function isRoundingFunction(f) {
+    return [defs_1.FLOOR, defs_1.CEILING, defs_1.ROUND].some((n) => f === symbol_1.symbol(n));
 }
 // three-valued queries on an evaluated expression
 const isReal = (p) => facts(p).real;
@@ -273,7 +351,7 @@ function Eval_assume(p1) {
     if (args.length === 2 && defs_1.issymbol(args[1]) && !isRelation(args[1])) {
         const name = args[1].printname;
         if (!(name in PROPERTIES)) {
-            run_1.stop(`assume: unknown property ${name}, use real, positive, negative, nonzero or integer`);
+            run_1.stop(`assume: unknown property ${name}, use real, positive, negative, nonzero, integer or complex`);
         }
         addAssumption(args[0], PROPERTIES[name]);
     }
@@ -328,6 +406,8 @@ function addAssumption(x, f) {
 // the facts as user-level property names, leaving out implied ones
 function describe(f) {
     const names = [];
+    if (f.complex)
+        names.push('complex');
     if (f.real && !f.integer && !f.positive && !f.negative)
         names.push('real');
     if (f.integer)
@@ -370,3 +450,24 @@ function Eval_assumptions() {
     return scan_1.build_tensor(lines);
 }
 exports.Eval_assumptions = Eval_assumptions;
+// ------------------------------------------------- solutions of equations
+// Whether a candidate value for x is known to violate the assumptions
+// made explicitly about x. The default realness of symbols doesn't count:
+// solve(x^2+1,x) keeps its complex roots unless x is assumed real.
+function violatesAssumptions(value, x) {
+    return violatedBy(facts(value), x);
+}
+exports.violatesAssumptions = violatesAssumptions;
+// the same for an approximate number re + i*im (nroots, nsolve): parts
+// within 1e-6 of an integer are taken as that integer
+// ponytail: fixed tolerance, pass one in if a caller needs another
+function approxViolatesAssumptions(re, im, x) {
+    const snap = (d) => Math.abs(d - Math.round(d)) <= 1e-6 * Math.max(1, Math.abs(d)) ? Math.round(d) : d;
+    const f = snap(im) === 0 ? realFacts(snap(re)) : { real: false, zero: false };
+    return violatedBy(f, x);
+}
+exports.approxViolatesAssumptions = approxViolatesAssumptions;
+function violatedBy(f, x) {
+    const assumed = defs_1.issymbol(x) ? assumptions.get(x.printname) : undefined;
+    return assumed !== undefined && merge(assumed, f) === null;
+}

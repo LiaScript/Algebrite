@@ -7,6 +7,7 @@ const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const misc_1 = require("../sources/misc");
 const add_1 = require("./add");
+const assume_1 = require("./assume");
 const bignum_1 = require("./bignum");
 const coeff_1 = require("./coeff");
 const eval_1 = require("./eval");
@@ -52,6 +53,7 @@ function Eval_nroots(p1) {
     let p2 = eval_1.Eval(defs_1.caddr(p1));
     p1 = eval_1.Eval(defs_1.cadr(p1));
     p2 = p2 === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(p1) : p2;
+    const x = p2;
     if (!is_1.ispolyexpandedform(p1, p2)) {
         run_1.stop('nroots: polynomial?');
     }
@@ -82,11 +84,17 @@ function Eval_nroots(p1) {
         if (Math.abs(nroots_a.i) < NROOTS_DELTA) {
             nroots_a.i = 0.0;
         }
-        roots.push(add_1.add(bignum_1.double(nroots_a.r), multiply_1.multiply(bignum_1.double(nroots_a.i), defs_1.Constants.imaginaryunit)));
+        // roots known to violate the assumptions about x are left out
+        if (!assume_1.approxViolatesAssumptions(nroots_a.r, nroots_a.i, x)) {
+            roots.push(add_1.add(bignum_1.double(nroots_a.r), multiply_1.multiply(bignum_1.double(nroots_a.i), defs_1.Constants.imaginaryunit)));
+        }
         NROOTS_divpoly(k);
     }
     // now make n equal to the number of roots
     n = roots.length;
+    if (n == 0 && cs.length > 1) {
+        run_1.stop(`nroots: no solution satisfies the assumptions about ${x}`);
+    }
     if (n == 1) {
         return roots[0];
     }

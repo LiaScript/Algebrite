@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.rect = exports.Eval_rect = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
 const symbol_1 = require("../runtime/symbol");
@@ -39,7 +40,7 @@ function rect(p1) {
         if (DEBUG_RECT) {
             console.log(` rect: simple symbol: ${input}`);
         }
-        if (!is_1.isZeroAtomOrTensor(symbol_1.get_binding(symbol_1.symbol(defs_1.ASSUME_REAL_VARIABLES)))) {
+        if (assume_1.isReal(p1)) {
             return p1;
         }
         return list_1.makeList(symbol_1.symbol(defs_1.YYRECT), p1);
@@ -54,7 +55,7 @@ function rect(p1) {
         // which shouldn't match but do
         //
     }
-    if (!is_1.isZeroAtomOrTensor(symbol_1.get_binding(symbol_1.symbol(defs_1.ASSUME_REAL_VARIABLES))) &&
+    if (assume_1.allSymbolsReal(p1) &&
         !find_1.findPossibleExponentialForm(p1) && // no exp form?
         !find_1.findPossibleClockForm(p1, p1) && // no clock form?
         !(find_1.Find(p1, symbol_1.symbol(defs_1.SIN)) &&
@@ -68,7 +69,7 @@ function rect(p1) {
     }
     if (defs_1.ismultiply(p1) &&
         is_1.isimaginaryunit(defs_1.cadr(p1)) &&
-        !is_1.isZeroAtomOrTensor(symbol_1.get_binding(symbol_1.symbol(defs_1.ASSUME_REAL_VARIABLES)))) {
+        assume_1.allSymbolsReal(p1)) {
         return p1; // sum
     }
     if (defs_1.isadd(p1)) {

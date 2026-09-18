@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sgn = exports.Eval_sgn = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
 const abs_1 = require("./abs");
@@ -45,6 +46,10 @@ function sgn(X) {
     if (is_1.iscomplexnumber(X)) {
         // sgn(z) = z/|z| for complex z
         return multiply_1.divide(X, abs_1.absval(X));
+    }
+    const known = assume_1.facts(X);
+    if (known.positive || known.negative || known.zero) {
+        return known.positive ? defs_1.Constants.one : known.negative ? defs_1.Constants.negOne : defs_1.Constants.zero;
     }
     if (is_1.isnegativeterm(X)) {
         return multiply_1.multiply(list_1.makeList(symbol_1.symbol(defs_1.SGN), multiply_1.negate(X)), defs_1.Constants.negOne);

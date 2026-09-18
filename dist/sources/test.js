@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.cmp_values = exports.Eval_or = exports.Eval_and = exports.Eval_not = exports.Eval_testlt = exports.Eval_testle = exports.Eval_testgt = exports.Eval_testge = exports.Eval_testeq = exports.Eval_test = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
 const add_1 = require("./add");
@@ -294,6 +295,7 @@ function cmp_values(arg1, arg2) {
     if (quantity_1.isQuantity(p1)) {
         p1 = defs_1.cadr(p1);
     }
+    const difference = p1;
     // try floating point if necessary
     if (p1.k !== defs_1.NUM && p1.k !== defs_1.DOUBLE) {
         p1 = eval_1.Eval(float_1.yyfloat(p1));
@@ -321,9 +323,11 @@ function cmp_values(arg1, arg2) {
                 t = 1;
             }
             break;
-        default:
-            //console.log "comparison is null"
-            t = null;
+        default: {
+            // the sign may be known from the assumptions
+            const known = assume_1.facts(difference);
+            t = known.positive ? 1 : known.negative ? -1 : known.zero ? 0 : null;
+        }
     }
     return t;
 }

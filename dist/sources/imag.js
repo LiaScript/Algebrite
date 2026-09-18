@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.imag = exports.Eval_imag = void 0;
+const assume_1 = require("./assume");
+const list_1 = require("./list");
+const symbol_1 = require("../runtime/symbol");
 const defs_1 = require("../runtime/defs");
 const add_1 = require("./add");
 const bignum_1 = require("./bignum");
@@ -24,6 +27,9 @@ function Eval_imag(p1) {
 }
 exports.Eval_imag = Eval_imag;
 function imag(p) {
+    if (!assume_1.allSymbolsReal(p)) {
+        return list_1.makeList(symbol_1.symbol(defs_1.IMAG), p);
+    }
     const p1 = rect_1.rect(p);
     const conj = conj_1.conjugate(p1);
     const arg1 = multiply_1.divide(add_1.subtract(p1, conj), bignum_1.integer(2));

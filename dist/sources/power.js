@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.power = exports.Eval_power = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
 const run_1 = require("../runtime/run");
@@ -192,11 +193,21 @@ function yypower(base, exponent) {
         }
         return result;
     }
+    // (-1)^k for a symbolic integer k (from the assumptions): 1 when k is
+    // even, -1 when k is odd
+    if (is_1.isminusone(base) && !defs_1.isdouble(base) && !defs_1.isNumericAtom(exponent)) {
+        if (assume_1.isInteger(multiply_1.divide(exponent, bignum_1.integer(2)))) {
+            return defs_1.Constants.one;
+        }
+        if (assume_1.isInteger(multiply_1.divide(add_1.subtract(exponent, defs_1.Constants.one), bignum_1.integer(2)))) {
+            return defs_1.Constants.negOne;
+        }
+    }
     // if we only assume variables to be real, then |a|^2 = a^2
     // (if x is complex this doesn't hold e.g. i, which makes 1 and -1
     if (defs_1.car(base) === symbol_1.symbol(defs_1.ABS) &&
         is_1.iseveninteger(exponent) &&
-        !is_1.isZeroAtomOrTensor(symbol_1.get_binding(symbol_1.symbol(defs_1.ASSUME_REAL_VARIABLES)))) {
+        assume_1.isReal(defs_1.cadr(base))) {
         const result = power(defs_1.cadr(base), exponent);
         if (DEBUG_POWER) {
             console.log('   power: even power of absolute of real value ');
@@ -236,7 +247,10 @@ function yypower(base, exponent) {
     // sqrt(x*y) != x^(1/2) y^(1/2) (counterexample" x = -1 and y = -1)
     // BUT we can carve-out here some cases where this
     // transformation is correct
-    if (defs_1.ismultiply(base) && is_1.isinteger(exponent)) {
+    if (defs_1.ismultiply(base) &&
+        (is_1.isinteger(exponent) ||
+            assume_1.isInteger(exponent) ||
+            base.tail().every((f) => assume_1.isReal(f) && assume_1.isNegative(f) === false))) {
         base = defs_1.cdr(base);
         let result = power(defs_1.car(base), exponent);
         if (defs_1.iscons(base)) {
@@ -250,6 +264,14 @@ function yypower(base, exponent) {
         }
         return result;
     }
+    // (-k * u) ^ c  ->  (-1) ^ c * (k * u) ^ c  for k > 0 and u known >= 0,
+    // right on the principal branch: with a > 0, (-a)^(1/2) = i*a^(1/2)
+    if (defs_1.ismultiply(base) &&
+        defs_1.isrational(exponent) &&
+        is_1.isnegativenumber(defs_1.cadr(base)) &&
+        base.tail().slice(1).every((f) => assume_1.isReal(f) && assume_1.isNegative(f) === false)) {
+        return multiply_1.multiply(power(defs_1.Constants.negOne, exponent), power(multiply_1.negate(base), exponent));
+    }
     // (a ^ b) ^ c  ->  a ^ (b * c)
     // note that we can't in general do this, for example
     // sqrt(x^y) !=  x^(1/2 y) (counterexample x = -1)
@@ -261,9 +283,13 @@ function yypower(base, exponent) {
         is_a_moreThanZero =
             misc_1.sign(bignum_1.compare_numbers(defs_1.cadr(base), defs_1.Constants.zero)) > 0;
     }
+    // also when c is an integer by the assumptions, or when a > 0 and b is
+    // real (then a^b > 0 and log(a^b) = b*log(a))
     if (defs_1.ispower(base) && // when c is an integer
-        (is_1.isinteger(exponent) || is_a_moreThanZero) // when a is >= 0
-    ) {
+        (is_1.isinteger(exponent) ||
+            is_a_moreThanZero || // when a is >= 0
+            assume_1.isInteger(exponent) ||
+            (assume_1.isPositive(defs_1.cadr(base)) && assume_1.isReal(defs_1.caddr(base))))) {
         const result = power(defs_1.cadr(base), multiply_1.multiply(defs_1.caddr(base), exponent));
         if (DEBUG_POWER) {
             console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);
@@ -273,7 +299,7 @@ function yypower(base, exponent) {
     // (a^b)^c with b even and b*c = +-1 is abs(a)^(b*c)
     let b_isEven_and_c_isItsInverse = false;
     let isThisOne;
-    if (is_1.iseveninteger(defs_1.caddr(base))) {
+    if (is_1.iseveninteger(defs_1.caddr(base)) && assume_1.isReal(defs_1.cadr(base))) {
         isThisOne = multiply_1.multiply(defs_1.caddr(base), exponent);
         if (is_1.isone(isThisOne)) {
             b_isEven_and_c_isItsInverse = true;

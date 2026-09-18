@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sine = exports.Eval_sin = void 0;
+exports.integerTimesPi = exports.sine = exports.Eval_sin = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
 const add_1 = require("./add");
@@ -34,7 +35,7 @@ function sine_of_angle_sum(p1) {
     let p2 = defs_1.cdr(p1);
     while (defs_1.iscons(p2)) {
         const B = defs_1.car(p2);
-        if (is_1.isnpi(B)) {
+        if (is_1.isnpi(B) || integerTimesPi(B)) {
             const A = add_1.subtract(p1, B);
             return add_1.add(multiply_1.multiply(sine(A), cos_1.cosine(B)), multiply_1.multiply(cos_1.cosine(A), sine(B)));
         }
@@ -42,9 +43,23 @@ function sine_of_angle_sum(p1) {
     }
     return sine_of_angle(p1);
 }
+// p = k*pi with k a symbolic integer (from the assumptions): k, else
+// undefined. Numeric multiples are left to isnpi and the degree tables.
+function integerTimesPi(p) {
+    if (!defs_1.ismultiply(p) || !p.tail().includes(symbol_1.symbol(defs_1.PI))) {
+        return undefined;
+    }
+    const k = multiply_1.divide(p, symbol_1.symbol(defs_1.PI));
+    return assume_1.isInteger(k) && !defs_1.isNumericAtom(k) ? k : undefined;
+}
+exports.integerTimesPi = integerTimesPi;
 function sine_of_angle(p1) {
     if (defs_1.car(p1) === symbol_1.symbol(defs_1.ARCSIN)) {
         return defs_1.cadr(p1);
+    }
+    // sin(k*pi) = 0 for integer k
+    if (integerTimesPi(p1)) {
+        return defs_1.Constants.zero;
     }
     if (defs_1.isdouble(p1)) {
         let d = Math.sin(p1.d);

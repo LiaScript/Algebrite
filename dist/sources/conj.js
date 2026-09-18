@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.conjugate = exports.conj = exports.Eval_conj = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
 const clock_1 = require("./clock");
@@ -9,6 +10,8 @@ const is_1 = require("./is");
 const multiply_1 = require("./multiply");
 const polar_1 = require("./polar");
 const subst_1 = require("./subst");
+const list_1 = require("./list");
+const symbol_1 = require("../runtime/symbol");
 const quantity_1 = require("./quantity");
 /* conj =====================================================================
 
@@ -35,7 +38,7 @@ function conj(p1) {
     // Without any, the value is real: going through polar would lose the
     // sign, since arg() assumes symbols positive (conj(a-b) gave abs(a-b)).
     if (!hasPowerOfMinusOne(p1)) {
-        return p1;
+        return assume_1.allSymbolsReal(p1) ? p1 : list_1.makeList(symbol_1.symbol(defs_1.CONJ), p1);
     }
     if (!find_1.Find(p1, defs_1.Constants.imaginaryunit)) {
         // example: (-1)^(1/3)
@@ -61,6 +64,10 @@ function conjugate(p1) {
     const q = quantity_1.mapQuantity(p1, conjugate);
     if (q) {
         return q;
+    }
+    // flipping the sign of i conjugates only when the symbols are real
+    if (!assume_1.allSymbolsReal(p1)) {
+        return list_1.makeList(symbol_1.symbol(defs_1.CONJ), p1);
     }
     return eval_1.Eval(subst_1.subst(p1, defs_1.Constants.imaginaryunit, multiply_1.negate(defs_1.Constants.imaginaryunit)));
 }

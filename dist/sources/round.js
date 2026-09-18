@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Eval_round = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
 const add_1 = require("./add");
@@ -17,7 +18,8 @@ function Eval_round(p1) {
 exports.Eval_round = Eval_round;
 function yround(p1) {
     if (!defs_1.isNumericAtom(p1)) {
-        return list_1.makeList(symbol_1.symbol(defs_1.ROUND), p1);
+        // an integer by the assumptions, e.g. n or n^2+1 for integer n
+        return assume_1.isInteger(p1) ? p1 : list_1.makeList(symbol_1.symbol(defs_1.ROUND), p1);
     }
     if (defs_1.isdouble(p1)) {
         return bignum_1.double(Math.round(p1.d));

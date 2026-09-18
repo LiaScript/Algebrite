@@ -6,6 +6,7 @@ const find_1 = require("../runtime/find");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const add_1 = require("./add");
+const assume_1 = require("./assume");
 const derivative_1 = require("./derivative");
 const eval_1 = require("./eval");
 const float_1 = require("./float");
@@ -101,7 +102,7 @@ function toNumber(p) {
 // confirmed on the simplified integrand, (x^2-1)/(x-1) has no pole.
 // ponytail: poles closer than ~1e-4 to a bound are taken as endpoint poles
 function checkNoInteriorPole(f, X, a, b) {
-    const [lo, hi] = [toNumber(a), toNumber(b)].sort((u, v) => u - v);
+    const [[lo, loU], [hi, hiU]] = [[toNumber(a), a], [toNumber(b), b]].sort((u, v) => u[0] - v[0]);
     if (isNaN(lo) || isNaN(hi)) {
         return;
     }
@@ -109,6 +110,10 @@ function checkNoInteriorPole(f, X, a, b) {
         const tol = 1e-4 * Math.max(1, Math.abs(r));
         return r > lo + tol && r < hi - tol;
     };
+    // a symbolic pole, e.g. x = a with a > 0 in (0,inf): only when the
+    // assumptions say it is strictly inside
+    inside.symbolic = (r) => (lo === -Infinity || assume_1.isPositive(add_1.subtract(r, loU)) === true) &&
+        (hi === Infinity || assume_1.isPositive(add_1.subtract(hiU, r)) === true);
     const pole = poleIn(f, X, inside);
     if (pole !== undefined && poleIn(simplify_1.simplify(f), X, inside) !== undefined) {
         run_1.stop(`defint: the integrand has a pole at ${X} = ${pole} inside the interval`);
@@ -171,7 +176,7 @@ function zerosIn(g, X, inside) {
         roots = eval_1.Eval(list_1.makeList(symbol_1.symbol(defs_1.NROOTS), g, X));
     }
     catch (e) {
-        return undefined; // symbolic coefficients
+        return symbolicLinearZeroIn(g, X, inside); // symbolic coefficients
     }
     for (const z of defs_1.istensor(roots) ? roots.elem : [roots]) {
         const re = float_1.zzfloat(real_1.real(z));
@@ -184,4 +189,14 @@ function zerosIn(g, X, inside) {
         }
     }
     return undefined;
+}
+// the zero of alpha*x + beta with symbolic alpha != 0 and beta, as text
+function symbolicLinearZeroIn(g, X, inside) {
+    var _a;
+    const alpha = derivative_1.derivative(g, X);
+    if (find_1.Find(alpha, X) || assume_1.isNonzero(alpha) !== true) {
+        return undefined;
+    }
+    const r = multiply_1.negate(multiply_1.divide(subst_1.subst(g, X, defs_1.Constants.zero), alpha));
+    return ((_a = inside.symbolic) === null || _a === void 0 ? void 0 : _a.call(inside, r)) ? `${r}` : undefined;
 }

@@ -42,7 +42,7 @@ exports.cosine = cosine;
 function cosine_of_angle_sum(p1) {
     if (defs_1.iscons(p1)) {
         for (const B of p1.tail()) {
-            if (is_1.isnpi(B)) {
+            if (is_1.isnpi(B) || sin_1.integerTimesPi(B)) {
                 const A = add_1.subtract(p1, B);
                 return add_1.subtract(multiply_1.multiply(cosine(A), cosine(B)), multiply_1.multiply(sin_1.sine(A), sin_1.sine(B)));
             }
@@ -53,6 +53,11 @@ function cosine_of_angle_sum(p1) {
 function cosine_of_angle(p1) {
     if (defs_1.car(p1) === symbol_1.symbol(defs_1.ARCCOS)) {
         return defs_1.cadr(p1);
+    }
+    // cos(k*pi) = (-1)^k for integer k
+    const k = sin_1.integerTimesPi(p1);
+    if (k) {
+        return power_1.power(defs_1.Constants.negOne, k);
     }
     if (defs_1.isdouble(p1)) {
         let d = Math.cos(p1.d);

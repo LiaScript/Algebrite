@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.arg = exports.Eval_arg = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
 const symbol_1 = require("../runtime/symbol");
@@ -117,10 +118,17 @@ function yyarg(p1) {
             ? defs_1.Constants.piAsDouble
             : symbol_1.symbol(defs_1.PI);
     }
-    // you'd think that something like
-    // arg(a) is always 0 when a is real but no,
-    // arg(a) is pi when a is negative so we have
-    // to leave unexpressed
+    // arg(a) is 0 for a > 0 and pi for a < 0, so without a known sign a
+    // symbol is left unexpressed
+    // real and >= 0 (arg(0) = 0 by convention), or < 0
+    const known = assume_1.facts(p1);
+    const nonnegative = known.real && known.negative === false;
+    if (nonnegative || known.negative) {
+        const float = defs_1.isdouble(p1) || defs_1.defs.evaluatingAsFloats;
+        return nonnegative
+            ? float ? defs_1.Constants.zeroAsDouble : defs_1.Constants.zero
+            : float ? defs_1.Constants.piAsDouble : symbol_1.symbol(defs_1.PI);
+    }
     if (defs_1.issymbol(p1)) {
         return list_1.makeList(symbol_1.symbol(defs_1.ARG), p1);
     }
@@ -149,17 +157,19 @@ function yyarg(p1) {
         return p1.tail().map(yyarg).reduce(add_1.add, defs_1.Constants.zero);
     }
     if (defs_1.isadd(p1)) {
-        // sum of terms
+        // sum of terms: the quadrant needs the signs of the real and imaginary
+        // parts; when one is unknown, arg stays unevaluated
+        const unknown = list_1.makeList(symbol_1.symbol(defs_1.ARG), p1);
         p1 = rect_1.rect(p1);
         const RE = real_1.real(p1);
         const IM = imag_1.imag(p1);
         if (is_1.isZeroAtomOrTensor(RE)) {
-            if (is_1.isnegative(IM)) {
-                return multiply_1.negate(defs_1.Constants.Pi());
+            // on the imaginary axis: +-pi/2 (this gave +-pi)
+            const s = signOf(IM);
+            if (s === null || s === 0) {
+                return s === 0 ? defs_1.Constants.zero : unknown;
             }
-            else {
-                return defs_1.Constants.Pi();
-            }
+            return multiply_1.multiply(defs_1.Constants.Pi(), bignum_1.rational(s, 2));
         }
         else {
             const ratio = multiply_1.divide(IM, RE);
@@ -170,7 +180,11 @@ function yyarg(p1) {
                 misc_1.equal(defs_1.cadr(S), defs_1.cadr(C))) {
                 // z = r (cos(a) + i sin(a)): the angle is a, turned by pi if r < 0
                 const a = defs_1.cadr(S);
-                if (!isbelowzero(multiply_1.divide(RE, C))) {
+                const r = signOf(multiply_1.divide(RE, C));
+                if (r === null) {
+                    return unknown;
+                }
+                if (r >= 0) {
                     return a;
                 }
                 return is_1.realconstant(a) < 0
@@ -178,8 +192,16 @@ function yyarg(p1) {
                     : add_1.subtract(a, defs_1.Constants.Pi());
             }
             const arg1 = arctan_1.arctan(ratio);
-            if (isbelowzero(RE)) {
-                if (isbelowzero(IM)) {
+            const re = signOf(RE);
+            if (re === null) {
+                return unknown;
+            }
+            if (re < 0) {
+                const im = signOf(IM);
+                if (im === null) {
+                    return unknown;
+                }
+                if (im < 0) {
                     return add_1.subtract(arg1, defs_1.Constants.Pi()); // quadrant 1 -> 3
                 }
                 else {
@@ -189,16 +211,23 @@ function yyarg(p1) {
             return arg1;
         }
     }
-    if (!is_1.isZeroAtomOrTensor(symbol_1.get_binding(symbol_1.symbol(defs_1.ASSUME_REAL_VARIABLES)))) {
-        // if we assume all passed values are real
-        return defs_1.Constants.zero;
-    }
+    // a real value of unknown sign has arg 0 or pi: nothing to say (this
+    // returned 0, silently assuming it positive: arg(a-b) = 0)
     // if we don't assume all passed values are real, all
     // we con do is to leave unexpressed
     return list_1.makeList(symbol_1.symbol(defs_1.ARG), p1);
 }
 // numeric sign test when possible (-cos(4/5*pi) > 0, cos(8/9*pi) < 0),
 // else the syntactic one (symbols are assumed positive)
+// sign of a real value, numerically or from the assumptions; null if unknown
+function signOf(p) {
+    const d = is_1.realconstant(p);
+    if (!isNaN(d)) {
+        return Math.sign(d);
+    }
+    const f = assume_1.facts(p);
+    return f.positive ? 1 : f.negative ? -1 : f.zero ? 0 : null;
+}
 function isbelowzero(p) {
     const d = is_1.realconstant(p);
     return isNaN(d) ? is_1.isnegative(p) : d < 0;

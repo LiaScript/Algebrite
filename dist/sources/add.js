@@ -4,6 +4,7 @@ exports.subtract = exports.add_all = exports.add = exports.Eval_add = void 0;
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
+const assume_1 = require("./assume");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
@@ -47,7 +48,8 @@ function Eval_add(p1) {
 }
 exports.Eval_add = Eval_add;
 // With an inf term present, inf-inf stops, and finite numbers and repeated
-// infs are absorbed. Terms with symbols are kept: a symbol could be infinite.
+// infs are absorbed. Terms with symbols are kept, a symbol could be
+// infinite, unless their sign is known from the assumptions (1/a, a > 0).
 function absorbIntoInfinity(terms) {
     const inf = symbol_1.symbol(defs_1.INF);
     const signOf = (t) => t === inf
@@ -69,9 +71,13 @@ function absorbIntoInfinity(terms) {
     if (sign === 0) {
         return terms;
     }
-    const rest = terms.filter((t) => signOf(t) === 0 && !defs_1.isNumericAtom(t));
+    const rest = terms.filter((t) => signOf(t) === 0 && !defs_1.isNumericAtom(t) && !hasKnownSign(t));
     rest.push(sign === 1 ? inf : multiply_1.negate(inf));
     return rest;
+}
+function hasKnownSign(t) {
+    const f = assume_1.facts(t);
+    return !!(f.positive || f.negative || f.zero);
 }
 // Add terms, returns one expression.
 function add_terms(terms) {

@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.roots = exports.Eval_roots = exports.normalizeEquation = exports.equationToExpr = void 0;
+exports.roots = exports.keepAssumedRoots = exports.Eval_roots = exports.normalizeEquation = exports.equationToExpr = void 0;
 const alloc_1 = require("../runtime/alloc");
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const misc_1 = require("../sources/misc");
 const abs_1 = require("./abs");
+const assume_1 = require("./assume");
 const add_1 = require("./add");
 const bignum_1 = require("./bignum");
 const coeff_1 = require("./coeff");
@@ -16,6 +17,7 @@ const guess_1 = require("./guess");
 const is_1 = require("./is");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
+const scan_1 = require("./scan");
 const simplify_1 = require("./simplify");
 const log = {
     debug: (str) => {
@@ -61,9 +63,24 @@ function Eval_roots(POLY) {
     if (!is_1.ispolyexpandedform(POLY1, X1)) {
         run_1.stop('roots: 1st argument is not a polynomial in the variable ' + X1);
     }
-    return roots(POLY1, X1);
+    return keepAssumedRoots(roots(POLY1, X1), X1, 'roots');
 }
 exports.Eval_roots = Eval_roots;
+// Drops the roots known to violate the assumptions about x. What is left
+// has the shape roots() gives: a lone root bare, several as a list, none
+// is a stop, as for a polynomial roots() can't solve.
+function keepAssumedRoots(result, x, fn) {
+    const all = defs_1.istensor(result) ? result.tensor.elem : [result];
+    const kept = all.filter((r) => !assume_1.violatesAssumptions(r, x));
+    if (kept.length === all.length) {
+        return result;
+    }
+    if (kept.length === 0) {
+        run_1.stop(`${fn}: no solution satisfies the assumptions about ${x}`);
+    }
+    return kept.length === 1 ? kept[0] : scan_1.build_tensor(kept);
+}
+exports.keepAssumedRoots = keepAssumedRoots;
 function hasImaginaryCoeff(k) {
     return k.some((c) => is_1.iscomplexnumber(c));
 }
@@ -142,6 +159,21 @@ function rootsList(poly, x) {
 function getSimpleRoots(n, leadingCoeff, lastCoeff) {
     log.debug('getSimpleRoots');
     n = n - 1;
+    // x^n = m for a negative-looking constant term -m: m^(1/n) times the
+    // n-th roots of unity, so x^2 = a gives +-a^(1/2), not +-i*(-a)^(1/2)
+    if (is_1.isnegativeterm(lastCoeff)) {
+        const root = multiply_1.divide(power_1.power(multiply_1.negate(lastCoeff), bignum_1.rational(1, n)), power_1.power(leadingCoeff, bignum_1.rational(1, n)));
+        const unity = (k) => power_1.power(defs_1.Constants.negOne, bignum_1.rational(2 * k, n));
+        const found = [];
+        for (let k = 0; k < (n % 2 === 0 ? n / 2 : n); k++) {
+            const r = multiply_1.multiply(root, unity(k));
+            found.push(r);
+            if (n % 2 === 0) {
+                found.push(multiply_1.negate(r));
+            }
+        }
+        return found;
+    }
     const commonPart = multiply_1.divide(power_1.power(lastCoeff, bignum_1.rational(1, n)), power_1.power(leadingCoeff, bignum_1.rational(1, n)));
     const results = [];
     if (n % 2 === 0) {

@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.logarithm = exports.Eval_log = void 0;
+const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
 const abs_1 = require("./abs");
@@ -68,14 +69,36 @@ function logarithm(p1) {
     if (is_1.isfraction(p1)) {
         return add_1.subtract(logarithm(numerator_1.numerator(p1)), logarithm(denominator_1.denominator(p1)));
     }
-    // log(a ^ b) --> b log(a)
+    // log(a ^ b) --> b log(a) holds on the principal branch for a > 0 and
+    // real b, and for b in (-1,1]; for even b and real a it is b log|a|
+    // (log(x^2) = 2 log(x) would be wrong for x < 0)
     if (defs_1.ispower(p1)) {
-        return multiply_1.multiply(defs_1.caddr(p1), logarithm(defs_1.cadr(p1)));
+        const [a, b] = [defs_1.cadr(p1), defs_1.caddr(p1)];
+        if (assume_1.isPositive(a) && assume_1.isReal(b)) {
+            return multiply_1.multiply(b, logarithm(a));
+        }
+        if (is_1.iseveninteger(b) && assume_1.isReal(a)) {
+            return multiply_1.multiply(b, logarithm(abs_1.abs(a)));
+        }
+        if (defs_1.isrational(b) && isInHalfOpenUnit(b)) {
+            return multiply_1.multiply(b, logarithm(a));
+        }
+        return list_1.makeList(symbol_1.symbol(defs_1.LOG), p1);
     }
-    // log(a * b) --> log(a) + log(b)
+    // log(a * b) --> log(a) + log(b) when at most one factor is not known to
+    // be positive (log(-x) = i pi + log(x) needs x > 0)
     if (defs_1.ismultiply(p1)) {
-        return p1.tail().map(logarithm).reduce(add_1.add, defs_1.Constants.zero);
+        const factors = p1.tail();
+        if (factors.filter((f) => !assume_1.isPositive(f)).length > 1) {
+            return list_1.makeList(symbol_1.symbol(defs_1.LOG), p1);
+        }
+        return factors.map(logarithm).reduce(add_1.add, defs_1.Constants.zero);
     }
     return list_1.makeList(symbol_1.symbol(defs_1.LOG), p1);
 }
 exports.logarithm = logarithm;
+// -1 < b <= 1
+function isInHalfOpenUnit(b) {
+    const v = b.q.a.toJSNumber() / b.q.b.toJSNumber();
+    return v > -1 && v <= 1;
+}

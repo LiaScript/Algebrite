@@ -158,6 +158,8 @@ const builtin_fns = [
     'eigen',
     'eigenval',
     'eigenvec',
+    'eigenvalues',
+    'eigenvectors',
     'erf',
     'erfc',
     'eval',
