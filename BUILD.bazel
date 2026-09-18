@@ -1248,3 +1248,12 @@ nodejs_test(
     ],
     entry_point = ":tests/print.ts",
 )
+
+nodejs_test(
+    name = "test_misc",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/misc.ts",
+)
