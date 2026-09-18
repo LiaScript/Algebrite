@@ -6313,6 +6313,7 @@
       var real_1 = require_real();
       var rect_1 = require_rect();
       var roots_1 = require_roots();
+      var subst_1 = require_subst();
       var simfac_1 = require_simfac();
       var tensor_1 = require_tensor();
       var transform_1 = require_transform();
@@ -6425,9 +6426,33 @@
         }
         p1 = simplify_rectToClock(p1);
         p1 = simplify_rational_expressions(p1);
+        p1 = rationalize_sqrt_denominator(p1);
         return p1;
       }
       exports.simplify = simplify;
+      function rationalize_sqrt_denominator(p1) {
+        const hasSymbol = (p) => defs_1.issymbol(p) || defs_1.iscons(p) && p.tail().some(hasSymbol);
+        const numericSqrt = (p) => {
+          if (defs_1.ispower(p) && is_1.ispositivenumber(defs_1.cadr(p)) && is_1.isoneovertwo(defs_1.caddr(p))) {
+            return p;
+          }
+          return defs_1.iscons(p) ? p.tail().map(numericSqrt).find(Boolean) : void 0;
+        };
+        let denom = denominator_1.denominator(p1);
+        if (!defs_1.isadd(denom) || hasSymbol(denom)) {
+          return p1;
+        }
+        for (let sqrt = numericSqrt(denom); sqrt; sqrt = numericSqrt(denom)) {
+          const conj = eval_1.Eval(subst_1.subst(denom, sqrt, multiply_1.negate(sqrt)));
+          const newDenom = multiply_1.multiply(denom, conj);
+          if (find_1.Find(newDenom, sqrt)) {
+            return p1;
+          }
+          p1 = multiply_1.divide(multiply_1.multiply(numerator_1.numerator(p1), conj), newDenom);
+          denom = denominator_1.denominator(p1);
+        }
+        return p1;
+      }
       function simplify_tensor(p1) {
         let p2 = alloc_1.alloc_tensor(p1.tensor.nelem);
         p2.tensor.ndim = p1.tensor.ndim;
