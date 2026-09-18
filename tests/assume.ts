@@ -303,7 +303,7 @@ run_test([
   'log(x)+2*log(-y)',
 ]);
 
-// without assumptions everything stays as before
+// without assumptions: unchanged, except that log no longer assumes z > 0
 run_test([
   'abs(z)',
   'abs(z)',
@@ -321,8 +321,9 @@ run_test([
   'arg(z)',
 
   'log(z^2)',
-  '2*log(z)',
+  '2*log(abs(z))',
 
+  // log(-z) = log(z) + i pi needs z > 0
   'log(-z)',
-  'log(z)+i*pi',
+  'log(-z)',
 ]);

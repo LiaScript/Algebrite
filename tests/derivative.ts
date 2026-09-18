@@ -255,8 +255,9 @@ run_test([
   'x^(-1+sin(x))*sin(x)+x^(sin(x))*cos(x)*log(x)',
 
   // = 1/x
+  // sgn(x)/abs(x), which is 1/x for x != 0
   'd(log(abs(x)),x)',
-  'sgn(x)/abs(x)',
+  '1/x',
 
   // reciprocal trig functions
   'd(sec(x),x)',

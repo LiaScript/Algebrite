@@ -21,6 +21,7 @@ import {
   LOG,
   NIL,
   NOT,
+  Num,
   PI,
   ROUND,
   SIN,
@@ -36,9 +37,10 @@ import {
   U,
 } from '../runtime/defs';
 import { stop } from '../runtime/run';
-import { get_binding, symbol } from '../runtime/symbol';
+import { collectUserSymbols, get_binding, symbol } from '../runtime/symbol';
+import { coeff } from './coeff';
 import { Eval } from './eval';
-import { isinteger, isZeroAtomOrTensor } from './is';
+import { isinteger, ispolyexpandedform, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { build_tensor } from './scan';
 
@@ -84,6 +86,27 @@ let assumptions = new Map<string, Facts>();
 
 export function clearAssumptions() {
   assumptions = new Map();
+}
+
+// Runs f with the bound variable x temporarily assumed positive or
+// negative (x -> inf in a limit is large and positive); what the user
+// assumed about x is restored afterwards.
+export function withSign<T>(x: U, sign: 'positive' | 'negative', f: () => T): T {
+  if (!issymbol(x)) {
+    return f();
+  }
+  const name = x.printname;
+  const old = assumptions.get(name);
+  assumptions.set(name, close(PROPERTIES[sign]));
+  try {
+    return f();
+  } finally {
+    if (old === undefined) {
+      assumptions.delete(name);
+    } else {
+      assumptions.set(name, old);
+    }
+  }
 }
 
 // ------------------------------------------------------------------ facts
@@ -150,7 +173,11 @@ export function facts(p: U): Facts {
     return symbolFacts(p);
   }
   if (isadd(p)) {
-    return sumFacts(p.tail().map(facts));
+    const f = sumFacts(p.tail().map(facts));
+    if (f.positive === undefined && f.negative === undefined) {
+      return close({ ...f, ...quadraticFacts(p) }) ?? f;
+    }
+    return f;
   }
   if (ismultiply(p)) {
     return productFacts(p.tail().map(facts));
@@ -183,6 +210,26 @@ function isFreeVariable(p: Sym): boolean {
 const oneNonReal = (parts: Facts[], others: (t: Facts) => boolean) =>
   parts.filter((t) => t.real === false).length === 1 &&
   parts.every((t) => t.real === false || others(t));
+
+// a*x^2+b*x+c with numbers a, b, c and b^2-4ac < 0 has no real root, so
+// for real x it has the sign of a (x^2+x+1 > 0)
+function quadraticFacts(p: U): Facts {
+  const vars: U[] = [];
+  collectUserSymbols(p, vars);
+  const x = vars[0];
+  if (vars.length !== 1 || facts(x).real !== true || !ispolyexpandedform(p, x)) {
+    return {};
+  }
+  const k = coeff(p, x);
+  if (k.length !== 3 || !k.every((c) => isrational(c) || isdouble(c))) {
+    return {};
+  }
+  const [c, b, a] = k.map((n) => (isdouble(n) ? n.d : (n as Num).q.a.toJSNumber() / (n as Num).q.b.toJSNumber()));
+  if (b * b - 4 * a * c >= 0) {
+    return {};
+  }
+  return a > 0 ? { positive: true } : { negative: true };
+}
 
 function sumFacts(terms: Facts[]): Facts {
   const all = (key: keyof Facts) => terms.every((t) => t[key] === true);

@@ -1401,3 +1401,12 @@ nodejs_test(
     ],
     entry_point = ":tests/assume_integral.ts",
 )
+
+nodejs_test(
+    name = "test_assume_default",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/assume_default.ts",
+)

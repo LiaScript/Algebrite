@@ -4,6 +4,7 @@ import {
   cadr,
   car,
   cdr,
+  Constants,
   E,
   EXP,
   INTEGRAL,
@@ -11,6 +12,7 @@ import {
   iscons,
   ismultiply,
   isNumericAtom,
+  LOG,
   issymbol,
   METAX,
   MULTIPLY,
@@ -24,7 +26,10 @@ import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
 import { checkArgCount, equal } from '../sources/misc';
+import { abs } from './abs';
 import { add } from './add';
+import { isPositive, isReal } from './assume';
+import { logarithm } from './log';
 import { double, nativeInt } from './bignum';
 import { derivative } from './derivative';
 import { Eval } from './eval';
@@ -365,6 +370,8 @@ const itab: string[] = [
   'f(log(x)^2,x*log(x)^2-2*x*log(x)+2*x)',
   // 493 (with addition of a)
   'f(1/x*1/(a+log(x)),log(a+log(x)))',
+  // log(a*x) no longer splits into log(a)+log(x) without a sign
+  'f(1/x*1/log(a*x),log(log(a*x)))',
   // 499
   'f(log(a*x+b),(a*x+b)*log(a*x+b)/a-x)',
   // 500
@@ -456,7 +463,9 @@ export function Eval_integral(p1: U) {
     let temp: U = F;
     if (n >= 0) {
       for (let i = 0; i < n; i++) {
-        temp = integral(temp, X);
+        // with log already in the integrand it isn't real for u < 0 anyway
+        const G = integral(temp, X);
+        temp = Find(temp, symbol(LOG)) ? G : realLogs(G, X);
       }
     } else {
       n = -n;
@@ -501,6 +510,30 @@ export function Eval_integral(p1: U) {
   }
 
   return F;
+}
+
+// A term c*log(u) with c free of X and u real (not known positive) becomes
+// c*log(abs(u)): d/dX log|u| = u'/u as well, so it is still an
+// antiderivative, and the real one where u < 0. Only such terms: in
+// x*log(x) the log can't change.
+function realLogs(F: U, X: U): U {
+  const terms = isadd(F) ? F.tail() : [F];
+  return terms.reduce((acc: U, t: U) => add(acc, realLogTerm(t, X)), Constants.zero);
+}
+
+function realLogTerm(t: U, X: U): U {
+  const factors = ismultiply(t) ? t.tail() : [t];
+  const withX = factors.filter((f) => Find(f, X));
+  const log = withX[0];
+  if (withX.length !== 1 || car(log) !== symbol(LOG)) {
+    return t;
+  }
+  const u = cadr(log);
+  if (isReal(u) !== true || isPositive(u)) {
+    return t;
+  }
+  const c = factors.filter((f) => f !== log).reduce(multiply, Constants.one);
+  return multiply(c, logarithm(abs(u)));
 }
 
 export function integral(F: U, X: U): U {
@@ -940,6 +973,7 @@ var hashed_itab: { [key: string]: string[] } = {
   '1.325058': ['f(x^2*log(a*x),x^3*log(a*x)/3-1/9*x^3)'],
   '2.108018': ['f(log(x)^2,x*log(x)^2-2*x*log(x)+2*x)'],
   '0.403214': ['f(1/x*1/(a+log(x)),log(a+log(x)))'],
+  '0.720965': ['f(1/x*1/log(a*x),log(log(a*x)))'],
   '2.269268': ['f(log(a*x+b),(a*x+b)*log(a*x+b)/a-x)'],
   '2.486498': ['f(log(a*x+b)/x^2,a/b*log(x)-(a*x+b)*log(a*x+b)/b/x)'],
   '1.769733': ['f(sinh(x),cosh(x))'],

@@ -15,7 +15,7 @@ run_test([
   'arcsin(x/(a^(1/2)))',
 
   'integral(1/x,x)',
-  'log(x)',
+  'log(abs(x))',
 
   'integral(1/(x^2+a*x+b),x)',
   '2*arctan(2*x/((4*b-a^2)^(1/2))+a/((4*b-a^2)^(1/2)))/((4*b-a^2)^(1/2))',
@@ -32,7 +32,7 @@ run_test([
 
   // x^2-a with a > 0: log form
   'integral(1/(x^2-a),x)',
-  'log(-a/(-a^(1/2)*x-a)+a^(1/2)*x/(-a^(1/2)*x-a))/(2*a^(1/2))',
+  'log(abs(-a^(1/2)*x+a)/abs(a^(1/2)*x+a))/(2*a^(1/2))',
 
   'integral(1/sqrt(a-x^2),x)',
   'arcsin(x/(a^(1/2)))',
@@ -48,14 +48,14 @@ run_test([
   '',
 
   'integral(1/(x^2+a),x)',
-  'log(a/(-(-a)^(1/2)*x+a)+x*(-a)^(1/2)/(-(-a)^(1/2)*x+a))/(2*(-a)^(1/2))',
+  'log(abs((-a)^(1/2)*x+a)/abs(-(-a)^(1/2)*x+a))/(2*(-a)^(1/2))',
 
   'integral(1/(x^2-a),x)',
   'arctan(x/((-a)^(1/2)))/((-a)^(1/2))',
 
   // a-x^2 < 0: 1/sqrt(a-x^2) = -i/sqrt(x^2-a)
   'integral(1/sqrt(a-x^2),x)',
-  '-i*log(x+(x^2-a)^(1/2))',
+  '-i*log(abs(x+(x^2-a)^(1/2)))',
 
   'integral(1/x*1/sqrt(a+b*x),x)',
   '2*arctan((-b*x/a-1)^(1/2))/((-a)^(1/2))',
@@ -83,7 +83,7 @@ run_test([
   '',
 
   'integral(1/(a*x^2+b),x)',
-  'log(b/(-(-a*b)^(1/2)*x+b)+x*(-a*b)^(1/2)/(-(-a*b)^(1/2)*x+b))/(2*(-a*b)^(1/2))',
+  'log(abs((-a*b)^(1/2)*x+b)/abs(-(-a*b)^(1/2)*x+b))/(2*(-a*b)^(1/2))',
 
   // x^2+a*x+b with b<0: 4*b-a^2 < 0 for any real a, log form
   'forget(a)',
@@ -96,10 +96,10 @@ run_test([
   '1',
 
   'integral(1/(x^2+a*x+b),x)',
-  'log(a/(2*x+a+(-4*b+a^2)^(1/2))+2*x/(2*x+a+(-4*b+a^2)^(1/2))-(-4*b+a^2)^(1/2)/(2*x+a+(-4*b+a^2)^(1/2)))/((-4*b+a^2)^(1/2))',
+  'log(abs(2*x+a-(-4*b+a^2)^(1/2))/abs(2*x+a+(-4*b+a^2)^(1/2)))/((-4*b+a^2)^(1/2))',
 
   'integral(x/(x^2+a*x+b),x)',
-  '-a*log(a/(2*x+a+(-4*b+a^2)^(1/2))+2*x/(2*x+a+(-4*b+a^2)^(1/2))-(-4*b+a^2)^(1/2)/(2*x+a+(-4*b+a^2)^(1/2)))/(2*(-4*b+a^2)^(1/2))+1/2*log(x^2+a*x+b)',
+  '-a*log(abs(2*x+a-(-4*b+a^2)^(1/2))/abs(2*x+a+(-4*b+a^2)^(1/2)))/(2*(-4*b+a^2)^(1/2))+1/2*log(abs(x^2+a*x+b))',
 
   'forget()',
   '',

@@ -250,8 +250,10 @@ run_test([
   'limit((1+1/x)^x,x,inf)',
   "Stop: limit: could not resolve after repeated L'Hopital iterations",
 
+  // x^(1/x) = exp(log(x)/x) -> exp(0) = 1, solvable now that x > 0 is known
+  // near inf
   'limit(x^(1/x),x,inf)',
-  "Stop: limit: could not resolve after repeated L'Hopital iterations",
+  '1',
 
   // exp(-x)^(1/x) is exp(-1) for real x, so this one is not indeterminate
   'limit(exp(-x)^(1/x),x,inf)',

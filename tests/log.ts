@@ -13,14 +13,17 @@ run_test([
   'exp(log(x))',
   'x',
 
+  // the textbook rules log(a^b) = b log(a), log(a*b) = log(a)+log(b) hold
+  // for positive a and b; without assumptions the sign is unknown
+  // (tests/assume_default.ts has the details)
   'log(x^2)',
-  '2*log(x)',
+  '2*log(abs(x))',
 
   'log(1/x)',
-  '-log(x)',
+  'log(1/x)',
 
   'log(a^b)',
-  'b*log(a)',
+  'log(a^b)',
 
   'log(2)',
   'log(2)',
@@ -32,7 +35,7 @@ run_test([
   '0.693147...',
 
   'log(a*b)',
-  'log(a)+log(b)',
+  'log(a*b)',
 
   'log(1/3)+log(3)',
   '0',
@@ -96,7 +99,7 @@ run_test([
   '1/2*log(x)',
 
   'log(x/y)',
-  'log(x)-log(y)',
+  'log(x/y)',
 
   'log(exp(2))',
   '2',
@@ -138,8 +141,9 @@ run_test([
   'log(x,x)',
   '1',
 
+  // log(x^3)/log(x) = 3 needs x > 0 (for x < 0, log(x^3) = 3 log(x) - 2 i pi)
   'log(x^3,x)',
-  '3',
+  'log(x^3)/log(x)',
 
   'log(1/9,3)',
   '-2',
@@ -161,7 +165,7 @@ run_test([
   '3',
 
   'ln(x^2)',
-  '2*log(x)',
+  '2*log(abs(x))',
 
   'ln(-1)',
   'i*pi',
@@ -238,4 +242,34 @@ run_test([
 
   'float(log(-1-2*i))',
   '0.804719...-2.034444...*i',
+]);
+
+// with positive symbols the textbook rules apply
+run_test([
+  'assume(a>0)',
+  '',
+
+  'assume(x>0)',
+  '',
+
+  'assume(y>0)',
+  '',
+
+  'log(x^2)',
+  '2*log(x)',
+
+  'log(1/x)',
+  '-log(x)',
+
+  'log(a^b)',
+  'b*log(a)',
+
+  'log(a*b)',
+  'log(a)+log(b)',
+
+  'log(x/y)',
+  'log(x)-log(y)',
+
+  'log(x^3,x)',
+  '3',
 ]);

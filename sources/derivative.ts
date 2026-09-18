@@ -336,8 +336,9 @@ function dpower(p1: U, p2: Sym): U {
 }
 
 function dlog(p1: U, p2: Sym): U {
-  const deriv = derivative(cadr(p1), p2);
-  return divide(deriv, cadr(p1));
+  // d log|u| = u'/u as for log(u); via abs it would be sgn(u) u'/|u|
+  const u = car(cadr(p1)) === symbol(ABS) ? cadr(cadr(p1)) : cadr(p1);
+  return divide(derivative(u, p2), u);
 }
 
 //  derivative of derivative

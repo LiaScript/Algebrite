@@ -28,7 +28,7 @@ import {
   U
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
-import { facts } from './assume';
+import { facts, withSign } from './assume';
 import { stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
 import { double, integer } from './bignum';
@@ -117,18 +117,25 @@ export function limit(F: U, X: U, A: U, sides: number[] = [-1, 1]): U {
 // x -> +-inf becomes t -> 0 from the right with x = +-1/t (X is reused as t).
 // Numerator and denominator are rationalized separately so the powers of t
 // cancel; rationalizing the whole quotient leaves nested fractions behind.
+// Near +inf, x is positive (near -inf negative), and t -> 0 from the right
+// is positive: rules like log(1/t) = -log(t) need to know that.
 function limitAtInfinity(F: U, X: U, sign: U): U {
-  const direct = atInfinity(F, X, sign);
-  if (direct !== undefined) {
-    return direct;
-  }
-  const lhopital = lhopitalAtInfinity(F, X, sign);
-  if (lhopital !== undefined) {
-    return lhopital;
-  }
-  const at = (p: U) => rationalize(Eval(subst(p, X, divide(sign, X))));
-  const G = divide(at(numerator(F)), at(denominator(F)));
-  return limitAt(G, X, Constants.zero, [1]);
+  const near = isnegativenumber(sign) ? 'negative' : 'positive';
+  return withSign(X, near, () => {
+    const direct = atInfinity(F, X, sign);
+    if (direct !== undefined) {
+      return direct;
+    }
+    const lhopital = lhopitalAtInfinity(F, X, sign);
+    if (lhopital !== undefined) {
+      return lhopital;
+    }
+    return withSign(X, 'positive', () => {
+      const at = (p: U) => rationalize(Eval(subst(p, X, divide(sign, X))));
+      const G = divide(at(numerator(F)), at(denominator(F)));
+      return limitAt(G, X, Constants.zero, [1]);
+    });
+  });
 }
 
 const isInfinite = (p: U) =>

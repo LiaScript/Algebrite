@@ -20,7 +20,7 @@ run_test([
 
   //9
   'integral(1/X,X)',
-  'log(X)',
+  'log(abs(X))',
 
   //11
   'integral(exp(X),X)',
@@ -55,7 +55,7 @@ run_test([
   '0',
 
   //27
-  'integral(1/(a+b*x),x)-(log(a+b*x)/b)',
+  'integral(1/(a+b*x),x)-(log(abs(a+b*x))/b)',
   '0',
 
   //28
@@ -67,47 +67,47 @@ run_test([
   '0',
 
   //30
-  'integral(X/(A+B*X),X)+A*B^(-2)*log(A+B*X)-X/B',
+  'integral(X/(A+B*X),X)+A*B^(-2)*log(abs(A+B*X))-X/B',
   '0',
 
   //31
-  'integral(X/(A+B*X)^2,X)-1/B^2*(log(A+B*X)+A/(A+B*X))',
+  'integral(X/(A+B*X)^2,X)-1/B^2*(log(abs(A+B*X))+A/(A+B*X))',
   '0',
 
   //33
-  'integral(X^2/(A+B*X),X)-1/B^2*(1/2*(A+B*X)^2-2*A*(A+B*X)+A^2*log(A+B*X))',
+  'integral(X^2/(A+B*X),X)-1/B^2*(1/2*(A+B*X)^2-2*A*(A+B*X)+A^2*log(abs(A+B*X)))',
   '0',
 
   //34
-  'integral(X^2/(A+B*X)^2,X)-1/B^3*(A+B*X-2*A*log(A+B*X)-A^2/(A+B*X))',
+  'integral(X^2/(A+B*X)^2,X)-1/B^3*(A+B*X-2*A*log(abs(A+B*X))-A^2/(A+B*X))',
   '0',
 
   //35
-  'integral(X^2/(A+B*X)^3,X)-1/B^3*(log(A+B*X)+2*A/(A+B*X)-1/2*A^2/(A+B*X)^2)',
+  'integral(X^2/(A+B*X)^3,X)-1/B^3*(log(abs(A+B*X))+2*A/(A+B*X)-1/2*A^2/(A+B*X)^2)',
   '0',
 
   //37
-  'integral(1/X*1/(A+B*X),X)+1/A*log((A+B*X)/X)',
+  'integral(1/X*1/(A+B*X),X)+1/A*log(abs((A+B*X)/X))',
   '0',
 
   //38
-  'integral(1/X*1/(A+B*X)^2,X)-1/A*1/(A+B*X)+1/A^2*log((A+B*X)/X)',
+  'integral(1/X*1/(A+B*X)^2,X)-1/A*1/(A+B*X)+1/A^2*log(abs((A+B*X)/X))',
   '0',
 
   //39
-  'integral(1/X*1/(A+B*X)^3,X)-1/A^3*(1/2*((2*A+B*X)/(A+B*X))^2+log(X/(A+B*X)))',
+  'integral(1/X*1/(A+B*X)^3,X)-1/A^3*(1/2*((2*A+B*X)/(A+B*X))^2+log(abs(X/(A+B*X))))',
   '0',
 
   //40
-  'integral(1/X^2*1/(A+B*X),X)+1/(A*X)-B/A^2*log((A+B*X)/X)',
+  'integral(1/X^2*1/(A+B*X),X)+1/(A*X)-B/A^2*log(abs((A+B*X)/X))',
   '0',
 
   //41
-  'integral(1/X^3*1/(A+B*X),X)-(2*B*X-A)/(2*A^2*X^2)-B^2/A^3*log(X/(A+B*X))',
+  'integral(1/X^3*1/(A+B*X),X)-(2*B*X-A)/(2*A^2*X^2)-B^2/A^3*log(abs(X/(A+B*X)))',
   '0',
 
   //42
-  'integral(1/X^2*1/(A+B*X)^2,X)+(A+2*B*X)/(A^2*X*(A+B*X))-2*B/A^3*log((A+B*X)/X)',
+  'integral(1/X^2*1/(A+B*X)^2,X)+(A+2*B*X)/(A^2*X*(A+B*X))-2*B/A^3*log(abs((A+B*X)/X))',
   '0',
 
   //60
@@ -117,13 +117,13 @@ run_test([
   '0',
 
   //61
-  'integral(1/(2-3*X^2),X)-1/2*1/sqrt(6)*log((2+X*sqrt(6))/(2-X*sqrt(6)))',
+  'integral(1/(2-3*X^2),X)-1/2*1/sqrt(6)*log(abs((2+X*sqrt(6))/(2-X*sqrt(6))))',
   '0',
-  'integral(1/(-2+3*X^2),X)-1/2*1/sqrt(6)*log((-2+X*sqrt(6))/(-2-X*sqrt(6)))',
+  'integral(1/(-2+3*X^2),X)-1/2*1/sqrt(6)*log(abs((-2+X*sqrt(6))/(-2-X*sqrt(6))))',
   '0',
 
   //63
-  'integral(X/(A+B*X^2),X)-1/2*1/B*log(A+B*X^2)',
+  'integral(X/(A+B*X^2),X)-1/2*1/B*log(abs(A+B*X^2))',
   '0',
 
   //64
@@ -135,7 +135,7 @@ run_test([
   '0',
 
   //70
-  'integral(1/X*1/(A+B*X^2),X)-1/2*1/A*log(X^2/(A+B*X^2))',
+  'integral(1/X*1/(A+B*X^2),X)-1/2*1/A*log(abs(X^2/(A+B*X^2)))',
   '0',
 
   //71
@@ -147,7 +147,7 @@ run_test([
   '0',
 
   //76
-  'integral(X^2/(A+B*X^3),X)-1/3*1/B*log(A+B*X^3)',
+  'integral(X^2/(A+B*X^3),X)-1/3*1/B*log(abs(A+B*X^3))',
   '0',
 
   // commenting this out because the definite integral of this one
@@ -173,7 +173,7 @@ run_test([
   '0',
 
   //80
-  'integral(X/(2-3*X^4),X)+1/4*1/3*sqrt(3/2)*log((X^2-sqrt(2/3))/(X^2+sqrt(2/3)))',
+  'integral(X/(2-3*X^4),X)+1/4*1/3*sqrt(3/2)*log(abs((X^2-sqrt(2/3))/(X^2+sqrt(2/3))))',
   '0',
 
   // commenting this out because the definite integral of this one
@@ -195,7 +195,7 @@ run_test([
   //"0",
 
   //83
-  'integral(X^3/(A+B*X^4),X)-1/4*1/B*log(A+B*X^4)',
+  'integral(X^3/(A+B*X^4),X)-1/4*1/B*log(abs(A+B*X^4))',
   '0',
 
   //124
@@ -255,11 +255,11 @@ run_test([
   '0',
 
   //159
-  'integral(1/X*1/sqrt(X^2+2),X)+1/sqrt(2)*log((sqrt(2)+sqrt(X^2+2))/X)',
+  'integral(1/X*1/sqrt(X^2+2),X)+1/sqrt(2)*log(abs((sqrt(2)+sqrt(X^2+2))/X))',
   '0',
 
   //160
-  'integral(sqrt(X^2+2)/X,X)-sqrt(X^2+2)+sqrt(2)*log((sqrt(2)+sqrt(X^2+2))/X)',
+  'integral(sqrt(X^2+2)/X,X)-sqrt(X^2+2)+sqrt(2)*log(abs((sqrt(2)+sqrt(X^2+2))/X))',
   '0',
 
   //161
@@ -318,7 +318,7 @@ run_test([
   '0',
 
   //174
-  'integral(1/X^3*1/sqrt(X^2+2),X)+1/2*sqrt(X^2+2)/2/X^2-1/2*log((sqrt(2)+sqrt(X^2+2))/X)/(sqrt(2)^3)',
+  'integral(1/X^3*1/sqrt(X^2+2),X)+1/2*sqrt(X^2+2)/2/X^2-1/2*log(abs((sqrt(2)+sqrt(X^2+2))/X))/(sqrt(2)^3)',
   '0',
 
   //175
@@ -330,7 +330,7 @@ run_test([
 -1/6*X*sqrt((X^2+2^2)^5)\
 +1/24*(2^2)*X*sqrt((X^2+2^2)^3)\
 +1/16*(2^4)X*sqrt(X^2+2^2)\
-+1/16*(2^6)*log(X+sqrt(X^2+2^2))`,
++1/16*(2^6)*log(abs(X+sqrt(X^2+2^2)))`,
   '0',
 
   //176-
@@ -448,11 +448,11 @@ run_test([
   '0',
 
   //292
-  'integral(tan(A*X),X)+log(cos(A*X))/A',
+  'integral(tan(A*X),X)+log(abs(cos(A*X)))/A',
   '0',
 
   //293
-  'integral(1/tan(A*X),X)-log(sin(A*X))/A',
+  'integral(1/tan(A*X),X)-log(abs(sin(A*X)))/A',
   '0',
 
   //294
@@ -763,7 +763,7 @@ run_test([
   'x^(1+n)/(1+n)',
 
   'integral(x^(-1),x)',
-  'log(x)',
+  'log(abs(x))',
 
   'integral(1.5*x,x)',
   '0.75*x^2.0',
@@ -788,11 +788,11 @@ run_test([
 
   // = 1/(x+2)
   'integral((x+1)/(x^2+3*x+2),x)',
-  'log(x+2)',
+  'log(abs(x+2))',
 
   // 1/x - x/(x^2+1)
   'integral(1/(x^3+x),x)',
-  'log(x)-1/2*log(x^2+1)',
+  'log(abs(x))-1/2*log(x^2+1)',
 
   // x - x/(x^2+1)
   'integral(x^3/(x^2+1),x)',
@@ -803,24 +803,24 @@ run_test([
   '-x+arctan(x)+1/3*x^3',
 
   'integral(1/(x^4-1),x)',
-  '-1/2*arctan(x)+1/4*log(x-1)-1/4*log(x+1)',
+  '-1/2*arctan(x)-1/4*log(abs(x+1))+1/4*log(abs(-x+1))',
 
   'integral(1/(x*(x+1)*(x+2)),x)',
-  '1/2*log(x)-log(x+1)+1/2*log(x+2)',
+  '1/2*log(abs(x))-log(abs(x+1))+1/2*log(abs(x+2))',
 
   // repeated factors
   'integral(1/(x^2+2*x+1),x)',
   '-1/(x+1)',
 
   'integral(x/(x^2+2*x+1),x)',
-  'log(x+1)+1/(x+1)',
+  'log(abs(x+1))+1/(x+1)',
 
   // d/dx(log(1+1/x)-1/x) = 1/(x^2*(x+1))
   'integral(1/(x^2*(x+1)),x)',
-  'log(1+1/x)-1/x',
+  'log(abs(x+1)/abs(x))-1/x',
 
   'integral(1/((x-a)*(x-b)),x)',
-  'log(x-a)/(a-b)+log(x-b)/(-a+b)',
+  'log(abs(-x+a))/(a-b)+log(abs(-x+b))/(-a+b)',
 
   // irreducible quadratics with a linear term: completing the square
   'integral(1/(x^2+2*x+5),x)',

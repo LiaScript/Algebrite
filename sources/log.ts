@@ -1,4 +1,4 @@
-import { isNegative, isPositive } from './assume';
+import { isPositive, isReal } from './assume';
 import {
   caddr,
   cadr,
@@ -10,11 +10,12 @@ import {
   ismultiply,
   ispower,
   isrational,
+  Num,
   LOG,
   U
 } from '../runtime/defs';
 import { symbol } from "../runtime/symbol";
-import { absval } from './abs';
+import { abs, absval } from './abs';
 import { add, subtract } from './add';
 import { arg } from './arg';
 import { double, integer, nativeDouble } from './bignum';
@@ -95,23 +96,38 @@ export function logarithm(p1: U): U {
     return subtract(logarithm(numerator(p1)), logarithm(denominator(p1)));
   }
 
-  // log(a ^ b) --> b log(a), for a < 0 and even b: b log(-a)
+  // log(a ^ b) --> b log(a) holds on the principal branch for a > 0 and
+  // real b, and for b in (-1,1]; for even b and real a it is b log|a|
+  // (log(x^2) = 2 log(x) would be wrong for x < 0)
   if (ispower(p1)) {
     const [a, b] = [cadr(p1), caddr(p1)];
-    if (isNegative(a) && iseveninteger(b)) {
-      return multiply(b, logarithm(negate(a)));
+    if (isPositive(a) && isReal(b)) {
+      return multiply(b, logarithm(a));
     }
-    return multiply(b, logarithm(a));
+    if (iseveninteger(b) && isReal(a)) {
+      return multiply(b, logarithm(abs(a)));
+    }
+    if (isrational(b) && isInHalfOpenUnit(b)) {
+      return multiply(b, logarithm(a));
+    }
+    return makeList(symbol(LOG), p1);
   }
 
-  // log(a * b) --> log(a) + log(b), but not across a negative factor of a
-  // positive product: log(-y) for y < 0 is real and stays
+  // log(a * b) --> log(a) + log(b) when at most one factor is not known to
+  // be positive (log(-x) = i pi + log(x) needs x > 0)
   if (ismultiply(p1)) {
-    if (isPositive(p1) && p1.tail().some((f) => isNegative(f))) {
+    const factors = p1.tail();
+    if (factors.filter((f) => !isPositive(f)).length > 1) {
       return makeList(symbol(LOG), p1);
     }
-    return p1.tail().map(logarithm).reduce(add, Constants.zero);
+    return factors.map(logarithm).reduce(add, Constants.zero);
   }
 
   return makeList(symbol(LOG), p1);
+}
+
+// -1 < b <= 1
+function isInHalfOpenUnit(b: Num): boolean {
+  const v = b.q.a.toJSNumber() / b.q.b.toJSNumber();
+  return v > -1 && v <= 1;
 }
