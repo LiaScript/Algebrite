@@ -69,7 +69,7 @@ const product = (ps: U[]): U => ps.reduce(multiply, Constants.one);
 const isexp = (p: U) => car(p) === symbol(POWER) && cadr(p) === symbol(E);
 
 // u = a*x + c with a, c free of x, else null
-function linear(u: U, x: U): [U, U] | null {
+export function linear(u: U, x: U): [U, U] | null {
   const a = derivative(u, x);
   if (Find(a, x)) {
     return null;
@@ -79,7 +79,7 @@ function linear(u: U, x: U): [U, U] | null {
 
 // ---------------------------------------------------------------- laplace
 
-function laplace(f: U, t: U, s: U): U {
+export function laplace(f: U, t: U, s: U): U {
   const unevaluated = makeList(symbol(LAPLACE), f, t, s);
   if (!Find(f, t)) {
     return divide(f, s);
@@ -204,7 +204,7 @@ function initialValue(g: U, t: U): U {
 
 // ------------------------------------------------------------- invlaplace
 
-function invlaplace(F: U, s: U, t: U): U {
+export function invlaplace(F: U, s: U, t: U): U {
   if (!Find(F, s)) {
     return multiply(F, call(DIRAC, t));
   }

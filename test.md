@@ -688,6 +688,7 @@ trigsimp(sin(2*x)/sin(x))             # 2 cos(x)
 | `product(f, i, a, b)` | Product of `f` over `i` from `a` to `b` |
 | `laplace(f, t, s)` | Laplace transform, see section 3.3 |
 | `invlaplace(F, s, t)` | Inverse Laplace transform, see section 3.3 |
+| `dsolve(ode, y(x) [,ics])` | Solves an ordinary differential equation, see section 3.4 |
 
 ```Maxima
 derivative(sin(x)*cos(x),x)  # product rule
@@ -840,6 +841,39 @@ L=laplace(d(y(t),t,2)+y(t))
 L=subst(1,y'(0),subst(0,y(0),L))
 
 invlaplace(solve(subst(Y,laplace(y(t),t,s),L),Y))
+```
+@Algebrite.pretty
+
+#### 3.4 Differential Equations
+
+`dsolve(ode, y(x))` solves an ordinary differential equation for `y(x)` and
+returns the right side of `y(x) = ...`, with constants `C1`, `C2`, ... Several
+branches, as for `y' = x/y`, come as a list. Derivatives can be written as
+`d(y(x),x)`, `d(y(x),x,2)` or `y'(x)`. It covers:
+
+- first order, `y' = f(x,y)`: linear (integrating factor), separable and
+  Bernoulli equations
+- any order: linear equations with constant coefficients, including a right
+  side that `laplace` can transform
+
+`dsolve(ode, y(x), [y(0)=1, y'(0)=0])` fits the constants to initial values.
+A separable equation that can't be solved for `y` stops with the implicit
+solution; other equations stop with an error.
+
+```Maxima
+dsolve(d(y(x),x)=a*y(x),y(x))              # C1 exp(a x)
+
+dsolve(d(y(x),x)+y(x)/x=x^2,y(x))          # integrating factor x
+
+dsolve(d(y(x),x)=x/y(x),y(x))              # two branches
+
+dsolve(d(y(x),x)=y(x)*(1-y(x)),y(x))       # logistic equation
+
+dsolve(d(y(x),x,2)+2*d(y(x),x)+5*y(x)=0,y(x))   # damped oscillation
+
+dsolve(d(y(x),x,2)+y(x)=x,y(x))            # with a particular solution
+
+dsolve(d(y(x),x,2)+y(x)=0,y(x),[y(0)=1,y'(0)=0])
 ```
 @Algebrite.pretty
 
@@ -1440,9 +1474,8 @@ forget()
 
 Every function available in Algebrite expressions, alphabetically. Functions
 defined as formulas over other functions, such as `sec` or `log10`, work in
-expressions but are not methods of the JavaScript `Algebrite` object. `dsolve` is
-reserved for future use and currently does nothing; `decomp` is experimental and
-may misbehave.
+expressions but are not methods of the JavaScript `Algebrite` object. `decomp`
+is experimental and may misbehave.
 
 | Function | Description |
 |---|---|
@@ -1511,7 +1544,7 @@ may misbehave.
 | `do(a, b, ...)` | Evaluates a sequence, returns the last result |
 | `dot(A, B)` | Alias for `inner` |
 | `draw(f, x, a, b, options)` | Plots expressions as a chart, see section 11 |
-| `dsolve` | Reserved, not implemented |
+| `dsolve(ode, y(x) [,ics])` | Solves an ordinary differential equation, see section 3.4 |
 | `eigen(A)` | Eigenvalues and eigenvectors of a symmetric matrix |
 | `eigenval(A)` | Eigenvalues of a symmetric matrix |
 | `eigenvec(A)` | Eigenvectors of a symmetric matrix |

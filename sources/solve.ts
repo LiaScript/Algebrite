@@ -91,7 +91,7 @@ function freeSymbols(p: U): U[] {
 // derivatives, constants from the equations at all-zero variables; rebuilding
 // each equation from those and comparing catches any nonlinear term, which
 // hands the system to solvePolySystem.
-function solveLinearSystem(eqs: Tensor, vars: Tensor): U {
+export function solveLinearSystem(eqs: Tensor, vars: Tensor): U {
   const n = vars.nelem;
   if (!vars.elem.every(issymbol) || new Set(vars.elem).size !== n) {
     stop('solve: variables must be distinct symbols');

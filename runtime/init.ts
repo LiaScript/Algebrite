@@ -89,6 +89,7 @@ import { Eval_lookup } from '../sources/lookup';
 import { Eval_mean, Eval_median, Eval_random, Eval_sd, Eval_ssd, Eval_svariance, Eval_variance } from '../sources/stats';
 import { Eval_trigexpand } from '../sources/trigexpand';
 import { Eval_nsolve } from '../sources/nsolve';
+import { Eval_dsolve } from '../sources/dsolve';
 import { Eval_invlaplace, Eval_laplace } from '../sources/laplace';
 import { Eval_at } from '../sources/at';
 import { Eval_assume, Eval_assumptions, Eval_forget, Eval_isinteger, Eval_isnegative, Eval_isnonzero, Eval_ispositive, Eval_isreal } from '../sources/assume';
@@ -480,7 +481,7 @@ export function defn() {
   std_symbol(DO, Eval_do);
   std_symbol(DOT, Eval_inner);
   std_symbol(DRAW, Eval_draw);
-  std_symbol(DSOLVE);
+  std_symbol(DSOLVE, Eval_dsolve);
   std_symbol(ERF, Eval_erf);
   std_symbol(ERFC, Eval_erfc);
   std_symbol(EIGEN, Eval_eigen);
