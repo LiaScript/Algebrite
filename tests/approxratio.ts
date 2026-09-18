@@ -84,4 +84,26 @@ run_test([
   // 10000th long prime.
   'approxratio(0.00000323701)',
   '1/308927',
+
+  'approxratio(-0.25)',
+  '-1/4',
+
+  'approxratio(-1.5)',
+  '-3/2',
+
+  'approxratio(1/3)',
+  '1/3',
+
+  'approxratio(x)',
+  'x',
+
+  'approxratio(0.1+x)',
+  'x+1/10',
+
+  // tensors: each element is approximated
+  'approxratio([0.5,0.25])',
+  '[1/2,1/4]',
+
+  'approxratio([[0.5,1],[x,0.2]])',
+  '[[1/2,1],[x,1/5]]',
 ]);

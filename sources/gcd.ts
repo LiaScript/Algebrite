@@ -19,6 +19,7 @@ import { gcd_numbers } from './bignum';
 import { Eval } from './eval';
 import { factorpoly } from './factorpoly';
 import {
+  isminusone,
   isnegativenumber,
   isplusone,
   ispolyexpandedform,
@@ -199,6 +200,8 @@ function gcd_product_product(p1:U, p2:U) {
 
 function gcd_powers_with_same_base(base1: U, base2: U): U {
   let exponent1: U, exponent2: U, p6: U;
+  const ispow1 = ispower(base1);
+  const ispow2 = ispower(base2);
   if (ispower(base1)) {
     exponent1 = caddr(base1); // exponent
     base1 = cadr(base1); // base
@@ -213,7 +216,9 @@ function gcd_powers_with_same_base(base1: U, base2: U): U {
     exponent2 = Constants.one;
   }
 
-  if (!equal(base1, base2)) {
+  // a plain -1 is a sign, not a power of the base -1: taking it as one
+  // made gcd(i, -1*i) = gcd(i,-1)*gcd(i,i) = i*i = -1
+  if (!equal(base1, base2) || (isminusone(base1) && ispow1 !== ispow2)) {
     return Constants.one;
   }
 

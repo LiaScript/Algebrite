@@ -48,6 +48,7 @@ import { cosine } from './cos';
 import { dpow } from './dpow';
 import { Eval } from './eval';
 import { factorial } from './factorial';
+import { imag } from './imag';
 import {
   iscomplexnumber,
   iscomplexnumberdouble,
@@ -65,6 +66,7 @@ import {
 import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { qpow } from './qpow';
+import { real } from './real';
 import { powerUnitAware } from './quantity';
 import { rect } from './rect';
 import { sine } from './sin';
@@ -124,6 +126,34 @@ function yypower(base: U, exponent: U): U {
       console.log(`   power of ${inputBase} ^ ${inputExp}: ${one}`);
     }
     return one;
+  }
+
+  // e^some_float
+  if (base === symbol(E) && isdouble(exponent)) {
+    const result = double(Math.exp(exponent.d));
+    if (DEBUG_POWER) {
+      console.log('   power: base == symbol(E) && isdouble(exponent) ');
+      console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);
+    }
+    return result;
+  }
+
+  // positive float (or e) to a complex power with floats:
+  // b^(x+iy) = b^x (cos(y log b) + i sin(y log b))
+  if (
+    iscomplexnumber(exponent) &&
+    !defs.evaluatingPolar &&
+    ((isdouble(base) && base.d > 0) ||
+      (base === symbol(E) && iscomplexnumberdouble(exponent)))
+  ) {
+    const y = multiply(
+      imag(exponent),
+      isdouble(base) ? double(Math.log(base.d)) : Constants.one
+    );
+    return multiply(
+      power(base, real(exponent)),
+      add(cosine(y), multiply(Constants.imaginaryunit, sine(y)))
+    );
   }
 
   //  a ^ 1    ->  a
@@ -187,15 +217,15 @@ function yypower(base: U, exponent: U): U {
     if (exponent.q.a < exponent.q.b) {
       tmp = makeList(symbol(POWER), base, exponent);
     } else {
+      // (-1)^(a/b) = (-1)^floor(a/b) * (-1)^((a mod b)/b)
       tmp = makeList(
-        symbol(MULTIPLY),
+        symbol(POWER),
         base,
-        makeList(
-          symbol(POWER),
-          base,
-          rational(exponent.q.a.mod(exponent.q.b), exponent.q.b)
-        )
+        rational(exponent.q.a.mod(exponent.q.b), exponent.q.b)
       );
+      if (exponent.q.a.divide(exponent.q.b).isOdd()) {
+        tmp = makeList(symbol(MULTIPLY), base, tmp);
+      }
       if (DEBUG_POWER) {
         console.log(` trick applied : ${tmp}`);
       }
@@ -265,16 +295,6 @@ function yypower(base: U, exponent: U): U {
   if (base === symbol(E) && car(exponent) === symbol(LOG)) {
     const result = cadr(exponent);
     if (DEBUG_POWER) {
-      console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);
-    }
-    return result;
-  }
-
-  // e^some_float
-  if (base === symbol(E) && isdouble(exponent)) {
-    const result = double(Math.exp(exponent.d));
-    if (DEBUG_POWER) {
-      console.log('   power: base == symbol(E) && isdouble(exponent) ');
       console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);
     }
     return result;

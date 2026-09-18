@@ -88,4 +88,100 @@ run_test([
   // different.
   'expand(expand((sin(x)+1)^2))',
   '1+sin(x)^2+2*sin(x)',
+
+  'expand(0)',
+  '0',
+
+  'expand((x+1)^2)',
+  'x^2+2*x+1',
+
+  'expand((x-y)^3)',
+  'x^3-y^3+3*x*y^2-3*x^2*y',
+
+  'expand((a+b+c)^2)',
+  '2*a*b+2*a*c+2*b*c+a^2+b^2+c^2',
+
+  'expand((x+1)^10)',
+  'x^10+10*x^9+45*x^8+120*x^7+210*x^6+252*x^5+210*x^4+120*x^3+45*x^2+10*x+1',
+
+  'expand((a+b)*(c+d))',
+  'a*c+a*d+b*c+b*d',
+
+  'expand(x*(x+1)^2)',
+  'x^3+2*x^2+x',
+
+  'expand(2*(x+y)^2-2*x^2-2*y^2)',
+  '4*x*y',
+
+  'expand((x+i)*(x-i))',
+  'x^2+1',
+
+  'expand((1+i)^3)',
+  '-2+2*i',
+
+  'expand((sqrt(2)+1)^2)',
+  '3+2*2^(1/2)',
+
+  'expand((x+1.5)^2)',
+  'x^2+3.0*x+2.25',
+
+  'expand((x+1)^0)',
+  '1',
+
+  'expand((x+1)^(-1))',
+  '1/(x+1)',
+
+  'expand((x+1)^(1/2))',
+  '(x+1)^(1/2)',
+
+  'expand((x+1)/(x^2-1))',
+  '1/(x-1)',
+
+  'expand((x^2+1)/(x+1))',
+  '-1+x+2/(x+1)',
+
+  'expand([(x+1)^2,(x-1)^2])',
+  '[1+2*x+x^2,1-2*x+x^2]',
+
+  'expand(sin(x)*(1+cos(x)))',
+  'sin(x)+cos(x)*sin(x)',
+
+  'expand(exp(x+y))',
+  'exp(x+y)',
+
+  // constant factors of a single-term denominator must not be counted twice
+  'expand(1/(x*y))',
+  '1/(x*y)',
+
+  'expand((1/2)/x)',
+  '1/(2*x)',
+
+  'expand((x+1)/(2*x))',
+  '1/2+1/(2*x)',
+
+  'expand((x-1)/(x*y))',
+  '1/y-1/(x*y)',
+
+  'expand((x-1)/(x*y*z))',
+  '-1/(x*y*z)+1/(y*z)',
+
+  'expand((2*i-1/2)/(-x))',
+  '1/(2*x)-2*i/x',
+
+  // non-polynomial numerator or denominator: left alone (was Stop: divide by zero)
+  'expand(sin(x)/(x^2-1))',
+  'sin(x)/(x^2-1)',
+
+  'expand(exp(x)/(x+1))',
+  'exp(x)/(x+1)',
+
+  'expand(x/(x+1)^(3/2))',
+  'x/((x+1)^(3/2))',
+
+  'expand(sin(y)/(x^2-1))',
+  'sin(y)/(2*(x-1))-sin(y)/(2*(x+1))',
+
+  // 1/i^(1/3) = exp(-i*pi/6); was Stop: divide by zero in coeff
+  'expand((x+1)/i^(1/3))',
+  '(-1/2*i+1/2*3^(1/2))*x-1/2*i+1/2*3^(1/2)',
 ]);
