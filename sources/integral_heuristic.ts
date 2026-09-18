@@ -40,7 +40,7 @@ import { zzfloat } from './float';
 import { gcd } from './gcd';
 import { integral } from './integral';
 import { equal } from './misc';
-import { isNegative, isPositive } from './assume';
+import { isNegative, isPositive, isReal } from './assume';
 import {
   equalq,
   iseveninteger,
@@ -342,30 +342,74 @@ function completeSquare(F: U, X: U, depth: number): U | undefined {
   );
   const G = subst(subst(F, cadr(q), shifted), X, subtract(u, h));
   const I = tryIntegral(doexpand(Eval, G), u, depth);
-  return I && Eval(subst(I, u, add(X, h)));
+  return I && realRootLogs(Eval(subst(I, u, add(X, h))), X);
 }
 
-// sqrt(tan(q)), q linear in X: with u = sqrt(tan(q)) the integrand is
-// 2*u^2/(1+u^4), so with m = sqrt(2)*u the integral is
-// (log(u^2-m+1)-log(u^2+m+1))/(2*sqrt(2)) + (arctan(m+1)+arctan(m-1))/sqrt(2)
+// A term c*log(w), c free of X and w with a root in it, becomes
+// c*log(abs(w)): X+sqrt(X^2-4) is negative for X < -2, and
+// d/dX log|w| = w'/w wherever w is real, so this is the same antiderivative
+// for w > 0 and the real one for w < 0. realLogs of integral.ts asks for a
+// provably real w, which a root of a quadratic with real roots is not.
+// ponytail: where the root is imaginary abs is no antiderivative any more;
+// the integrand has the same root as a factor and is not real there either.
+export function realRootLogs(F: U, X: U): U {
+  // roots of a polynomial only: the logs of sqrt(tan(X)) are positive as they are
+  const isRoot = (p: U) =>
+    ispower(p) &&
+    isrational(caddr(p)) &&
+    !isinteger(caddr(p)) &&
+    Find(cadr(p), X) &&
+    ispolyexpandedform(cadr(p), X);
+  const term = (t: U): U => {
+    const withX = factorsOf(t).filter((f) => Find(f, X));
+    const L = withX[0];
+    if (withX.length !== 1 || !isFn(L, LOG) || !findWhere(cadr(L), isRoot)) {
+      return t;
+    }
+    // a provably real w is left to realLogs, which sees the simplified result
+    const w = cadr(L);
+    if (isReal(w) === true || isPositive(w) === true) {
+      return t;
+    }
+    // abs takes the numeric content out, 1/5*abs(...), and log(1/5) is a
+    // constant of integration. abs is not idempotent (it may first turn the
+    // sign and find the content only in that form), so the final Eval of
+    // integral() would bring the constant back: repeat until it is stable.
+    let v = w;
+    for (let i = 0; i < 3; i++) {
+      const A = abs(isFn(v, ABS) ? cadr(v) : v);
+      v = ismultiply(A) ? partition(A, X)[1] : A;
+    }
+    return multiply(product(factorsOf(t).filter((f) => f !== L)), logarithm(v));
+  };
+  return (isadd(F) ? F.tail() : [F]).reduce((acc: U, t: U) => add(acc, term(t)), Constants.zero);
+}
+
+// tan(q)^(1/2) and tan(q)^(-1/2), q linear in X: with u = sqrt(tan(q)) the
+// integrand is 2*u^2/(1+u^4) or 2/(1+u^4), so with m = sqrt(2)*u the integral is
+// +-(log(u^2-m+1)-log(u^2+m+1))/(2*sqrt(2)) + (arctan(m+1)+arctan(m-1))/sqrt(2).
+// A positive constant c in (c*tan(q))^r comes out as c^r.
 function sqrtTan(F: U, X: U): U | undefined {
-  if (!ispower(F) || !isFn(cadr(F), TAN) || !equalq(caddr(F), 1, 2)) {
+  const inverse = ispower(F) && equalq(caddr(F), -1, 2);
+  if (!ispower(F) || !(inverse || equalq(caddr(F), 1, 2))) {
     return undefined;
   }
-  const a = slope(cadr(cadr(F)), X);
+  const [c, tan] = ismultiply(cadr(F)) ? partition(cadr(F), X) : [Constants.one, cadr(F)];
+  const a = isFn(tan, TAN) && isPositive(c) === true && slope(cadr(tan), X);
   if (!a) {
     return undefined;
   }
   const r2 = power(integer(2), rational(1, 2));
-  const m = multiply(r2, F);
-  const t1 = add(cadr(F), Constants.one);
+  const m = multiply(r2, power(tan, rational(1, 2)));
+  const t1 = add(tan, Constants.one);
   // both arguments are positive: (u-1/sqrt(2))^2+1/2 and (u+1/sqrt(2))^2+1/2
   const log = subtract(makeList(symbol(LOG), subtract(t1, m)), makeList(symbol(LOG), add(t1, m)));
   const atan = add(
     makeList(symbol(ARCTAN), add(m, Constants.one)),
     makeList(symbol(ARCTAN), subtract(m, Constants.one))
   );
-  return Eval(divide(add(divide(log, multiply(integer(2), r2)), divide(atan, r2)), a));
+  const sum = add(divide(inverse ? negate(log) : log, multiply(integer(2), r2)), divide(atan, r2));
+  return Eval(divide(multiply(power(c, caddr(F)), sum), a));
 }
 
 // the argument q of the first sin, cos or tan with X in it, if linear in X

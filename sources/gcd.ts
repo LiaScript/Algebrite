@@ -19,7 +19,6 @@ import { gcd_numbers } from './bignum';
 import { Eval } from './eval';
 import { factorpoly } from './factorpoly';
 import {
-  isminusone,
   isnegativenumber,
   isplusone,
   ispolyexpandedform,
@@ -218,7 +217,12 @@ function gcd_powers_with_same_base(base1: U, base2: U): U {
 
   // a plain -1 is a sign, not a power of the base -1: taking it as one
   // made gcd(i, -1*i) = gcd(i,-1)*gcd(i,i) = i*i = -1
-  if (!equal(base1, base2) || (isminusone(base1) && ispow1 !== ispow2)) {
+  // A number and a root of it have no common factor here: 3 and 3^(1/2)
+  // stay two factors of a product, so the gcd of 3*3^(1/2)*z and
+  // 3*3^(1/2)*a, the product of the gcds of all pairs, came out as
+  // 9*3^(1/2). condense then left a fraction in the sum, and numerator and
+  // denominator recursed forever between the two forms.
+  if (!equal(base1, base2) || (isNumericAtom(base1) && ispow1 !== ispow2)) {
     return Constants.one;
   }
 
