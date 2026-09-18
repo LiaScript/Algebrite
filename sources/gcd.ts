@@ -10,15 +10,26 @@ import {
   ismultiply,
   isNumericAtom,
   ispower,
-  isrational, MULTIPLY, U
+  isrational, MULTIPLY, Num, U
 } from '../runtime/defs';
 import { symbol } from '../runtime/symbol';
-import { equal, length, lessp } from '../sources/misc';
+import { equal, lessp } from '../sources/misc';
 import { subtract } from './add';
 import { gcd_numbers } from './bignum';
 import { Eval } from './eval';
 import { factorpoly } from './factorpoly';
-import { isnegativenumber, isunivarpolyfactoredorexpandedform } from './is';
+import {
+  isnegativenumber,
+  isplusone,
+  ispolyexpandedform,
+  isunivarpolyfactoredorexpandedform,
+  isZeroAtomOrTensor,
+} from './is';
+import { Find } from '../runtime/find';
+import { collectUserSymbols } from '../runtime/symbol';
+import { coeff } from './coeff';
+import { guess } from './guess';
+import { divpoly } from './quotient';
 import { makeList } from './list';
 import { divide, multiply } from './multiply';
 import { power } from './power';
@@ -52,12 +63,34 @@ function gcd_main(p1: U, p2: U): U {
     return gcd_numbers(p1, p2);
   }
 
+  if (isZeroAtomOrTensor(p1)) {
+    return p2;
+  }
+
+  if (isZeroAtomOrTensor(p2)) {
+    return p1;
+  }
+
+  const euclid = gcd_rational_polys(p1, p2);
+  if (euclid) {
+    return euclid;
+  }
+
   if (polyVar = areunivarpolysfactoredorexpandedform(p1, p2)) {
     return gcd_polys(p1, p2, polyVar)
   }
 
   if (isadd(p1) && isadd(p2)) {
     return gcd_sum_sum(p1, p2);
+  }
+
+  // a sum against a power of the same sum, gcd(x+y,(x+y)^2): the content
+  // reduction below would lose the sum
+  if (ispower(p1) || ispower(p2)) {
+    const g = gcd_powers_with_same_base(p1, p2);
+    if (!isplusone(g)) {
+      return g;
+    }
   }
 
   if (isadd(p1)) {
@@ -218,25 +251,77 @@ function gcd_powers_with_same_base(base1: U, base2: U): U {
   return power(base1, exponent);
 }
 
+// Univariate polynomials with rational coefficients: Euclid's algorithm,
+// which unlike factoring also finds irrational common factors such as x^2-2.
+// The result is the primitive gcd times the gcd of the contents.
+// Only for expanded sums: factored products go through gcd_polys, so that
+// callers dividing by the gcd (rationalize) can cancel whole factors.
+function gcd_rational_polys(p1: U, p2: U): U | undefined {
+  if (!isadd(p1) || !isadd(p2)) {
+    return;
+  }
+  const syms: U[] = [];
+  collectUserSymbols(p1, syms);
+  collectUserSymbols(p2, syms);
+  const X = syms[0];
+  if (
+    syms.length !== 1 ||
+    !ispolyexpandedform(p1, X) ||
+    !ispolyexpandedform(p2, X)
+  ) {
+    return;
+  }
+  let a: U = p1;
+  let b: U = p2;
+  const ca = coeff(a, X);
+  const cb = coeff(b, X);
+  if (![...ca, ...cb].every(isrational)) {
+    return;
+  }
+  const content = (cs: U[]) => (cs as Num[]).reduce(gcd_numbers);
+  while (!isZeroAtomOrTensor(b)) {
+    [a, b] = [b, subtract(a, multiply(b, divpoly(a, b, X)))];
+  }
+  const cg = coeff(a, X);
+  a = divide(a, cg[cg.length - 1]); // monic
+  a = divide(a, content(coeff(a, X))); // primitive, leading term positive
+  return multiply(gcd_numbers(content(ca), content(cb)), a);
+}
+
 // in this case gcd is used as a composite function, i.e. gcd(gcd(gcd...
 function gcd_sum_sum(p1: U, p2: U): U {
-  let p3: U, p4: U, p5: U, p6: U;
-  if (length(p1) !== length(p2)) {
-    return Constants.one;
-  }
+  const p3 = gcd_sum(p1);
+  const p4 = gcd_sum(p2);
 
-  p3 = iscons(p1) ? p1.tail().reduce(gcd) : car(cdr(p1));
-
-  p4 = iscons(p2) ? p2.tail().reduce(gcd) : car(cdr(p2));
-
-  p5 = divide(p1, p3);
-  p6 = divide(p2, p4);
+  const p5 = divide(p1, p3);
+  const p6 = divide(p2, p4);
 
   if (equal(p5, p6)) {
     return multiply(p5, gcd(p3, p4));
   }
 
-  return Constants.one;
+  return multiply(gcd(p3, p4), gcd_by_factoring(p5, p6));
+}
+
+// Multivariate sums: factor both in one variable and compare the factors,
+// e.g. gcd(x^2-y^2,x+y). Only used when a factorization splits something
+// off, otherwise the recursion through gcd_polys would not shrink.
+function gcd_by_factoring(p1: U, p2: U): U {
+  const X = guess(p1);
+  if (!ispolyexpandedform(p1, X) || !ispolyexpandedform(p2, X)) {
+    return Constants.one;
+  }
+  const f1 = factorpoly(p1, X);
+  const f2 = factorpoly(p2, X);
+  const splits = (f: U) =>
+    ispower(f) ||
+    (ismultiply(f) &&
+      (f.tail().some(ispower) ||
+        f.tail().filter((t) => Find(t, X)).length > 1));
+  if (!splits(f1) && !splits(f2)) {
+    return Constants.one;
+  }
+  return gcd_polys(f1, f2, X);
 }
 
 function gcd_sum(p: U): U {
