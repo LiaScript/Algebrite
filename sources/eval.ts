@@ -292,7 +292,7 @@ Evaluates each argument from left to right. Returns the result of the last argum
 
 */
 export function Eval_do(p1: U) {
-  let result = car(p1);
+  let result: U = symbol(NIL);
   p1 = cdr(p1);
 
   while (iscons(p1)) {

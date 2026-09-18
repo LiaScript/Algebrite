@@ -51,13 +51,16 @@ export function Eval_sum(p1: U) {
   const p4 = get_binding(indexVariable);
 
   let temp: U = Constants.zero;
-  for (let i = j; i <= k; i++) {
-    set_binding(indexVariable, integer(i));
-    temp = add(temp, Eval(body));
+  try {
+    for (let i = j; i <= k; i++) {
+      set_binding(indexVariable, integer(i));
+      temp = add(temp, Eval(body));
+    }
+  } finally {
+    // put back the index variable to original content,
+    // also when the body stops with an error
+    set_binding(indexVariable, p4);
   }
-
-  // put back the index variable to original content
-  set_binding(indexVariable, p4);
   return temp;
 }
 

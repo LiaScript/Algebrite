@@ -173,6 +173,13 @@ f
   'a := b\nb := c\nc := a\nb',
   'Stop: recursive evaluation of symbols: b -> c -> a -> b',
 
+  // an error keeps all definitions, so the cycle above is still there
+  'a',
+  'Stop: recursive evaluation of symbols: a -> b -> c -> a',
+
+  'clearall',
+  '',
+
   // ----------------------
   // note how this case actually doesn't generate a recursion
   // as in Algebrite it's not a problem when a variable

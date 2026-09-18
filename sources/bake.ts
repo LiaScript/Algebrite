@@ -4,6 +4,7 @@ import {
   Cons,
   doexpand,
   FOR,
+  FUNCTION,
   isadd,
   iscons,
   ismultiply,
@@ -47,8 +48,13 @@ function _bake(p1: U): U {
     // don't bake the contents of some constructs such as "for"
     // because we don't want to evaluate the body of
     // such constructs "statically", i.e. without fully running
-    // the loops.
-  } else if (iscons(p1) && car(p1) !== symbol(FOR)) {
+    // the loops. Same for the body of a user function: it is only
+    // evaluated when the function is called.
+  } else if (
+    iscons(p1) &&
+    car(p1) !== symbol(FOR) &&
+    car(p1) !== symbol(FUNCTION)
+  ) {
     result = makeList(car(p1), ...p1.tail().map(bake));
   } else {
     result = p1;

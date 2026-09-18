@@ -159,6 +159,8 @@ export function Eval_printlist(p1: U) {
 }
 
 function _print(p: U, passedPrintMode: string): string {
+  // print(a, b, ...) prints every argument, one per line
+  const printed: string[] = [];
   let accumulator = '';
 
   while (iscons(p)) {
@@ -194,6 +196,7 @@ function _print(p: U, passedPrintMode: string): string {
       rememberPrint(accumulator, LAST_LIST_PRINT);
     }
     defs.printMode = origPrintMode;
+    printed.push(accumulator);
 
     p = cdr(p);
   }
@@ -203,7 +206,7 @@ function _print(p: U, passedPrintMode: string): string {
       `emttedString from display: ${defs.stringsEmittedByUserPrintouts}`
     );
   }
-  return accumulator;
+  return printed.join('\n');
 }
 
 function rememberPrint(theString: string, theTypeOfPrint: string) {
@@ -372,7 +375,7 @@ function print_a_over_b(p: BaseAtom): string {
         if (flag) {
           accumulator += print_multiply_sign();
         }
-        accumulator += print_factor(p2);
+        accumulator = append_factor(accumulator, print_factor(p2));
         flag = 1;
       }
       p1 = cdr(p1);
@@ -409,7 +412,7 @@ function print_a_over_b(p: BaseAtom): string {
       if (flag) {
         accumulator += print_multiply_sign();
       }
-      accumulator += print_denom(p2, d);
+      accumulator = append_factor(accumulator, print_denom(p2, d));
       flag = 1;
     }
     p1 = cdr(p1);
@@ -559,7 +562,10 @@ function print_term(p: BaseAtom): string {
         }
       }
       accumulator += print_multiply_sign();
-      accumulator += print_factor(car(p), false, true);
+      accumulator = append_factor(
+        accumulator,
+        print_factor(car(p), false, true)
+      );
 
       previousFactorWasANumber = false;
       if (isNumericAtom(car(p))) {
@@ -957,7 +963,8 @@ function print_SUM_codegen(p: BaseAtom): string {
 }
 
 function print_TEST_latex(p: BaseAtom): string {
-  let accumulator = '\\left\\{ \\begin{array}{ll}';
+  // one row per case: value & condition
+  const rows: string[] = [];
 
   p = cdr(p);
   while (iscons(p)) {
@@ -965,25 +972,23 @@ function print_TEST_latex(p: BaseAtom): string {
     // last argument becomes the default case
     // i.e. the one without a test.
     if (cdr(p) === symbol(NIL)) {
-      accumulator += '{';
-      accumulator += print_expr(car(p));
-      accumulator += '} & otherwise ';
-      accumulator += ' \\\\\\\\';
+      rows.push('{' + print_expr(car(p)) + '} & \\text{otherwise}');
       break;
     }
 
-    accumulator += '{';
-    accumulator += print_expr(cadr(p));
-    accumulator += '} & if & ';
-    accumulator += print_expr(car(p));
-    accumulator += ' \\\\\\\\';
+    rows.push(
+      '{' + print_expr(cadr(p)) + '} & \\text{if } ' + print_expr(car(p))
+    );
 
     // test unsuccessful, continue to the
     // next pair of test,value
     p = cddr(p);
   }
-  accumulator = accumulator.substring(0, accumulator.length - 4);
-  return (accumulator += '\\end{array} \\right.');
+  return (
+    '\\left\\{ \\begin{array}{ll}' +
+    rows.join(' \\\\ ') +
+    ' \\end{array} \\right.'
+  );
 }
 
 function print_TEST_codegen(p: BaseAtom): string {
@@ -1858,9 +1863,41 @@ export function print_list(p: BaseAtom): string {
       accumulator += get_printname(p as Sym);
       break;
     default:
-      accumulator += '<tensor>';
+      if (istensor(p)) {
+        accumulator += print_list_tensor(p);
+      } else {
+        accumulator += '<tensor>';
+      }
   }
   return accumulator;
+}
+
+// [e1,e2,...], nested per dimension, each entry in list form
+function print_list_tensor(t: Tensor): string {
+  let k = 0;
+  const dimension = (j: number): string => {
+    const entries: string[] = [];
+    for (let i = 0; i < t.dim[j]; i++) {
+      entries.push(
+        j === t.ndim - 1 ? print_list(t.elem[k++]) : dimension(j + 1)
+      );
+    }
+    return '[' + entries.join(',') + ']';
+  };
+  return dimension(0);
+}
+
+// LaTeX juxtaposes factors, so a factor starting with a letter needs a
+// space after a control word, or \pi x would become the unknown \pix
+function append_factor(accumulator: string, factor: string): string {
+  if (
+    defs.printMode === PRINTMODE_LATEX &&
+    /\\[a-zA-Z]+$/.test(accumulator) &&
+    /^[a-zA-Z]/.test(factor)
+  ) {
+    accumulator += ' ';
+  }
+  return accumulator + factor;
 }
 
 function print_multiply_sign(): string {

@@ -30,6 +30,7 @@ export function do_clearall() {
   do_clearPatterns();
   clear_symbols();
   defn();
+  defs.unitsAutoDetect = false;
   return (defs.codeGen = false);
 }
 

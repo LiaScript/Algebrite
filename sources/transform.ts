@@ -26,7 +26,7 @@ import { subtract } from './add';
 import { polyform } from './bake';
 import { decomp } from './decomp';
 import { Eval } from './eval';
-import { isZeroAtomOrTensor } from './is';
+import { isZeroAtomOrTensor, isZeroLikeOrNonZeroLikeOrUndetermined } from './is';
 import { makeList } from './list';
 import { scan_meta } from './scan';
 import { subst } from './subst';
@@ -279,11 +279,18 @@ function f_equals_a(
         console.log(`  binding METAB to ${get_binding(symbol(METAB))}`);
       }
 
-      // now test all the conditions (it's an and between them)
+      // now test all the conditions (it's an and between them).
+      // The integral tables take an undecidable condition (e.g. a>0 for
+      // a symbol) as met, user patterns must not: the rewrite would be
+      // unsound for some values.
       let temp = C;
       while (iscons(temp)) {
         const p2 = Eval(car(temp));
-        if (isZeroAtomOrTensor(p2)) {
+        if (
+          generalTransform
+            ? isZeroLikeOrNonZeroLikeOrUndetermined(p2) !== true
+            : isZeroAtomOrTensor(p2)
+        ) {
           break;
         }
         temp = cdr(temp);
