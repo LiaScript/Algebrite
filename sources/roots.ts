@@ -27,7 +27,7 @@ import { coeff } from './coeff';
 import { Eval } from './eval';
 import { factorpoly } from './factorpoly';
 import { guess } from './guess';
-import { iscomplexnumber, ispolyexpandedform, isposint, isZeroAtomOrTensor } from './is';
+import { iscomplexnumber, isnegativeterm, ispolyexpandedform, isposint, isZeroAtomOrTensor } from './is';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { build_tensor } from './scan';
@@ -191,6 +191,25 @@ function getSimpleRoots(n: number, leadingCoeff: U, lastCoeff: U):U[] {
   log.debug('getSimpleRoots');
 
   n = n - 1;
+
+  // x^n = m for a negative-looking constant term -m: m^(1/n) times the
+  // n-th roots of unity, so x^2 = a gives +-a^(1/2), not +-i*(-a)^(1/2)
+  if (isnegativeterm(lastCoeff)) {
+    const root = divide(
+      power(negate(lastCoeff), rational(1, n)),
+      power(leadingCoeff, rational(1, n))
+    );
+    const unity = (k: number) => power(Constants.negOne, rational(2 * k, n));
+    const found: U[] = [];
+    for (let k = 0; k < (n % 2 === 0 ? n / 2 : n); k++) {
+      const r = multiply(root, unity(k));
+      found.push(r);
+      if (n % 2 === 0) {
+        found.push(negate(r));
+      }
+    }
+    return found;
+  }
 
   const commonPart = divide(
     power(lastCoeff, rational(1, n)),

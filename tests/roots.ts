@@ -277,7 +277,7 @@ run_test([
   'roots(thePoly)',
   // "[-i,1/2*(i-3^(1/2)),1/2*(i+3^(1/2)))",
   // "[-i,(-1)^(1/6),(-1)^(5/6))",
-  '[-3/4*i-1/2*(-1)^(5/6)-1/4*3^(1/2),3/4*i-1/2*(-1)^(5/6)+1/4*3^(1/2),(-1)^(5/6)]',
+  '[1/2*i-1/2*3^(1/2),1/2*i+1/2*3^(1/2),-i]',
 
   'and((abs(float(subst(float(last[1]),x,thePoly))) < float(2*10^(-15))),(abs(float(subst(float(last[2]),x,thePoly))) < float(2*10^(-15))), (abs(float(subst(float(last[3]),x,thePoly))) < float(2*10^(-15))))',
   '1',

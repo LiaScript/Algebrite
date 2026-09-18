@@ -180,7 +180,7 @@ run_test([
 
   // (i*(-b/a)^(1/2))^2 = b/a
   'solve(a*x^2-b,x)',
-  '[-i*(-b/a)^(1/2),i*(-b/a)^(1/2)]',
+  '[-(b/a)^(1/2),(b/a)^(1/2)]',
 
   'solve(sin(x),x)',
   'Stop: solve: 1st argument is not a polynomial in the variable x — solve() currently only supports polynomial equations',

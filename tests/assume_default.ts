@@ -121,3 +121,21 @@ run_test([
   'defint(1/x,x,-2,-1)',
   '-log(2)',
 ]);
+
+// x^n = a: roots a^(1/n) times the n-th roots of unity, not i*(-a)^(1/2)
+run_test([
+  'solve(x^2=a,x)',
+  '[-a^(1/2),a^(1/2)]',
+
+  'roots(x^2-a,x)',
+  '[-a^(1/2),a^(1/2)]',
+
+  'solve(x^2=4*a,x)',
+  '[-(4*a)^(1/2),(4*a)^(1/2)]',
+
+  'solve(x^2+a,x)',
+  '[-i*a^(1/2),i*a^(1/2)]',
+
+  'solve(x^2-4,x)',
+  '[-2,2]',
+]);

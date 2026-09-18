@@ -24,7 +24,7 @@ run_test([
 
   // the signs of the roots depend on a: both stay
   'solve(x^2=a,x)',
-  '[-i*(-a)^(1/2),i*(-a)^(1/2)]',
+  '[-a^(1/2),a^(1/2)]',
 
   'forget(x)',
   '',
@@ -69,7 +69,7 @@ run_test([
 
   // real, but the sign of a is unknown: the roots stay
   'solve(x^2=a,x)',
-  '[-i*(-a)^(1/2),i*(-a)^(1/2)]',
+  '[-a^(1/2),a^(1/2)]',
 
   'forget(x)',
   '',
@@ -205,7 +205,7 @@ run_test([
   '[-i,i]',
 
   'solve(x^2=a,x)',
-  '[-i*(-a)^(1/2),i*(-a)^(1/2)]',
+  '[-a^(1/2),a^(1/2)]',
 
   'solve(2*n=3,n)',
   '3/2',
