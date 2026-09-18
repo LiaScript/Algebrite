@@ -338,7 +338,7 @@ function countTrue(...a: boolean[]): number {
 // hands, however it's in factored form and we don't
 // want to expand it.
 
-function ispolyfactoredorexpandedform(p: U, x: U): boolean {
+export function ispolyfactoredorexpandedform(p: U, x: U): boolean {
   return ispolyfactoredorexpandedform_factor(p, x);
 }
 

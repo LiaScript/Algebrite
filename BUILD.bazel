@@ -1221,3 +1221,21 @@ nodejs_test(
     ],
     entry_point = ":tests/prime.ts",
 )
+
+nodejs_test(
+    name = "test_deg",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/deg.ts",
+)
+
+nodejs_test(
+    name = "test_leading",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/leading.ts",
+)

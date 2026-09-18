@@ -3,8 +3,10 @@ import {
   cadr,
   Constants,
   iscons,
+  ismultiply,
   isNumericAtom,
   ispower,
+  issymbol,
   NIL,
   U
 } from '../runtime/defs';
@@ -12,7 +14,10 @@ import { symbol } from "../runtime/symbol";
 import { equal, lessp } from '../sources/misc';
 import { Eval } from './eval';
 import { guess } from './guess';
-import { isZeroAtomOrTensor } from './is';
+import { isposint, ispolyfactoredorexpandedform } from './is';
+import { add } from './add';
+import { multiply } from './multiply';
+import { stop } from '../runtime/run';
 
 /* deg =====================================================================
 
@@ -33,7 +38,15 @@ export function Eval_degree(p1: U) {
   const poly = Eval(cadr(p1));
   p1 = Eval(caddr(p1));
   const variable = p1 === symbol(NIL) ? guess(poly) : p1;
+  checkpoly('deg', poly, variable);
   return degree(poly, variable);
+}
+
+// degree and leading coefficient only make sense for polynomials
+export function checkpoly(name: string, poly: U, variable: U) {
+  if (!issymbol(variable) || !ispolyfactoredorexpandedform(poly, variable)) {
+    stop(`${name}: 1st argument is not a polynomial in the variable ${variable}`);
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -45,29 +58,31 @@ export function Eval_degree(p1: U) {
 //
 //  Output:    Result
 //
-//  Note: Finds the largest numerical power of x. Does not check for
-//  weirdness in p(x).
+//  Note: Also works on factored forms, (x+1)^2*(x-1) has degree 3. For
+//  anything else, e.g. sin(x), it is the largest numerical power of x
+//  found in it.
 //
 //-----------------------------------------------------------------------------
 export function degree(POLY: U, X: U): U {
-  return yydegree(POLY, X, Constants.zero);
-}
-
-function yydegree(POLY: U, X: U, DEGREE: U): U {
   if (equal(POLY, X)) {
-    if (isZeroAtomOrTensor(DEGREE)) {
-      DEGREE = Constants.one;
-    }
-  } else if (ispower(POLY)) {
-    if (
-      equal(cadr(POLY), X) &&
-      isNumericAtom(caddr(POLY)) &&
-      lessp(DEGREE, caddr(POLY))
-    ) {
-      DEGREE = caddr(POLY);
-    }
-  } else if (iscons(POLY)) {
-    DEGREE = POLY.tail().reduce((a: U, b: U) => yydegree(b, X, a), DEGREE);
+    return Constants.one;
   }
-  return DEGREE;
+  if (ispower(POLY) && isNumericAtom(caddr(POLY))) {
+    if (equal(cadr(POLY), X)) {
+      return lessp(Constants.zero, caddr(POLY)) ? caddr(POLY) : Constants.zero;
+    }
+    if (isposint(caddr(POLY))) {
+      return multiply(degree(cadr(POLY), X), caddr(POLY));
+    }
+  }
+  if (ismultiply(POLY)) {
+    return POLY.tail().reduce((a: U, b: U) => add(a, degree(b, X)), Constants.zero);
+  }
+  if (iscons(POLY)) {
+    return POLY.tail().reduce((a: U, b: U) => {
+      const d = degree(b, X);
+      return lessp(a, d) ? d : a;
+    }, Constants.zero);
+  }
+  return Constants.zero;
 }
