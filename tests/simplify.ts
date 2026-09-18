@@ -62,8 +62,10 @@ run_test([
 
   // tries to get rid of sin and cos if there are more
   // compact clockforms or exponential forms
+  // the old result ((k/a)^(2/5))^(1/2)/((-1)^(3/5)) is |(k/a)^(1/5)| times
+  // the unit factor, equal only for k/a >= 0
   'simplify(-cos(2/5*pi)*(k/a)^(1/5)-i*(k/a)^(1/5)*sin(2/5*pi))',
-  '((k/a)^(2/5))^(1/2)/((-1)^(3/5))',
+  '-(cos(2/5*pi)+i*sin(2/5*pi))*(k/a)^(1/5)',
 
   //"simfac(n!/n)-(n-1)!",
   //"0",

@@ -23,7 +23,7 @@ import {
 import { Find } from '../runtime/find';
 import { get_binding, symbol } from '../runtime/symbol';
 import { add, subtract } from './add';
-import { integer } from './bignum';
+import { integer, rational } from './bignum';
 import { arctan } from './arctan';
 import { denominator } from './denominator';
 import { Eval } from './eval';
@@ -154,10 +154,12 @@ function yyarg(p1: U): U {
 
   // arg(a) is 0 for a > 0 and pi for a < 0, so without a known sign a
   // symbol is left unexpressed
+  // real and >= 0 (arg(0) = 0 by convention), or < 0
   const known = facts(p1);
-  if (known.positive || known.negative) {
+  const nonnegative = known.real && known.negative === false;
+  if (nonnegative || known.negative) {
     const float = isdouble(p1) || defs.evaluatingAsFloats;
-    return known.positive
+    return nonnegative
       ? float ? Constants.zeroAsDouble : Constants.zero
       : float ? Constants.piAsDouble : symbol(PI);
   }
@@ -195,16 +197,19 @@ function yyarg(p1: U): U {
   }
 
   if (isadd(p1)) {
-    // sum of terms
+    // sum of terms: the quadrant needs the signs of the real and imaginary
+    // parts; when one is unknown, arg stays unevaluated
+    const unknown = makeList(symbol(ARG), p1);
     p1 = rect(p1);
     const RE = real(p1);
     const IM = imag(p1);
     if (isZeroAtomOrTensor(RE)) {
-      if (isnegative(IM)) {
-        return negate(Constants.Pi());
-      } else {
-        return Constants.Pi();
+      // on the imaginary axis: +-pi/2 (this gave +-pi)
+      const s = signOf(IM);
+      if (s === null || s === 0) {
+        return s === 0 ? Constants.zero : unknown;
       }
+      return multiply(Constants.Pi(), rational(s, 2));
     } else {
       const ratio = divide(IM, RE);
       const S = numerator(ratio);
@@ -216,7 +221,11 @@ function yyarg(p1: U): U {
       ) {
         // z = r (cos(a) + i sin(a)): the angle is a, turned by pi if r < 0
         const a = cadr(S);
-        if (!isbelowzero(divide(RE, C))) {
+        const r = signOf(divide(RE, C));
+        if (r === null) {
+          return unknown;
+        }
+        if (r >= 0) {
           return a;
         }
         return realconstant(a) < 0
@@ -224,8 +233,16 @@ function yyarg(p1: U): U {
           : subtract(a, Constants.Pi());
       }
       const arg1 = arctan(ratio);
-      if (isbelowzero(RE)) {
-        if (isbelowzero(IM)) {
+      const re = signOf(RE);
+      if (re === null) {
+        return unknown;
+      }
+      if (re < 0) {
+        const im = signOf(IM);
+        if (im === null) {
+          return unknown;
+        }
+        if (im < 0) {
           return subtract(arg1, Constants.Pi()); // quadrant 1 -> 3
         } else {
           return add(arg1, Constants.Pi()); // quadrant 4 -> 2
@@ -234,10 +251,8 @@ function yyarg(p1: U): U {
       return arg1;
     }
   }
-  if (!isZeroAtomOrTensor(get_binding(symbol(ASSUME_REAL_VARIABLES)))) {
-    // if we assume all passed values are real
-    return Constants.zero;
-  }
+  // a real value of unknown sign has arg 0 or pi: nothing to say (this
+  // returned 0, silently assuming it positive: arg(a-b) = 0)
 
   // if we don't assume all passed values are real, all
   // we con do is to leave unexpressed
@@ -246,6 +261,16 @@ function yyarg(p1: U): U {
 
 // numeric sign test when possible (-cos(4/5*pi) > 0, cos(8/9*pi) < 0),
 // else the syntactic one (symbols are assumed positive)
+// sign of a real value, numerically or from the assumptions; null if unknown
+function signOf(p: U): number | null {
+  const d = realconstant(p);
+  if (!isNaN(d)) {
+    return Math.sign(d);
+  }
+  const f = facts(p);
+  return f.positive ? 1 : f.negative ? -1 : f.zero ? 0 : null;
+}
+
 function isbelowzero(p: U): boolean {
   const d = realconstant(p);
   return isNaN(d) ? isnegative(p) : d < 0;

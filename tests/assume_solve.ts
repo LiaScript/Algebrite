@@ -177,8 +177,13 @@ run_test([
   'assume(n,integer)',
   '',
 
-  'nroots(n^2-4,n)',
-  '[-2.000000...,2.000000...]',
+  // both roots stay; compared by value, since nroots starts from random
+  // values and may hit 2 exactly (printed 2.0 instead of 2.000000...)
+  'r=nroots(n^2-4,n)',
+  '',
+
+  'and(abs(r[1]+2)<10^(-6),abs(r[2]-2)<10^(-6))',
+  '1',
 
   'nroots(2*n-3,n)',
   'Stop: nroots: no solution satisfies the assumptions about n',

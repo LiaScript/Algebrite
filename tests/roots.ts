@@ -325,13 +325,13 @@ run_test([
   '',
 
   'theRoots[1]',
-  '-(-1)^(2/5)*((k/a)^(2/5))^(1/2)',
+  '-cos(2/5*pi)*(k/a)^(1/5)-i*(k/a)^(1/5)*sin(2/5*pi)',
 
   'theRoots[2] = simplify(theRoots[2])',
   '',
 
   'theRoots[2]',
-  '-(-1)^(4/5)*((k/a)^(2/5))^(1/2)',
+  '-cos(4/5*pi)*(k/a)^(1/5)-i*(k/a)^(1/5)*sin(4/5*pi)',
 
   'theRoots[3] = circexp(theRoots[3])',
   '',

@@ -96,7 +96,7 @@ run_test([
     '-1/2*pi',
 
     'arg((a+b*i)/(c+d*i))',
-    'arctan(b/a)-arctan(d/c)',
+    'arg(a+i*b)-arg(c+i*d)',
 
     'arg(((-1)^(1/2) / (3^(1/2)))^(1/2))',
     '1/4*pi',

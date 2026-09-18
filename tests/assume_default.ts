@@ -139,3 +139,44 @@ run_test([
   'solve(x^2-4,x)',
   '[-2,2]',
 ]);
+
+// arg of a real value of unknown sign is 0 or pi: unevaluated (it was 0)
+run_test([
+  'arg(a-b)',
+  'arg(a-b)',
+
+  'arg(x+y)',
+  'arg(x+y)',
+
+  'arg(x^2+1)',
+  '0',
+
+  'arg(-x^2-1)',
+  'pi',
+
+  'arg(abs(a))',
+  '0',
+
+  'arg(0)',
+  '0',
+
+  // on the imaginary axis: pi/2, not pi as before
+  'arg(i*x^2+i)',
+  '1/2*pi',
+
+  'arg(-i*x^2-i)',
+  '-1/2*pi',
+
+  // x^i = exp(i log(x)): its arg is log(x) reduced to (-pi,pi], not 0
+  'arg(x^i)',
+  'arg(x^i)',
+
+  'arg(3+4*i)',
+  'arctan(4/3)',
+
+  'assume(a>0)',
+  '',
+
+  'arg(a+i)',
+  'arctan(1/a)',
+]);
