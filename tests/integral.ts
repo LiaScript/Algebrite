@@ -233,7 +233,9 @@ run_test([
   '0',
 
   //134
-  'integral(1/X*1/sqrt(2+B*X),X)-1/sqrt(2)*log((sqrt(2+B*X)-sqrt(2))/(sqrt(2+B*X)+sqrt(2)))',
+  // (s-sqrt(2))/(s+sqrt(2)) = (s-sqrt(2))^2/(B*X) with s = sqrt(2+B*X): the
+  // same up to the constant log(B), and abs(X) keeps it real where s < sqrt(2)
+  'integral(1/X*1/sqrt(2+B*X),X)-1/sqrt(2)*log((sqrt(2+B*X)-sqrt(2))^2/abs(X))',
   '0',
 
   //136
@@ -378,12 +380,12 @@ run_test([
   '0',
 
   //202
-  'integral(1/X*1/sqrt(7-X^2),X)+1/sqrt(7)*log((sqrt(7)+sqrt(7-X^2))/X)',
+  'integral(1/X*1/sqrt(7-X^2),X)+1/sqrt(7)*log((sqrt(7)+sqrt(7-X^2))/abs(X))',
   '0',
 
   //203
   `integral(sqrt(7-X^2)/X,X)\
--sqrt(7-X^2)+sqrt(7)*log((sqrt(7)+sqrt(7-X^2))/X)`,
+-sqrt(7-X^2)+sqrt(7)*log((sqrt(7)+sqrt(7-X^2))/abs(X))`,
   '0',
 
   //204
@@ -427,7 +429,7 @@ run_test([
   //217
   `integral(sqrt(7-X^2)/X^3,X)\
 +1/2*sqrt(7-X^2)/X^2\
--1/2*log((sqrt(7)+sqrt(7-X^2))/X)/sqrt(7)`,
+-1/2*log((sqrt(7)+sqrt(7-X^2))/abs(X))/sqrt(7)`,
   '0',
 
   //218
