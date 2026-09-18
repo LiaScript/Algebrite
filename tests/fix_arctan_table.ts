@@ -438,3 +438,20 @@ run_test([
   'integral(1/(x*sqrt(2*x-3)),x)',
   '2*arctan((2/3*x-1)^(1/2))/(3^(1/2))',
 ]);
+
+// symbolic parameters
+run_test([
+  // d/dx = b^2/(a^2*(a*x+b))-b/a^2+x/a = a^2*x^2/(a^2*(a*x+b))
+  'integral(x^2/(a*x+b),x)',
+  'b^2*log(abs(a*x+b))/(a^3)-b*x/(a^2)+x^2/(2*a)',
+
+  'assume(c,positive)',
+  '',
+
+  // d/dx arctan(s/sqrt(c)) = (x/(s*sqrt(c)))*c/x^2 with s = sqrt(x^2-c)
+  'integral(1/(x*sqrt(x^2-c)),x)',
+  'arctan((x^2-c)^(1/2)/(c^(1/2)))/(c^(1/2))',
+
+  'simplify(d(integral(1/(x*sqrt(x^2-c)),x),x)-1/(x*sqrt(x^2-c)))',
+  '0',
+]);
