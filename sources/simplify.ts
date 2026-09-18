@@ -68,6 +68,7 @@ import {
   negate
 } from './multiply';
 import { polar } from './polar';
+import { hasPiecewise, isPiecewise, mapPiecewise } from './piecewise';
 import { power } from './power';
 import { rationalize } from './rationalize';
 import { real } from './real';
@@ -217,6 +218,14 @@ export function simplify(p1: U): U {
 
   if (istensor(p1)) {
     return simplify_tensor(p1);
+  }
+
+  // piecewise: inside the branches, the conditions stay as they are
+  if (hasPiecewise(p1)) {
+    p1 = Eval(mapPiecewise(p1, simplify));
+    if (isPiecewise(p1)) {
+      return p1;
+    }
   }
 
   // nothing to gain on inf, and the rewrites below invert subexpressions,

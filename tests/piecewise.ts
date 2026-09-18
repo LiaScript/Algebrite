@@ -71,8 +71,9 @@ run_test([
   'f(2.0)',
   '2.0',
 
+  // a float argument makes the whole result a float, as in c(x)=4, c(2.001)
   'f(2.001)',
-  '4',
+  '4.0',
 
   // irrational arguments are decided numerically
   'f(-sqrt(2))',
@@ -91,7 +92,7 @@ run_test([
   '',
 
   'h(0.999)',
-  '10',
+  '10.0',
 
   'h(1)',
   '20',
@@ -100,7 +101,7 @@ run_test([
   '20',
 
   'h(2.001)',
-  '30',
+  '30.0',
 
   'k(x)=piecewise(1,x>2,2,x>=1,3)',
   '',
@@ -289,7 +290,7 @@ run_test([
 
 run_test([
   'piecewise(x,x+1,y)',
-  'Stop: piecewise: x+1 is not a condition, the arguments are value1, condition1, ..., [default]',
+  'Stop: piecewise: 1+x is not a condition, the arguments are value1, condition1, ..., [default]',
 ]);
 
 run_test([
@@ -612,6 +613,23 @@ run_test([
   'defint(piecewise(x^2,x<0,100,x==0,0),x,-1,1)',
   '1/3',
 
+  // improper at the break point: 1/x on (0,1) diverges, 1/sqrt(x) gives 2
+  'defint(piecewise(1/x,x>0,0),x,-1,1)',
+  'inf',
+
+  'defint(piecewise(1/sqrt(x),x>0,0),x,-1,1)',
+  '2',
+
+  // float break point
+  'defint(piecewise(1,x<2.5,0),x,0,5)',
+  '2.5',
+
+  // a product of two piecewise functions, break points 1, 3/2 and 2:
+  // (1-cos(1)) + (sin(3/2)-sin(1)) + [x*sin(x)+cos(x)] from 3/2 to 2 + 19/3
+  // = 0.45970 + 0.15602 - 0.16454 + 6.33333
+  'float(defint(piecewise(sin(x),x<1,cos(x),x<2,x)*piecewise(1,x<3/2,x),x,0,3))',
+  '6.784523...',
+
   // iterated integral
   'defint(piecewise(1,x<1,0)*y,x,0,2,y,0,2)',
   '2',
@@ -731,6 +749,19 @@ run_test([
   'integral(piecewise(-1,x<0,0,x==0,1),x)',
   'piecewise(-x,x<0,x)',
 
+  // x*log(x)-x goes to 0 at the break point: d/dx is log(x)
+  'integral(piecewise(0,x<=0,log(x)),x)',
+  'piecewise(0,x<0,-x+x*log(x))',
+
+  // log(x) has no limit at the break point: no continuous antiderivative
+  'integral(piecewise(1/x,x>0,0),x)',
+  'integral(piecewise(1/x,x>0,0),x)',
+
+  // integrand with a piecewise factor and a second integration
+  // (1/12*x^4)'' = x^2, (1/6*x^3)'' = x; both and their derivatives are 0 at 0
+  'integral(piecewise(x^2,x<0,x),x,x)',
+  'piecewise(1/12*x^4,x<0,1/6*x^3)',
+
   // no Stop when the break points are unknown
   'integral(piecewise(1,x<a,0),x)',
   'integral(piecewise(1,x<a,0),x)',
@@ -803,6 +834,14 @@ run_test([
 
   'simplify(2*piecewise(x^2,x<0,x)+1)',
   '1+2*piecewise(x^2,x<0,x)',
+
+  // the branches become equal: no cases left
+  'simplify(piecewise(1,x<0,sin(x)^2+cos(x)^2))',
+  '1',
+
+  // around the piecewise as well
+  'simplify(3*piecewise(x,x<0,0)+sin(x)^2+cos(x)^2)',
+  '1+3*piecewise(x,x<0,0)',
 ]);
 
 // ---- LaTeX
@@ -819,6 +858,13 @@ run_test([
 
   'printlatex(piecewise(1/2,x>1,0))',
   '\\begin{cases} \\frac{1}{2} & {x} > {1} \\\\ 0 & \\text{otherwise} \\end{cases}',
+
+  // as the base of a power it needs parentheses
+  'printlatex(piecewise(x,x<0,0)^2)',
+  '\\left(\\begin{cases} x & {x} < {0} \\\\ 0 & \\text{otherwise} \\end{cases}\\right)^2',
+
+  'printlatex(2*piecewise(x,x<0,0)+1)',
+  '1+2\\begin{cases} x & {x} < {0} \\\\ 0 & \\text{otherwise} \\end{cases}',
 
   // the plain print is the call
   'print(piecewise(x^2,x<0,x,x<=2,4))',
@@ -889,7 +935,7 @@ run_test([
   '5/6',
 
   'printlatex(piecewise(x,x^2))',
-  'x^2+x',
+  'x+x^2',
 ]);
 
 run_test([
