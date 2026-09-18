@@ -3,7 +3,8 @@ import {
   HERMITE,
   issymbol,
   SECRETX,
-  U
+  U,
+  istensor
 } from '../runtime/defs';
 import { symbol } from "../runtime/symbol";
 import { subtract } from './add';
@@ -30,7 +31,8 @@ export function hermite(p1: U, p2: U): U {
 // uses the recurrence relation H(x,n+1)=2*x*H(x,n)-2*n*H(x,n-1)
 function yyhermite(X: U, N: U): U {
   const n = nativeInt(N);
-  if (n < 0 || isNaN(n)) {
+  // tensors: x^2 would be a dot product, so they are not mapped over
+  if (n < 0 || isNaN(n) || istensor(X)) {
     return makeList(symbol(HERMITE), X, N);
   }
 

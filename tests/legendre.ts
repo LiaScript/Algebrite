@@ -109,6 +109,54 @@ run_test([
   'legendre(a-b,10)-eval(subst(a-b,x,legendre(x,10)))',
   '0',
 
+  // P_n(1) = 1, P_n(-1) = (-1)^n
+  'legendre(1,5)',
+  '1',
+
+  'legendre(-1,5)',
+  '-1',
+
+  'legendre(0,4)',
+  '3/8',
+
+  'legendre(0.5,3)',
+  '-0.4375',
+
+  // m > n
+  'legendre(x,2,3)',
+  '0',
+
+  // Legendre equation (1-x^2)*y'' - 2*x*y' + n*(n+1)*y = 0
+  'y=legendre(x,5)',
+  '',
+
+  '(1-x^2)*d(y,x,2)-2*x*d(y,x)+30*y',
+  '0',
+
+  'y=quote(y)',
+  '',
+
+  // orthogonality on [-1,1], norm 2/(2*n+1)
+  'defint(legendre(x,2)*legendre(x,3),x,-1,1)',
+  '0',
+
+  'defint(legendre(x,3)^2,x,-1,1)',
+  '2/7',
+
+  'defint(legendre(x,4)^2,x,-1,1)',
+  '2/9',
+
+  // negative orders stay unevaluated
+  'legendre(x,-1)',
+  'legendre(x,-1,0)',
+
+  'legendre(x,2,-1)',
+  'legendre(x,2,-1)',
+
+  // tensors are not mapped over (x^2 would be a dot product)
+  'legendre([x,1],2)',
+  'legendre([x,1],2,0)',
+
   // wrong number of arguments
   'legendre(x,1,2,3)',
   'Stop: legendre: expected 2 to 3 arguments, got 4',

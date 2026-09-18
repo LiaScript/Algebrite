@@ -10,7 +10,8 @@ import {
   NIL,
   SECRETX,
   SIN,
-  U
+  U,
+  istensor
 } from '../runtime/defs';
 import { symbol } from "../runtime/symbol";
 import { checkArgCount, square } from '../sources/misc';
@@ -72,7 +73,8 @@ function __legendre(X: U, N: U, M: U): U {
   let n = nativeInt(N);
   let m = nativeInt(M);
 
-  if (n < 0 || isNaN(n) || m < 0 || isNaN(m)) {
+  // tensors: x^2 would be a dot product, so they are not mapped over
+  if (n < 0 || isNaN(n) || m < 0 || isNaN(m) || istensor(X)) {
     return makeList(symbol(LEGENDRE), X, N, M);
   }
 
