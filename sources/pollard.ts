@@ -1,14 +1,12 @@
 import bigInt from 'big-integer';
-import {Constants, defs, MEQUAL, MULTIPLY, Num, POWER, primetab, U,} from '../runtime/defs';
+import {Constants, MULTIPLY, Num, POWER, primetab, U,} from '../runtime/defs';
 import {mcmp} from '../runtime/mcmp';
 import {check_esc_flag} from '../runtime/run';
 import {symbol} from '../runtime/symbol';
 import {mint, setSignTo} from './bignum';
 import {equaln} from './is';
 import { makeList } from './list';
-import {madd, msub} from './madd';
-import {mgcd} from './mgcd';
-import {mdiv, mdivrem, mmod, mmul} from './mmul';
+import {mdivrem} from './mmul';
 import {mprime} from './mprime';
 
 // Factor using the Pollard rho method
@@ -92,65 +90,74 @@ function try_kth_prime(k: number): U[] {
   return result;
 }
 
-// From TAOCP Vol. 2 by Knuth, p. 385 (Algorithm B)
+// What the prime table left over: split with Pollard's rho until only primes
+// remain, ascending, equal primes as a power.
 function factor_b(): U[] {
-  const result: U[] = [];
-  const bigint_one = mint(1);
-  let x = mint(5);
-  let xprime = mint(2);
-
-  let k = 1;
-  let l = 1;
-
-  while (true) {
-    if (mprime(n_factor_number)) {
-      result.push(_factor(n_factor_number, 1));
-      return result;
+  const primes: bigInt.BigInteger[] = [];
+  const split = (n: bigInt.BigInteger) => {
+    if (n.equals(1)) {
+      return;
     }
+    if (mprime(n)) {
+      primes.push(n);
+      return;
+    }
+    const g = rho(n);
+    split(g);
+    split(n.divide(g));
+  };
+  split(n_factor_number);
+  n_factor_number = mint(1);
+  primes.sort((a, b) => a.compare(b));
 
-    while (true) {
-      check_esc_flag();
+  const result: U[] = [];
+  for (let i = 0; i < primes.length; ) {
+    let count = 1;
+    while (i + count < primes.length && primes[i + count].equals(primes[i])) {
+      count++;
+    }
+    result.push(_factor(primes[i], count));
+    i += count;
+  }
+  return result;
+}
 
-      // g = gcd(x' - x, n_factor_number)
-      let t = msub(xprime, x);
-      t = setSignTo(t, 1);
-      const g = mgcd(t, n_factor_number);
-
-      if (MEQUAL(g, 1)) {
-        if (--k === 0) {
-          xprime = x;
-          l *= 2;
-          k = l;
+// A proper factor of the composite n: Pollard's rho with Brent's cycle
+// detection. The differences of 128 steps are multiplied up and go through
+// one gcd; with a gcd in every step a 12 digit factor took 11 s. When the
+// product hits n itself the steps are walked again one by one, and when even
+// that fails the next constant c is tried.
+function rho(n: bigInt.BigInteger): bigInt.BigInteger {
+  for (let c = 1; ; c += 2) {
+    const f = (v: bigInt.BigInteger) => v.multiply(v).add(c).mod(n);
+    let y = bigInt(2);
+    let x = y;
+    let ys = y;
+    let q = bigInt.one;
+    let g = bigInt.one;
+    for (let r = 1; g.equals(1); r *= 2) {
+      x = y;
+      for (let i = 0; i < r; i++) {
+        y = f(y);
+      }
+      for (let k = 0; k < r && g.equals(1); k += 128) {
+        check_esc_flag();
+        ys = y;
+        for (let i = 0; i < Math.min(128, r - k); i++) {
+          y = f(y);
+          q = q.multiply(x.subtract(y).abs()).mod(n);
         }
-
-        // x = (x ^ 2 + 1) mod n_factor_number
-        t = mmul(x, x);
-        x = madd(t, bigint_one);
-        t = mmod(x, n_factor_number);
-        x = t;
-
-        continue;
+        g = bigInt.gcd(q, n);
       }
-
-      result.push(_factor(g, 1));
-
-      if (mcmp(g, n_factor_number) === 0) {
-        return result;
-      }
-
-      // n_factor_number = n_factor_number / g
-      t = mdiv(n_factor_number, g);
-      n_factor_number = t;
-
-      // x = x mod n_factor_number
-      t = mmod(x, n_factor_number);
-      x = t;
-
-      // xprime = xprime mod n_factor_number
-      t = mmod(xprime, n_factor_number);
-      xprime = t;
-
-      break;
+    }
+    if (g.equals(n)) {
+      do {
+        ys = f(ys);
+        g = bigInt.gcd(x.subtract(ys).abs(), n);
+      } while (g.equals(1));
+    }
+    if (!g.equals(n)) {
+      return g;
     }
   }
 }

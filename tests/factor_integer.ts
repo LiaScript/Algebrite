@@ -50,7 +50,7 @@ run_test([
   '10968163447',
 
   // multiplying out gives the number back
-  'factor(2^67-1)-(2^67-1)',
+  'eval(factor(2^67-1))-(2^67-1)',
   '0',
 
   // rationals are not factored (unchanged)
