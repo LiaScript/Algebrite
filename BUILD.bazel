@@ -958,6 +958,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_constant_sign",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/constant_sign.ts",
+)
+
+nodejs_test(
     name = "test_contract",
     data = [
         ":tsc",
