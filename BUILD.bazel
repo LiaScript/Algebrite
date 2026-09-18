@@ -805,6 +805,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_fix_exact_sign",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_exact_sign.ts",
+)
+
+nodejs_test(
     name = "test_floor",
     data = [
         ":tsc",
