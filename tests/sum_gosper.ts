@@ -41,7 +41,8 @@ run_test([
   'eval(sum(k*x^k,k,1,n),n,4,x,1/2)',
   '13/8',
 
-  'eval(sum(k*x^k,k,1,n),n,1)',
+  // x*(1-2*x+x^2)/(x-1)^2
+  'simplify(eval(sum(k*x^k,k,1,n),n,1))',
   'x',
 
   // x*(1-(n+1)*x^n+n*x^(n+1))/(1-x)^2
@@ -100,6 +101,18 @@ run_test([
   'eval(sum(k*2^k,k,1,n+1),n,4)',
   '258',
 
+  // both limits symbolic in the same symbol: 24+64+160+384
+  'eval(sum(k*2^k,k,n,2*n),n,3)',
+  '632',
+
+  // the upper limit as ratio: 2+8
+  'eval(sum(k*n^k,k,1,n),n,2)',
+  '10',
+
+  // a complex ratio: i+2*i^2+3*i^3
+  'eval(sum(k*i^k,k,1,n),n,3)',
+  '-2-2*i',
+
   // another index, another bound
   'eval(sum(j*2^j,j,1,m),m,5)',
   '258',
@@ -116,6 +129,10 @@ run_test([
 
   'sum(k*k!,k,3,1)',
   '0',
+
+  // k! has no value at the lower limit
+  'sum(k*k!,k,-3,n)',
+  'sum(k*k!,k,-3,n)',
 
   // non-integer numeric limits are not summed in closed form
   'sum(k*2^k,k,1/2,n)',
@@ -159,6 +176,9 @@ run_test([
   'eval(sum(k*2^k+3*2^k+1,k,1,n),n,5)',
   '449',
 
+  'sum(k*2^k,k,1,n)+sum(k,k,1,n)',
+  '2+1/2*n+1/2*n^2+2^(1+n)*(-1+n)',
+
   // a parameter as factor
   'eval(sum(a*k*2^k,k,1,n),n,5)',
   '258*a',
@@ -185,15 +205,15 @@ run_test([
 
   // k/(k+1)! = 1/k!-1/(k+1)!
   'sum(k/(k+1)!,k,1,n)',
-  '1-1/((1+n)!)',
+  '1-1/(1+n)!',
 
   // 1/2+2/6+3/24
   'eval(sum(k/(k+1)!,k,1,n),n,3)',
   '23/24',
 
-  // 1/2-(n+1)/(n+2)!
+  // 1/2-(n+1)/(n+2)!, and (n+1)*(n+3) = n^2+4*n+3
   'sum((k^2+k-1)/(k+2)!,k,1,n)',
-  '1/2-(1+n)/((2+n)!)',
+  '1/2+(-3-4*n-n^2)/(3+n)!',
 
   'eval(sum((k^2+k-1)/(k+2)!,k,1,n),n,1)',
   '1/6',
@@ -201,6 +221,50 @@ run_test([
   // 1/6+5/24+11/120+19/720+29/5040
   'eval(sum((k^2+k-1)/(k+2)!,k,1,n),n,5)',
   '419/840',
+]);
+
+// binomial coefficients in the index alone
+run_test([
+  // the hockey stick binomial(n+1,3); the antidifference k!/(6*(k-3)!) has
+  // no value at k = 2, there z(3) - t(2) is used
+  'sum(binomial(k,2),k,2,n)',
+  '(1+n)!/(6*(-2+n)!)',
+
+  // 1+3+6
+  'eval(sum(binomial(k,2),k,2,n),n,4)',
+  '10',
+
+  // binomial(n+3,3)
+  'sum(binomial(k+2,k),k,0,n)',
+  '(3+n)!/(6*n!)',
+
+  // 1+3+6+10
+  'eval(sum(binomial(k+2,k),k,0,n),n,3)',
+  '20',
+
+  // 2/(k*(k-1)) telescopes
+  'sum(1/binomial(k,2),k,2,n)',
+  '2-2/n',
+
+  // (2*n+1)*binomial(2*n,n)/4^n: 1+1/2+3/8
+  'eval(sum(binomial(2*k,k)/4^k,k,0,n),n,2)',
+  '15/8',
+
+  // the same as (2*n+2)*binomial(2*n+2,n+1)/4^(n+1), and
+  // (2*n+2)*(2*n+2)!/(n+1)!^2 = 4*(2*n+1)*(2*n)!/n!^2
+  'sum(binomial(2*k,k)/4^k,k,0,n)',
+  '2*4^(-1-n)*(1+n)*(2+2*n)!/((1+n)!^2)',
+
+  // 1+1/2+3/8+5/16+35/128+63/256
+  'eval(sum(binomial(2*k,k)/4^k,k,0,n),n,5)',
+  '693/256',
+
+  // a partial alternating row: (-1)^n*binomial(m-1,n), 1-5+10
+  'eval(sum((-1)^k*binomial(m,k),k,0,n),m,5,n,2)',
+  '6',
+
+  'simplify(sum((-1)^k*binomial(m,k),k,0,n)-(-1)^n*(m-1)!/(n!*(m-1-n)!))',
+  '0',
 ]);
 
 // series of polynomial times r^k, abs(r) < 1
@@ -242,6 +306,13 @@ run_test([
   'sum((k+1)/2^k,k,0,inf)',
   '4',
 
+  // -2*4-1*2+0+2
+  'sum(k/2^k,k,-2,inf)',
+  '-8',
+
+  'sum(k*0.5^k,k,1,inf)',
+  '2.0',
+
   'sum(j/2^j,j,1,inf)',
   '2',
 
@@ -257,6 +328,18 @@ run_test([
 
   'sum(k*k!,k,1,inf)',
   'Stop: sum: the series diverges',
+
+  // the ratio goes to 1 and limit() cannot decide about k!/(k+3)!
+  'sum(k!/(k+3)!,k,1,inf)',
+  'sum(k!/(k+3)!,k,1,inf)',
+
+  // from a symbolic start: (m+1)/2^(m-1)
+  'simplify(sum(k/2^k,k,m,inf)-(m+1)/2^(m-1))',
+  '0',
+
+  // alternating without a limit
+  'sum((-1)^k*k,k,1,inf)',
+  'sum((-1)^k*k,k,1,inf)',
 
   // abs(x) < 1 is not known
   'sum(k*x^k,k,1,inf)',
@@ -293,13 +376,17 @@ run_test([
   '1',
 
   'sum(binomial(n,k)*x^k,k,0,n)',
-  '(1+x)^n',
+  '(x+1)^n',
 
   'sum(binomial(n,k)*2^k,k,0,n)',
   '3^n',
 
   'sum(binomial(n,k)/2^k,k,0,n)',
   '(3/2)^n',
+
+  // (1-1/2)^n
+  'sum(binomial(n,k)*(-1/2)^k,k,0,n)',
+  '(1/2)^n',
 
   // n*x*(1+x)^(n-1) at n = 3, x = 2: 0+6+24+24
   'eval(sum(k*binomial(n,k)*x^k,k,0,n),n,3,x,2)',
@@ -315,6 +402,26 @@ run_test([
   // the row 2*n
   'eval(sum(binomial(2*n,k),k,0,2*n),n,3)',
   '64',
+
+  // (x+y)^n, 8+36+54+27 at n = 3
+  'eval(sum(binomial(n,k)*x^k*y^(n-k),k,0,n),n,3,x,3,y,2)',
+  '125',
+
+  'sum(binomial(n,k)*x^k*y^(n-k),k,0,n)',
+  'y^n*(x/y+1)^n',
+
+  'sum(binomial(n+1,k),k,0,n+1)',
+  '2^(1+n)',
+
+  // not the whole row, and 0 only for n >= 2
+  'sum(binomial(n,k),k,0,n-1)',
+  'sum(binomial(n,k),k,0,n-1)',
+
+  'sum((-1)^k*k*binomial(n,k),k,0,n)',
+  'sum((-1)^k*k*binomial(n,k),k,0,n)',
+
+  'sum(binomial(n,k),k,-1,n)',
+  'sum(binomial(n,k),k,-1,n)',
 
   // numeric rows are summed term by term
   'sum(binomial(5,k),k,0,5)',
@@ -397,6 +504,27 @@ run_test([
 
   'float(sum((-1)^k/(2*k+1),k,0,inf))',
   '0.785398...',
+
+  'sum((-1)^k*x/(2*k+1),k,0,inf)',
+  '1/4*pi*x',
+
+  // 2*(1-1/3+1/5-...)
+  'sum((-1)^k/(k+1/2),k,0,inf)',
+  '1/2*pi',
+
+  // Catalan's constant, a term below the series, a symbolic start
+  'sum((-1)^k/(2*k+1)^2,k,0,inf)',
+  'sum((-1)^k/((2*k+1)^2),k,0,inf)',
+
+  'sum((-1)^k/(2*k+1),k,-1,inf)',
+  'sum((-1)^k/(2*k+1),k,-1,inf)',
+
+  'sum((-1)^k/(2*k+1),k,m,inf)',
+  'sum((-1)^k/(2*k+1),k,m,inf)',
+
+  // too many terms to subtract
+  'sum((-1)^k/(2*k+1),k,100000,inf)',
+  'sum((-1)^k/(2*k+1),k,100000,inf)',
 
   // shifted alternating harmonic series
   'sum((-1)^k/(k+1),k,0,inf)',

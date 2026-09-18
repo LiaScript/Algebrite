@@ -5,11 +5,13 @@ run_test([
   'sum(1/k,k,b,c)',
   'sum(1/k,k,b,c)',
 
-  'sum(k*2^k,k,0,n)',
-  'sum(k*2^k,k,0,n)',
+  'sum(sin(k),k,0,n)',
+  'sum(sin(k),k,0,n)',
 
-  'sum(sin(k),k,0,n)',
-  'sum(sin(k),k,0,n)',
+  // polynomial times geometric term, by Gosper's algorithm (sum_gosper.ts):
+  // (n-1)*2^(n+1)+2
+  'sum(k*2^k,k,0,n)',
+  '2+2^(1+n)*(-1+n)',
 
   // geometric terms (ratio of consecutive terms free of the index) get
   // first*(r^count-1)/(r-1), simplified to a single fraction
@@ -196,9 +198,9 @@ run_test([
   'sum(k*n,k,1,n)',
   '1/2*n^2+1/2*n^3',
 
-  // no closed form known here (2^n and n/(n+1))
+  // the whole row of binomial coefficients, see sum_gosper.ts
   'sum(binomial(n,k),k,0,n)',
-  'sum(binomial(n,k),k,0,n)',
+  '2^n',
 
   // telescopes: 1/k - 1/(k+1), see series_sums.ts
   'sum(1/(k*(k+1)),k,1,n)',
