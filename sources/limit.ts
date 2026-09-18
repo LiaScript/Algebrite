@@ -52,6 +52,7 @@ import {
 } from './is';
 import { add } from './add';
 import { logarithm } from './log';
+import { activeBranch, hasPiecewise, isPiecewise, resolvePiecewise } from './piecewise';
 import { power } from './power';
 import { makeList } from './list';
 import { checkArgCount, equal, exponential, yyexpand } from './misc';
@@ -126,6 +127,11 @@ const VANISHING_DENOMINATOR =
   'limit: denominator vanishes while numerator does not — limit is infinite or does not exist';
 
 export function limit(F: U, X: U, A: U, sides: number[] = [-1, 1]): U {
+  if (isInfinite(A) && hasPiecewise(F)) {
+    // ponytail: the branch at +-1e9 is taken for the one near +-inf
+    const G = resolvePiecewise(F, X, double(A === symbol(INF) ? 1e9 : -1e9));
+    F = G === undefined ? F : Eval(G);
+  }
   const viaExp = powerLimit(F, X, A, sides);
   if (viaExp !== undefined) {
     return viaExp;
@@ -471,7 +477,7 @@ function isJumpFunction(head: U): boolean {
 }
 
 function hasJump(p: U): boolean {
-  return iscons(p) && (isJumpFunction(car(p)) || p.tail().some(hasJump));
+  return iscons(p) && (isJumpFunction(car(p)) || isPiecewise(p) || p.tail().some(hasJump));
 }
 
 // On one side of the point a jump function is smooth: sgn(g) is a constant,
@@ -483,6 +489,12 @@ function resolveJumps(p: U, X: U, beside: number): U {
     return p;
   }
   const head = car(p);
+  if (isPiecewise(p)) {
+    const branch = activeBranch(p, X, double(beside));
+    if (branch !== undefined) {
+      return resolveJumps(branch, X, beside);
+    }
+  }
   if (isJumpFunction(head)) {
     const g = cadr(p);
     const v = zzfloat(subst(g, X, double(beside)));

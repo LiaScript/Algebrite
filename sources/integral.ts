@@ -46,6 +46,7 @@ import {
   ispolyfactoredorexpandedform,
 } from './is';
 import { makeList } from './list';
+import { hasPiecewise, piecewiseIntegral } from './piecewise';
 import { multiply } from './multiply';
 import { numerator } from './numerator';
 import { partition } from './partition';
@@ -565,6 +566,12 @@ export function integral(F: U, X: U, depth = 0): U {
   const q = mapQuantity(F, (magnitude) => integral(magnitude, X, depth));
   if (q) {
     return q;
+  }
+
+  // the continuous antiderivative, or unevaluated (no Stop) when the break
+  // points are not known
+  if (hasPiecewise(F)) {
+    return piecewiseIntegral(F, X) || makeList(symbol(INTEGRAL), F, X);
   }
 
   const real = realTrigReciprocal(F, X, depth);

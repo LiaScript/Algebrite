@@ -6,7 +6,9 @@ import {
   cdr,
   Constants,
   COS,
+  DEFINT,
   INF,
+  INTEGRAL,
   iscons,
   isdouble,
   istensor,
@@ -31,6 +33,7 @@ import { limit } from './limit';
 import { double } from './bignum';
 import { absval } from './abs';
 import { makeList } from './list';
+import { hasPiecewise, piecewiseDefint } from './piecewise';
 import { equal, length } from './misc';
 import { divide, negate } from './multiply';
 import { real } from './real';
@@ -82,37 +85,59 @@ function evalDefint(p1: U) {
     const B = Eval(car(p1));
     p1 = cdr(p1);
 
-    // an integrand with a pole inside the interval is an improper
-    // integral; the antiderivative evaluated at the bounds would be wrong
-    // (-2 for 1/x^2 from -1 to 1, which diverges)
-    checkNoInteriorPole(F, X, A, B);
-
-    // obtain the primitive of F against the
-    // specified variable X
-    // note that the primitive changes over
-    // the calculation of the multiple
-    // integrals.
-    F = integral(F, X); // contains the antiderivative of F
-
-    // the primitive at the bounds, approached from inside the interval:
-    // limit() substitutes where it can, and resolves +-inf and endpoint
-    // singularities (log(0), 1/0) with a one-sided limit
-    const dir = Math.sign(toNumber(B) - toNumber(A)) || 0;
-    const sides = (side: number) => (dir ? [side * dir] : [-1, 1]);
-    const arg1 = limit(F, X, B, sides(-1));
-    const arg2 = limit(F, X, A, sides(1));
-
-    // integral between B and A is the
-    // subtraction. Note that this could
-    // be a number but also a function.
-    // and we might have to integrate this
-    // number/function again doing the while
-    // loop again if this is a multiple
-    // integral.
-    F = subtract(arg1, arg2);
+    F = definite(F, X, A, B);
   }
 
   return F;
+}
+
+// the integral of F from A to B with respect to X
+function definite(F: U, X: U, A: U, B: U): U {
+  // piecewise: split at the break points when the bounds are numbers,
+  // otherwise through the continuous antiderivative; unevaluated when
+  // neither is possible
+  const unevaluated = makeList(symbol(DEFINT), F, X, A, B);
+  let antiderivative: U | undefined;
+  if (hasPiecewise(F)) {
+    const [a, b] = [toNumber(A), toNumber(B)];
+    if (!isNaN(a) && !isNaN(b)) {
+      const pieces = (G: U, from: U, to: U) => definite(G, X, from, to);
+      return piecewiseDefint(F, X, [A, a], [B, b], pieces) || unevaluated;
+    }
+    antiderivative = integral(F, X);
+    if (Find(antiderivative, symbol(INTEGRAL))) {
+      return unevaluated;
+    }
+  }
+
+  // an integrand with a pole inside the interval is an improper
+  // integral; the antiderivative evaluated at the bounds would be wrong
+  // (-2 for 1/x^2 from -1 to 1, which diverges)
+  checkNoInteriorPole(F, X, A, B);
+
+  // obtain the primitive of F against the
+  // specified variable X
+  // note that the primitive changes over
+  // the calculation of the multiple
+  // integrals.
+  F = antiderivative || integral(F, X); // contains the antiderivative of F
+
+  // the primitive at the bounds, approached from inside the interval:
+  // limit() substitutes where it can, and resolves +-inf and endpoint
+  // singularities (log(0), 1/0) with a one-sided limit
+  const dir = Math.sign(toNumber(B) - toNumber(A)) || 0;
+  const sides = (side: number) => (dir ? [side * dir] : [-1, 1]);
+  const arg1 = limit(F, X, B, sides(-1));
+  const arg2 = limit(F, X, A, sides(1));
+
+  // integral between B and A is the
+  // subtraction. Note that this could
+  // be a number but also a function.
+  // and we might have to integrate this
+  // number/function again doing the while
+  // loop again if this is a multiple
+  // integral.
+  return subtract(arg1, arg2);
 }
 
 // a bound as a JS number: +-Infinity for +-inf, NaN when not numeric

@@ -109,6 +109,7 @@ import {
   isplustwo
 } from './is';
 import { multiply, negate } from './multiply';
+import { isPiecewise } from './piecewise';
 import { numerator } from './numerator';
 import { print2dascii } from './print2d';
 import { scan } from './scan';
@@ -1005,6 +1006,18 @@ function print_TEST_latex(p: BaseAtom): string {
   );
 }
 
+// one row per branch: value & condition
+function print_piecewise_latex(p: BaseAtom): string {
+  const rows: string[] = [];
+  p = cdr(p);
+  while (iscons(p)) {
+    const condition = iscons(cdr(p)) ? print_expr(cadr(p)) : '\\text{otherwise}';
+    rows.push(print_expr(car(p)) + ' & ' + condition);
+    p = cddr(p);
+  }
+  return '\\begin{cases} ' + rows.join(' \\\\ ') + ' \\end{cases}';
+}
+
 function print_TEST_codegen(p: BaseAtom): string {
   let accumulator = '(function(){';
 
@@ -1345,7 +1358,10 @@ function print_power(base: BaseAtom, exponent: BaseAtom) {
     // print the base,
     // determining if it needs to be
     // wrapped in parentheses or not
-    if (isadd(base) || isnegativenumber(base)) {
+    if (defs.printMode === PRINTMODE_LATEX && isPiecewise(base as U)) {
+      // the cases are tall: parentheses that grow
+      accumulator += '\\left(' + print_expr(base) + '\\right)';
+    } else if (isadd(base) || isnegativenumber(base)) {
       accumulator += print_str('(');
       accumulator += print_expr(base);
       accumulator += print_str(')');
@@ -1595,6 +1611,9 @@ function print_factor(
 
   if (isfactorial(p)) {
     accumulator += print_factorial_function(p);
+    return accumulator;
+  } else if (isPiecewise(p as U) && defs.printMode === PRINTMODE_LATEX) {
+    accumulator += print_piecewise_latex(p);
     return accumulator;
   } else if (car(p) === symbol(ABS) && defs.printMode === PRINTMODE_LATEX) {
     accumulator += print_ABS_latex(p);

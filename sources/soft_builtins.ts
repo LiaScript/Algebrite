@@ -18,6 +18,7 @@ import {
   Eval_primes,
   Eval_totient
 } from './numbers';
+import { Eval_aspiecewise, Eval_piecewise } from './piecewise';
 import {
   Eval_beta,
   Eval_cfrac,
@@ -67,7 +68,9 @@ export function softBuiltin(name: string): ((p1: U) => U) | undefined {
       table: Eval_table,
       map: Eval_map,
       // if(c1, v1, c2, v2, ..., default) is test under the name other CAS use
-      if: Eval_test
+      if: Eval_test,
+      piecewise: Eval_piecewise,
+      aspiecewise: Eval_aspiecewise
     };
     Object.keys(SPECIAL).forEach((name) => (table[name] = evalSpecial(name)));
     table.lambertw = Eval_lambertw; // takes a branch as 2nd argument
