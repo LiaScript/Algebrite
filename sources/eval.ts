@@ -399,18 +399,6 @@ export function Eval_invg(p1: U) {
   return invg(arg);
 }
 
-export function Eval_isinteger(p1: U) {
-  p1 = Eval(cadr(p1));
-  if (isrational(p1)) {
-    return isinteger(p1) ? Constants.one : Constants.zero;
-  }
-  if (isdouble(p1)) {
-    const n = Math.floor(p1.d);
-    return n === p1.d ? Constants.one : Constants.zero;
-  }
-  return makeList(symbol(ISINTEGER), p1);
-}
-
 export function Eval_number(p1: U) {
   p1 = Eval(cadr(p1));
   if (p1.k === NUM || p1.k === DOUBLE) {

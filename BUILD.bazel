@@ -1356,3 +1356,12 @@ nodejs_test(
     ],
     entry_point = ":tests/at.ts",
 )
+
+nodejs_test(
+    name = "test_assume",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/assume.ts",
+)

@@ -1,3 +1,4 @@
+import { clearAssumptions } from './assume';
 import { car, cdr, defs, iscons, NIL, SYM, U } from '../runtime/defs';
 import { defn } from '../runtime/init';
 import { clear_term } from '../runtime/otherCFunctions';
@@ -28,6 +29,7 @@ export function do_clearall() {
   }
 
   do_clearPatterns();
+  clearAssumptions();
   clear_symbols();
   defn();
   defs.unitsAutoDetect = false;

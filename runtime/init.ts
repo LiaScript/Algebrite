@@ -53,7 +53,6 @@ import {
   Eval_index,
   Eval_inv,
   Eval_invg,
-  Eval_isinteger,
   Eval_number,
   Eval_operator,
   Eval_quote,
@@ -92,6 +91,7 @@ import { Eval_trigexpand } from '../sources/trigexpand';
 import { Eval_nsolve } from '../sources/nsolve';
 import { Eval_invlaplace, Eval_laplace } from '../sources/laplace';
 import { Eval_at } from '../sources/at';
+import { Eval_assume, Eval_assumptions, Eval_forget, Eval_isinteger, Eval_isnegative, Eval_isnonzero, Eval_ispositive, Eval_isreal } from '../sources/assume';
 import { Eval_max, Eval_min } from '../sources/minmax';
 import { Eval_mod } from '../sources/mod';
 import { Eval_multiply } from '../sources/multiply';
@@ -256,6 +256,13 @@ import {
   LAPLACE,
   INVLAPLACE,
   AT,
+  ASSUME,
+  FORGET,
+  ASSUMPTIONS,
+  ISREAL,
+  ISPOSITIVE,
+  ISNEGATIVE,
+  ISNONZERO,
   MAX,
   MAX_FIXED_PRINTOUT_DIGITS,
   METAA,
@@ -519,6 +526,13 @@ export function defn() {
   std_symbol(LAPLACE, Eval_laplace);
   std_symbol(INVLAPLACE, Eval_invlaplace);
   std_symbol(AT, Eval_at);
+  std_symbol(ASSUME, Eval_assume);
+  std_symbol(FORGET, Eval_forget);
+  std_symbol(ASSUMPTIONS, Eval_assumptions);
+  std_symbol(ISREAL, Eval_isreal);
+  std_symbol(ISPOSITIVE, Eval_ispositive);
+  std_symbol(ISNEGATIVE, Eval_isnegative);
+  std_symbol(ISNONZERO, Eval_isnonzero);
   std_symbol(MAX, Eval_max);
   std_symbol(MIN, Eval_min);
   std_symbol(MOD, Eval_mod);
