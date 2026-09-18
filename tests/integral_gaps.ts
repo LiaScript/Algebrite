@@ -546,6 +546,9 @@ run_test([
 run_test([
   ...helpers,
 
+  'integral(sqrt(tan(x)),x)',
+  'arctan(-1+2^(1/2)*tan(x)^(1/2))/(2^(1/2))+arctan(1+2^(1/2)*tan(x)^(1/2))/(2^(1/2))+log(1+tan(x)-2^(1/2)*tan(x)^(1/2))/(2*2^(1/2))-log(1+tan(x)+2^(1/2)*tan(x)^(1/2))/(2*2^(1/2))',
+
   'chk(sqrt(tan(x)),1/2)',
   '1',
 

@@ -344,7 +344,7 @@ function completeSquare(F: U, X: U, depth: number): U | undefined {
 
 // sqrt(tan(q)), q linear in X: with u = sqrt(tan(q)) the integrand is
 // 2*u^2/(1+u^4), so with m = sqrt(2)*u the integral is
-// log((u^2-m+1)/(u^2+m+1))/(2*sqrt(2)) + (arctan(m+1)+arctan(m-1))/sqrt(2)
+// (log(u^2-m+1)-log(u^2+m+1))/(2*sqrt(2)) + (arctan(m+1)+arctan(m-1))/sqrt(2)
 function sqrtTan(F: U, X: U): U | undefined {
   if (!ispower(F) || !isFn(cadr(F), TAN) || !equalq(caddr(F), 1, 2)) {
     return undefined;
@@ -356,7 +356,8 @@ function sqrtTan(F: U, X: U): U | undefined {
   const r2 = power(integer(2), rational(1, 2));
   const m = multiply(r2, F);
   const t1 = add(cadr(F), Constants.one);
-  const log = makeList(symbol(LOG), divide(subtract(t1, m), add(t1, m)));
+  // both arguments are positive: (u-1/sqrt(2))^2+1/2 and (u+1/sqrt(2))^2+1/2
+  const log = subtract(makeList(symbol(LOG), subtract(t1, m)), makeList(symbol(LOG), add(t1, m)));
   const atan = add(
     makeList(symbol(ARCTAN), add(m, Constants.one)),
     makeList(symbol(ARCTAN), subtract(m, Constants.one))
