@@ -180,4 +180,8 @@ run_test([
 
   'expand(sin(y)/(x^2-1))',
   'sin(y)/(2*(x-1))-sin(y)/(2*(x+1))',
+
+  // 1/i^(1/3) = exp(-i*pi/6); was Stop: divide by zero in coeff
+  'expand((x+1)/i^(1/3))',
+  '(-1/2*i+1/2*3^(1/2))*x-1/2*i+1/2*3^(1/2)',
 ]);

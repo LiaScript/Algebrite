@@ -64,6 +64,11 @@ export function Eval_coeff(p1: U) {
 export function coeff(p: U, x: U): U[] {
   const coefficients = [];
 
+  // each c is evaluated, so p must be too: otherwise p - c may not cancel
+  // structurally (-(-1)^(5/6) vs its evaluated rectangular form) and the
+  // loop divides by x until subst(p, x, 0) divides by zero
+  p = Eval(p);
+
   while (true) {
     const c = Eval(subst(p, x, Constants.zero));
     coefficients.push(c);
