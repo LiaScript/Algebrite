@@ -952,3 +952,37 @@ run_test([
   'piecewise(1,2<3,0)',
   '1',
 ]);
+
+// Conditions go through the evaluator's reasoning about comparisons and
+// and/or/not (logic_simplify.ts): an unsatisfiable condition drops its
+// branch, bounds are joined, common terms cancel.
+run_test([
+  'piecewise(1,and(x>1,x<0),2)',
+  '2',
+
+  'piecewise(x,and(x>1,x>3),0)',
+  'piecewise(x,x>3,0)',
+
+  'piecewise(1,x+y>y,0)',
+  'piecewise(1,x>0,0)',
+
+  'piecewise(1,or(x<1,x>=1),0)',
+  '1',
+
+  'piecewise(a,and(x>1,x<=1),b,or(x<0,x<2),c)',
+  'piecewise(b,x<2,c)',
+
+  'piecewise(1,not(x>1),0)',
+  'piecewise(1,x<=1,0)',
+
+  // the joined condition gives the break points of a definite integral:
+  // x on (3,5), 0 elsewhere
+  'defint(piecewise(x,and(x>1,x>3,x<5),0),x,0,10)',
+  '8',
+
+  'eval(piecewise(x,and(x>1,x>3),0),x,2)',
+  '0',
+
+  'eval(piecewise(x,and(x>1,x>3),0),x,4)',
+  '4',
+]);
