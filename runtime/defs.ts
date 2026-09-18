@@ -366,6 +366,7 @@ export const QUOTIENT = 'quotient';
 export const RANK = 'rank';
 export const RATIONALIZE = 'rationalize';
 export const REAL = 'real';
+export const RESULTANT = 'resultant';
 export const ROUND = 'round';
 export const RREF = 'rref';
 export const YYRECT = 'rect';

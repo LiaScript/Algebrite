@@ -322,6 +322,7 @@ const builtin_fns = [
   'rank',
   'rationalize',
   'real',
+  'resultant',
   'rect',
   'roots',
   'round',

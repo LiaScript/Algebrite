@@ -108,6 +108,7 @@ import { Eval_convert, Eval_dimensionof, Eval_quantity, Eval_units } from '../so
 import { Eval_quotient } from '../sources/quotient';
 import { Eval_rationalize } from '../sources/rationalize';
 import { Eval_real } from '../sources/real';
+import { Eval_resultant } from '../sources/resultant';
 import { Eval_rect } from '../sources/rect';
 import { Eval_roots } from '../sources/roots';
 import { Eval_round } from '../sources/round';
@@ -306,6 +307,7 @@ import {
   RANK,
   RATIONALIZE,
   REAL,
+  RESULTANT,
   reset_after_error,
   ROOTS,
   ROUND,
@@ -572,6 +574,7 @@ export function defn() {
   std_symbol(RANK, Eval_rank);
   std_symbol(RATIONALIZE, Eval_rationalize);
   std_symbol(REAL, Eval_real);
+  std_symbol(RESULTANT, Eval_resultant);
   std_symbol(YYRECT, Eval_rect);
   std_symbol(ROOTS, Eval_roots);
   std_symbol(ROUND, Eval_round);
