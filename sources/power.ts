@@ -49,6 +49,7 @@ import { cosine } from './cos';
 import { dpow } from './dpow';
 import { Eval } from './eval';
 import { factorial } from './factorial';
+import { zzfloat } from './float';
 import { imag } from './imag';
 import {
   iscomplexnumber,
@@ -58,10 +59,12 @@ import {
   isminusone,
   isminusoneovertwo,
   isnegativenumber,
+  isnegativeterm,
   isone,
   isoneovertwo,
   ispositivenumber,
   isquarterturn,
+  isZeroAtom,
   isZeroAtomOrTensor
 } from './is';
 import { makeList } from './list';
@@ -127,6 +130,11 @@ function yypower(base: U, exponent: U): U {
       console.log(`   power of ${inputBase} ^ ${inputExp}: ${one}`);
     }
     return one;
+  }
+
+  //  0 ^ a    ->  0  for a known to be positive (0^0 is 1, 0^(-1) a pole)
+  if (isZeroAtom(base) && !isNumericAtom(exponent) && isPositive(exponent)) {
+    return base;
   }
 
   // e^some_float
@@ -242,6 +250,12 @@ function yypower(base: U, exponent: U): U {
     return result;
   }
 
+  // a number to a complex number: i^i = exp(-pi/2)
+  const complexPower = powerOfComplexExponent(base, exponent);
+  if (complexPower !== undefined) {
+    return complexPower;
+  }
+
   // both base and exponent are rational numbers?
   if (isrational(base) && isrational(exponent)) {
     if (DEBUG_POWER) {
@@ -284,6 +298,15 @@ function yypower(base: U, exponent: U): U {
     }
     if (isInteger(divide(subtract(exponent, Constants.one), integer(2)))) {
       return Constants.negOne;
+    }
+    // (-1)^(-k) = (-1)^k for an integer k: every integer term of the
+    // exponent gets a positive sign, 1/(-1)^k = (-1)^k, (-1)^(1-k) = (-1)^(1+k)
+    const terms = isadd(exponent) ? exponent.tail() : [exponent];
+    if (terms.some(isnegativeterm) && terms.every((t) => isInteger(t))) {
+      return power(
+        base,
+        terms.reduce((acc: U, t) => add(acc, isnegativeterm(t) ? negate(t) : t), Constants.zero)
+      );
     }
   }
 
@@ -565,6 +588,59 @@ function yypower(base: U, exponent: U): U {
     console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);
   }
   return result;
+}
+
+// z^w = exp(w*log(z)), principal branch, for a number z and a complex
+// number w = u+i*v with v != 0. Exact for z = -1, i, -i, where log(z) is
+// i*pi, i*pi/2, -i*pi/2: i^i = exp(-pi/2). Any other base (2^i, (1+i)^i)
+// stays as it is and gets its value in float mode.
+function powerOfComplexExponent(base: U, exponent: U): U | undefined {
+  const i = Constants.imaginaryunit;
+  // stricter than isimaginarynumber, which takes a*b^(-1/2) as well
+  const isImaginary = (p: U) =>
+    equal(p, i) ||
+    (ismultiply(p) && length(p) === 3 && isNumericAtom(cadr(p)) && equal(caddr(p), i));
+  const isComplex = (p: U) =>
+    isImaginary(p) ||
+    (isadd(p) && length(p) === 3 && isNumericAtom(cadr(p)) && isImaginary(caddr(p)));
+  if (!isComplex(exponent) || !(isNumericAtom(base) || isComplex(base))) {
+    return undefined;
+  }
+  const hasDouble = (p: U): boolean =>
+    isdouble(p) || (iscons(p) && p.tail().some(hasDouble));
+  if (defs.evaluatingAsFloats || hasDouble(base) || hasDouble(exponent)) {
+    const [a, b, u, v] = [real(base), imag(base), real(exponent), imag(exponent)].map(
+      (p) => {
+        const d = zzfloat(p);
+        return isdouble(d) ? d.d : NaN;
+      }
+    );
+    const logr = Math.log(Math.hypot(a, b));
+    const theta = Math.atan2(b, a);
+    const mag = Math.exp(u * logr - v * theta);
+    const angle = v * logr + u * theta;
+    if (!Number.isFinite(mag) || Number.isNaN(angle)) {
+      return undefined;
+    }
+    return add(
+      double(mag * Math.cos(angle)),
+      multiply(double(mag * Math.sin(angle)), i)
+    );
+  }
+  const halfTurns = equal(base, Constants.negOne)
+    ? integer(2)
+    : equal(base, i)
+    ? Constants.one
+    : equal(base, negate(i))
+    ? Constants.negOne
+    : undefined;
+  if (halfTurns === undefined) {
+    return undefined;
+  }
+  // log(z) = i*pi/2 * halfTurns
+  return exponential(
+    multiply(exponent, multiply(multiply(i, Constants.Pi()), divide(halfTurns, integer(2))))
+  );
 }
 
 //-----------------------------------------------------------------------------

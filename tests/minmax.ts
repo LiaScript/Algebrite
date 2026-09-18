@@ -33,7 +33,7 @@ run_test([
   'min(x,1)',
 
   'max(1,x,2)',
-  'max(1,x,2)',
+  'max(2,x)',
 
   'min(-x,x)',
   'min(-x,x)',

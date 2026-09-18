@@ -199,6 +199,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_sum_gosper",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/sum_gosper.ts",
+)
+
+nodejs_test(
     name = "test_sum",
     data = [
         ":tsc",
@@ -244,12 +253,30 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_solve_general",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/solve_general.ts",
+)
+
+nodejs_test(
     name = "test_solve",
     data = [
         ":tsc",
         "@npm//big-integer",
     ],
     entry_point = ":tests/solve.ts",
+)
+
+nodejs_test(
+    name = "test_small_fixes",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/small_fixes.ts",
 )
 
 nodejs_test(
@@ -346,6 +373,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_roots_trig",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/roots_trig.ts",
+)
+
+nodejs_test(
     name = "test_rect",
     data = [
         ":tsc",
@@ -424,6 +460,15 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/polar.ts",
+)
+
+nodejs_test(
+    name = "test_piecewise",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/piecewise.ts",
 )
 
 nodejs_test(
@@ -652,6 +697,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_integral_gaps",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/integral_gaps.ts",
+)
+
+nodejs_test(
     name = "test_integral_heuristic",
     data = [
         ":tsc",
@@ -724,12 +778,39 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_fourier",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fourier.ts",
+)
+
+nodejs_test(
     name = "test_for",
     data = [
         ":tsc",
         "@npm//big-integer",
     ],
     entry_point = ":tests/for.ts",
+)
+
+nodejs_test(
+    name = "test_fix_arctan_table",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_arctan_table.ts",
+)
+
+nodejs_test(
+    name = "test_fix_exact_sign",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_exact_sign.ts",
 )
 
 nodejs_test(
@@ -766,6 +847,51 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/float.ts",
+)
+
+nodejs_test(
+    name = "test_fix_sum_dsolve",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_sum_dsolve.ts",
+)
+
+nodejs_test(
+    name = "test_fix_limit",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_limit.ts",
+)
+
+nodejs_test(
+    name = "test_fix_solve_gcd",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_solve_gcd.ts",
+)
+
+nodejs_test(
+    name = "test_fix_integral_heuristic",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_integral_heuristic.ts",
+)
+
+nodejs_test(
+    name = "test_fix_defint_trig",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_defint_trig.ts",
 )
 
 nodejs_test(
@@ -919,6 +1045,15 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/cos.ts",
+)
+
+nodejs_test(
+    name = "test_constant_sign",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/constant_sign.ts",
 )
 
 nodejs_test(
@@ -1219,6 +1354,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_timelimit",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/timelimit.ts",
+)
+
+nodejs_test(
     name = "test_trace",
     data = [
         ":tsc",
@@ -1326,6 +1470,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_dsolve_extended",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/dsolve_extended.ts",
+)
+
+nodejs_test(
     name = "test_groebner",
     data = [
         ":tsc",
@@ -1380,6 +1533,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_logic_simplify",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/logic_simplify.ts",
+)
+
+nodejs_test(
     name = "test_quote",
     data = [
         ":tsc",
@@ -1413,6 +1575,33 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/draw.ts",
+)
+
+nodejs_test(
+    name = "test_factor_integer",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/factor_integer.ts",
+)
+
+nodejs_test(
+    name = "test_factor_complete",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/factor_complete.ts",
+)
+
+nodejs_test(
+    name = "test_factor_multivariate",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/factor_multivariate.ts",
 )
 
 nodejs_test(

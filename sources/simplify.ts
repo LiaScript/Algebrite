@@ -2,6 +2,7 @@ import { alloc_tensor } from '../runtime/alloc';
 import { count, countOccurrencesOfSymbol } from '../runtime/count';
 import {
   ADD,
+  AND,
   caddr,
   cadr,
   car,
@@ -12,16 +13,16 @@ import {
   defs,
   do_simplify_nested_radicals,
   FACTORIAL,
-  INF,
   FUNCTION,
+  INF,
   INTEGRAL,
   isadd,
-  isdouble,
   iscons,
-  issymbol,
+  isdouble,
   isinnerordot,
   ismultiply,
   ispower,
+  issymbol,
   istensor,
   MAX_CONSECUTIVE_APPLICATIONS_OF_ALL_RULES,
   MAX_CONSECUTIVE_APPLICATIONS_OF_SINGLE_RULE,
@@ -31,10 +32,17 @@ import {
   MULTIPLY,
   NIL,
   noexpand,
+  NOT,
+  OR,
   POWER,
   SECRETX,
   SIN,
   Tensor,
+  TESTEQ,
+  TESTGE,
+  TESTGT,
+  TESTLE,
+  TESTLT,
   TRANSPOSE,
   U,
 } from '../runtime/defs';
@@ -68,6 +76,7 @@ import {
   negate
 } from './multiply';
 import { polar } from './polar';
+import { hasPiecewise, isPiecewise, mapPiecewise } from './piecewise';
 import { power } from './power';
 import { rationalize } from './rationalize';
 import { real } from './real';
@@ -219,6 +228,21 @@ export function simplify(p1: U): U {
     return simplify_tensor(p1);
   }
 
+  // piecewise: inside the branches, the conditions stay as they are
+  if (hasPiecewise(p1)) {
+    p1 = Eval(mapPiecewise(p1, simplify));
+    if (isPiecewise(p1)) {
+      return p1;
+    }
+  }
+
+  // comparisons, and/or/not: the parts are simplified, evaluating the whole
+  // again cancels and joins them (logic_simplify.ts)
+  const logical = [TESTEQ, TESTLT, TESTLE, TESTGT, TESTGE, AND, OR, NOT];
+  if (iscons(p1) && logical.some((name) => car(p1) === symbol(name))) {
+    return Eval(makeList(car(p1), ...p1.tail().map(simplify)));
+  }
+
   // nothing to gain on inf, and the rewrites below invert subexpressions,
   // which turns 1/inf = 0 into a division by zero
   if (Find(p1, symbol(INF))) {
@@ -348,9 +372,10 @@ function f3(p1: U): U {
 function f10(p1: U): U {
   const carp1 = car(p1);
   if (carp1 === symbol(MULTIPLY) || isinnerordot(p1)) {
-    // both operands a transpose?
+    // both operands a transpose? (two operands, a third one would be lost)
 
     if (
+      length(p1) === 3 &&
       car(car(cdr(p1))) === symbol(TRANSPOSE) &&
       car(car(cdr(cdr(p1)))) === symbol(TRANSPOSE)
     ) {

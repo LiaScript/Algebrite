@@ -8,6 +8,7 @@ const add_1 = require("./add");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const factorpoly_1 = require("./factorpoly");
+const gcd_multivariate_1 = require("./gcd_multivariate");
 const is_1 = require("./is");
 const find_1 = require("../runtime/find");
 const symbol_2 = require("../runtime/symbol");
@@ -18,9 +19,9 @@ const list_1 = require("./list");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
 // Greatest common denominator
-// can also be run on polynomials, however
-// it works only on the integers and it works
-// by factoring the polynomials (not Euclidean algorithm)
+// Polynomials with rational coefficients go through Euclid's algorithm
+// (gcd_rational_polys in one variable, gcd_multivariate.ts in several),
+// everything else is compared term by term and factor by factor.
 function Eval_gcd(p1) {
     p1 = defs_1.cdr(p1);
     let result = eval_1.Eval(defs_1.car(p1));
@@ -48,7 +49,7 @@ function gcd_main(p1, p2) {
     if (is_1.isZeroAtomOrTensor(p2)) {
         return p1;
     }
-    const euclid = gcd_rational_polys(p1, p2);
+    const euclid = gcd_rational_polys(p1, p2) || gcd_multivariate_1.gcdMultivariate(p1, p2);
     if (euclid) {
         return euclid;
     }
@@ -161,7 +162,12 @@ function gcd_powers_with_same_base(base1, base2) {
     }
     // a plain -1 is a sign, not a power of the base -1: taking it as one
     // made gcd(i, -1*i) = gcd(i,-1)*gcd(i,i) = i*i = -1
-    if (!misc_1.equal(base1, base2) || (is_1.isminusone(base1) && ispow1 !== ispow2)) {
+    // A number and a root of it have no common factor here: 3 and 3^(1/2)
+    // stay two factors of a product, so the gcd of 3*3^(1/2)*z and
+    // 3*3^(1/2)*a, the product of the gcds of all pairs, came out as
+    // 9*3^(1/2). condense then left a fraction in the sum, and numerator and
+    // denominator recursed forever between the two forms.
+    if (!misc_1.equal(base1, base2) || (defs_1.isNumericAtom(base1) && ispow1 !== ispow2)) {
         return defs_1.Constants.one;
     }
     // are both exponents numerical?

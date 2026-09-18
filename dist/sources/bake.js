@@ -12,6 +12,16 @@ function bake(p1) {
 }
 exports.bake = bake;
 function _bake(p1) {
+    // x+[3,4]: a tensor among the terms is no polynomial coefficient
+    if (defs_1.isadd(p1) && p1.tail().some(defs_1.istensor)) {
+        return p1;
+    }
+    // A product with a sum in it, 4*z*(3*y-5)^2, is a polynomial in z with the
+    // coefficient 4*(3*y-5)^2, which bake_poly would multiply out: the result
+    // of factor came back as (100-120*y+36*y^2)*z. Each factor on its own.
+    if (defs_1.ismultiply(p1) && p1.tail().some((f) => defs_1.isadd(f) || (defs_1.ispower(f) && defs_1.isadd(defs_1.cadr(f))))) {
+        return list_1.makeList(defs_1.car(p1), ...p1.tail().map(bake));
+    }
     const s = is_1.ispolyexpandedform(p1, symbol_1.symbol(defs_1.SYMBOL_S));
     const t = is_1.ispolyexpandedform(p1, symbol_1.symbol(defs_1.SYMBOL_T));
     const x = is_1.ispolyexpandedform(p1, symbol_1.symbol(defs_1.SYMBOL_X));

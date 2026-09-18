@@ -51,10 +51,10 @@ run_test([
   '2*10968163447',
 
   'factor((a^2+6)^2)',
-  '10968163447*10968163447', // FIXME should be 10968163447^2
+  '10968163447^2',
 
   'factor((a^2+6)*(a^2+60))',
-  '10968163501*10968163447', // FIXME sort order
+  '10968163447*10968163501',
 
   'f=(x+1)*(x+2)*(y+3)*(y+4)',
   '',
@@ -289,10 +289,10 @@ run_test([
   'factor((x^2+11)*(x^2+7*x+13))',
   '(x^2+11)*(x^2+7*x+13)',
 
-  // limitation: irreducible factors of degree > 2 are not split off, here
-  // x^8+x^6+x^4+x^2+1 = (x^4+x^3+x^2+x+1)*(x^4-x^3+x^2-x+1)
+  // factors of degree > 2 are split off as well (factor_zassenhaus.ts), the
+  // old limitation left x^8+x^6+x^4+x^2+1 here
   'factor(x^10-1)',
-  '(x-1)*(x+1)*(x^8+x^6+x^4+x^2+1)',
+  '(x-1)*(x+1)*(x^4+x^3+x^2+x+1)*(x^4-x^3+x^2-x+1)',
 
   // symbolic coefficients, multivariate
   'factor(a*x^2-a)',

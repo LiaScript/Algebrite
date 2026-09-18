@@ -69,3 +69,37 @@ run_test([
   'coeff(3*x^2+1,2)',
   '3',
 ]);
+
+// A polynomial with a tensor in it: the internal coefficient loop ended only
+// on the number 0, never on what x+[0,0] leaves, and ran forever.
+// x<[1,2] and abs(x-[1,2]) ran forever (they ask for the sign of x-[1,2]).
+run_test([
+  'timelimit=5',
+  '',
+
+  'x<[1,2]',
+  'x<[1,2]',
+
+  'x==[1,2]',
+  'x==[1,2]',
+
+  '[1,2]<x',
+  '[1,2]<x',
+
+  'test(x<[1,2],1,0)',
+  'test(x<[1,2],1,0)',
+
+  // a scalar and a tensor are not added; on master this line alone ran
+  // forever, in the display step for polynomials (bake)
+  'x-[3,4]',
+  'x+[-3,-4]',
+
+  'abs(x-[3,4])',
+  'abs(x+[-3,-4])',
+
+  '2*x^2+x+[3,4]',
+  'x+[3,4]+2*x^2',
+
+  'abs([3,4])',
+  '5',
+]);

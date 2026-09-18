@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Eval_cfrac = exports.evalChebyshev = exports.Eval_beta = exports.Eval_lambertw = exports.specialDerivative = exports.evalSpecial = exports.SPECIAL = void 0;
 const defs_1 = require("../runtime/defs");
+const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const add_1 = require("./add");
 const bignum_1 = require("./bignum");
@@ -50,6 +51,8 @@ exports.SPECIAL = {
         derivative: (x) => call('cos', multiply_1.multiply(halfPi(), sq(x)))
     },
     digamma: {
+        // the poles at 0, -1, -2, ...: like gamma there
+        exact: (x) => is_1.isinteger(x) && !is_1.isposint(x) ? run_1.stop('divide by zero') : undefined,
         numeric: digamma
     }
 };

@@ -72,8 +72,9 @@ run_test([
   'subst(2,x,x==2)',
   '1',
 
+  // the sides of a comparison are evaluated: u+1 is 1+u, as in subst(u,x,x+1)
   'subst(u,x,x+1==y)',
-  'u+1==y',
+  '1+u==y',
 
   // vectors
   'subst(3,x,[x,x^2])',

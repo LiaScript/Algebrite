@@ -110,29 +110,29 @@ export function rect(p1: U): U {
 
   // try to get to the rectangular form by doing
   // abs(p1) * (cos (theta) + i * sin(theta))
-  // where theta is arg(p1)
+  // where theta is arg(p1, true)
   // abs(z) * (cos(arg(z)) + i sin(arg(z)))
   const result = multiply(
     abs(p1),
-    add(cosine(arg(p1)), multiply(Constants.imaginaryunit, sine(arg(p1))))
+    add(cosine(arg(p1, true)), multiply(Constants.imaginaryunit, sine(arg(p1, true))))
   );
 
   if (DEBUG_RECT) {
     console.log(` rect - ${input} is NOT a sum `);
     console.log(` rect - ${input} abs: ${abs(p1)}`);
     console.log(` rect - ${input} arg of ${p1} : ${p1}`);
-    console.log(` rect - ${input} cosine: ${cosine(arg(p1))}`);
-    console.log(` rect - ${input} sine: ${sine(arg(p1))}`);
+    console.log(` rect - ${input} cosine: ${cosine(arg(p1, true))}`);
+    console.log(` rect - ${input} sine: ${sine(arg(p1, true))}`);
     console.log(
       ` rect - ${input} i * sine: ${multiply(
         Constants.imaginaryunit,
-        sine(arg(p1))
+        sine(arg(p1, true))
       )}`
     );
     console.log(
       ` rect - ${input} cos + i * sine: ${add(
-        cosine(arg(p1)),
-        multiply(Constants.imaginaryunit, sine(arg(p1)))
+        cosine(arg(p1, true)),
+        multiply(Constants.imaginaryunit, sine(arg(p1, true)))
       )}`
     );
     console.log(`rect of ${input} : ${result}`);

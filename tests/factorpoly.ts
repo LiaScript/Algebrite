@@ -23,8 +23,10 @@ run_test([
   'factor(x*(x+1)*(x+2),x)',
   'x*(1+x)*(2+x)',
 
+  // factor(p) without a variable is complete since factor_multivariate.ts:
+  // the part without x is factored in y (it was (1+x)*(2+x)*(12+7*y+y^2))
   'factor((x+1)*(x+2)*(y+3)*(y+4))',
-  '(1+x)*(2+x)*(12+7*y+y^2)',
+  '(1+x)*(2+x)*(3+y)*(4+y)',
 
   'factor((x+1)*(x+2)*(y+3)*(y+4),x,y)',
   '(1+x)*(2+x)*(3+y)*(4+y)',
@@ -396,8 +398,8 @@ run_test([
   'factor((2*x^2+3)^2*(3*x-1),x)',
   '(3*x-1)*(2*x^2+3)^2',
 
-  // limitation: quadratic factors with symbolic coefficients are not
-  // found, x^4+x^2*y^2+y^4 = (x^2+x*y+y^2)*(x^2-x*y+y^2)
+  // quadratic factors with symbolic coefficients: factor_multivariate.ts
+  // (the old limitation left the polynomial as it was)
   'factor(x^4+x^2*y^2+y^4,x)',
-  'x^4+y^4+x^2*y^2',
+  '(x^2+y^2-x*y)*(x^2+y^2+x*y)',
 ]);

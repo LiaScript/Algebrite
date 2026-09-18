@@ -4,20 +4,26 @@ import {
   caddr,
   cadr,
   car,
+  Cons,
   Constants,
+  COS,
   DEBUG,
   defs,
+  Double,
   E,
   INF,
   evalFloats,
   noFloats,
   iscons,
+  isdouble,
   isrational,
   istensor,
   MULTIPLY,
   NIL,
   PI,
   POWER,
+  SIN,
+  TAN,
   U
 } from '../runtime/defs';
 import { stop } from '../runtime/run';
@@ -25,6 +31,7 @@ import { symbol } from "../runtime/symbol";
 import { bigFloat, MAX_DIGITS } from './bigfloat';
 import { bignum_float, double, nativeInt } from './bignum';
 import { Eval } from './eval';
+import { isfloating } from './is';
 import { makeList } from './list';
 import { copy_tensor } from './tensor';
 
@@ -73,9 +80,11 @@ function checkFloatHasWorkedOutCompletely(nodeToCheck) {
 export function evalExactly(f: (p1: U) => U, p1: U): U {
   const asFloats = defs.evaluatingAsFloats;
   const result = noFloats(f, p1);
-  // an unevaluated call comes back as it is: converting it would evaluate
-  // it again, without end
-  if (!asFloats || (iscons(result) && car(result) === car(p1))) {
+  // an unevaluated call comes back as it is, also inside the result
+  // (a*defint(...)): converting it would evaluate it again, without end
+  const unevaluated = (p: U): boolean =>
+    iscons(p) && (car(p) === car(p1) || p.tail().some(unevaluated));
+  if (!asFloats || unevaluated(result)) {
     return result;
   }
   return zzfloat(result);
@@ -105,7 +114,7 @@ export function yyfloat(p1: U): U {
 
 function yyfloat_(p1: U): U {
   if (iscons(p1)) {
-    return makeList(...p1.map(yyfloat_));
+    return bigTrig(p1) ?? makeList(...p1.map(yyfloat_));
   }
   if (istensor(p1)) {
     p1 = copy_tensor(p1);
@@ -125,4 +134,22 @@ function yyfloat_(p1: U): U {
     return double(Infinity);
   }
   return p1;
+}
+
+// sin, cos, tan of an exact argument beyond 2^50: the double of the argument
+// has lost the digits that count (float(sin(3^34)) was -0.24 for 0.69), so
+// the argument is reduced by bigFloat with enough digits of pi.
+function bigTrig(p1: Cons): U | undefined {
+  if (![SIN, COS, TAN].some((f) => car(p1) === symbol(f)) || isfloating(cadr(p1))) {
+    return undefined;
+  }
+  const arg = Eval(yyfloat_(cadr(p1)));
+  if (!isdouble(arg) || !(Math.abs(arg.d) > 2 ** 50)) {
+    return undefined;
+  }
+  try {
+    return double((bigFloat(p1, 17) as Double).d);
+  } catch (e) {
+    return p1; // out of reach: the exact call, not the sine of a rounded argument
+  }
 }

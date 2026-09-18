@@ -4,7 +4,8 @@ import { run_test } from '../test-harness';
 // (exp, log, sin, cos, tan, a radical, abs, an inverse trig function) that
 // is solved for and inverted; every candidate is checked in the original
 // equation, which drops extraneous roots from squaring and log domains.
-// Trig equations give the principal solutions only, no +2*pi*n family.
+// Trig equations give the principal solutions; solve(eq, x, n) gives the
+// periodic families, see solve_general.ts.
 run_test([
   // exponentials: b^g(x) = c  <=>  g(x) = log(c)/log(b)
   'solve(exp(x)=2,x)',
@@ -336,8 +337,9 @@ run_test([
   'solve(sin(x)=1/2,x,n)',
   '[1/6*pi+2*n*pi,5/6*pi+2*n*pi]',
 
+  // +-1/2*pi+2*n*pi, merged: they differ by half a period (solve_general.ts)
   'solve(cos(x)=0,x,n)',
-  '[1/2*pi+2*n*pi,-1/2*pi+2*n*pi]',
+  '1/2*pi+n*pi',
 
   'solve(tan(x)=1,x,n)',
   '1/4*pi+n*pi',

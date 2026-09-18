@@ -88,16 +88,37 @@ function Eval_arg(z) {
     return arg(eval_1.Eval(defs_1.cadr(z)));
 }
 exports.Eval_arg = Eval_arg;
-function arg(z) {
+// upToTurns: the caller only uses the angle under sin, cos or exp(i*...), so
+// a result that is off by a multiple of 2*pi will do (rect, clock)
+function arg(z, upToTurns = false) {
     if (defs_1.istensor(z)) {
         const t = tensor_1.copy_tensor(z);
-        t.tensor.elem = t.tensor.elem.map(arg);
+        t.tensor.elem = t.tensor.elem.map((e) => arg(e, upToTurns));
         return t;
     }
-    return (quantity_1.mapQuantity(z, arg, false) ||
-        principal(add_1.subtract(yyarg(numerator_1.numerator(z)), yyarg(denominator_1.denominator(z)))));
+    const q = quantity_1.mapQuantity(z, (m) => arg(m, upToTurns), false);
+    if (q) {
+        return q;
+    }
+    const a = principal(add_1.subtract(yyarg(numerator_1.numerator(z)), yyarg(denominator_1.denominator(z))));
+    return upToTurns || staysPrincipal(a) ? a : list_1.makeList(symbol_1.symbol(defs_1.ARG), z);
 }
 exports.arg = arg;
+// The args of the factors add up to arg(z) only up to a multiple of 2*pi,
+// and with an unknown arg(u) in the sum the multiple depends on the value of
+// u: pi+arg(y) is 2*pi for y < 0, where arg(-y) = 0; -arg(y) is -pi, where
+// arg(1/y) = pi. A single c*arg(u) with 0 < c <= 1 and nothing added stays
+// in (-pi, pi]; anything else is returned as arg(z).
+function staysPrincipal(a) {
+    if (!find_1.Find(a, symbol_1.symbol(defs_1.ARG)) || defs_1.car(a) === symbol_1.symbol(defs_1.ARG)) {
+        return true;
+    }
+    return (defs_1.ismultiply(a) &&
+        a.tail().length === 2 &&
+        is_1.ispositivenumber(defs_1.cadr(a)) &&
+        is_1.realconstant(defs_1.cadr(a)) <= 1 &&
+        defs_1.car(defs_1.caddr(a)) === symbol_1.symbol(defs_1.ARG));
+}
 // a constant angle is brought into the principal range (-pi, pi]
 function principal(a) {
     if (find_1.Find(a, symbol_1.symbol(defs_1.ARG))) {

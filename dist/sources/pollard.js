@@ -12,8 +12,6 @@ const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
 const is_1 = require("./is");
 const list_1 = require("./list");
-const madd_1 = require("./madd");
-const mgcd_1 = require("./mgcd");
 const mmul_1 = require("./mmul");
 const mprime_1 = require("./mprime");
 // Factor using the Pollard rho method
@@ -84,54 +82,72 @@ function try_kth_prime(k) {
     }
     return result;
 }
-// From TAOCP Vol. 2 by Knuth, p. 385 (Algorithm B)
+// What the prime table left over: split with Pollard's rho until only primes
+// remain, ascending, equal primes as a power.
 function factor_b() {
-    const result = [];
-    const bigint_one = bignum_1.mint(1);
-    let x = bignum_1.mint(5);
-    let xprime = bignum_1.mint(2);
-    let k = 1;
-    let l = 1;
-    while (true) {
-        if (mprime_1.mprime(n_factor_number)) {
-            result.push(_factor(n_factor_number, 1));
-            return result;
+    const primes = [];
+    const split = (n) => {
+        if (n.equals(1)) {
+            return;
         }
-        while (true) {
-            if (defs_1.defs.esc_flag) {
-                run_1.stop('esc');
+        if (mprime_1.mprime(n)) {
+            primes.push(n);
+            return;
+        }
+        const g = rho(n);
+        split(g);
+        split(n.divide(g));
+    };
+    split(n_factor_number);
+    n_factor_number = bignum_1.mint(1);
+    primes.sort((a, b) => a.compare(b));
+    const result = [];
+    for (let i = 0; i < primes.length;) {
+        let count = 1;
+        while (i + count < primes.length && primes[i + count].equals(primes[i])) {
+            count++;
+        }
+        result.push(_factor(primes[i], count));
+        i += count;
+    }
+    return result;
+}
+// A proper factor of the composite n: Pollard's rho with Brent's cycle
+// detection. The differences of 128 steps are multiplied up and go through
+// one gcd; with a gcd in every step a 12 digit factor took 11 s. When the
+// product hits n itself the steps are walked again one by one, and when even
+// that fails the next constant c is tried.
+function rho(n) {
+    for (let c = 1;; c += 2) {
+        const f = (v) => v.multiply(v).add(c).mod(n);
+        let y = big_integer_1.default(2);
+        let x = y;
+        let ys = y;
+        let q = big_integer_1.default.one;
+        let g = big_integer_1.default.one;
+        for (let r = 1; g.equals(1); r *= 2) {
+            x = y;
+            for (let i = 0; i < r; i++) {
+                y = f(y);
             }
-            // g = gcd(x' - x, n_factor_number)
-            let t = madd_1.msub(xprime, x);
-            t = bignum_1.setSignTo(t, 1);
-            const g = mgcd_1.mgcd(t, n_factor_number);
-            if (defs_1.MEQUAL(g, 1)) {
-                if (--k === 0) {
-                    xprime = x;
-                    l *= 2;
-                    k = l;
+            for (let k = 0; k < r && g.equals(1); k += 128) {
+                run_1.check_esc_flag();
+                ys = y;
+                for (let i = 0; i < Math.min(128, r - k); i++) {
+                    y = f(y);
+                    q = q.multiply(x.subtract(y).abs()).mod(n);
                 }
-                // x = (x ^ 2 + 1) mod n_factor_number
-                t = mmul_1.mmul(x, x);
-                x = madd_1.madd(t, bigint_one);
-                t = mmul_1.mmod(x, n_factor_number);
-                x = t;
-                continue;
+                g = big_integer_1.default.gcd(q, n);
             }
-            result.push(_factor(g, 1));
-            if (mcmp_1.mcmp(g, n_factor_number) === 0) {
-                return result;
-            }
-            // n_factor_number = n_factor_number / g
-            t = mmul_1.mdiv(n_factor_number, g);
-            n_factor_number = t;
-            // x = x mod n_factor_number
-            t = mmul_1.mmod(x, n_factor_number);
-            x = t;
-            // xprime = xprime mod n_factor_number
-            t = mmul_1.mmod(xprime, n_factor_number);
-            xprime = t;
-            break;
+        }
+        if (g.equals(n)) {
+            do {
+                ys = f(ys);
+                g = big_integer_1.default.gcd(x.subtract(ys).abs(), n);
+            } while (g.equals(1));
+        }
+        if (!g.equals(n)) {
+            return g;
         }
     }
 }

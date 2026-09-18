@@ -131,7 +131,7 @@ run_test([
   '\\frac{1}{\\pi x}',
 
   'printlatex(pi*sin(x))',
-  '\\pi sin(x)',
+  '\\pi\\sin\\left(x\\right)',
 
   'printlatex(2*pi)',
   '2\\pi',

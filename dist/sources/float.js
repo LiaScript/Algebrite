@@ -8,6 +8,7 @@ const symbol_1 = require("../runtime/symbol");
 const bigfloat_1 = require("./bigfloat");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
+const is_1 = require("./is");
 const list_1 = require("./list");
 const tensor_1 = require("./tensor");
 // float(x) in double precision, float(x, n) to n significant digits
@@ -52,9 +53,10 @@ function checkFloatHasWorkedOutCompletely(nodeToCheck) {
 function evalExactly(f, p1) {
     const asFloats = defs_1.defs.evaluatingAsFloats;
     const result = defs_1.noFloats(f, p1);
-    // an unevaluated call comes back as it is: converting it would evaluate
-    // it again, without end
-    if (!asFloats || (defs_1.iscons(result) && defs_1.car(result) === defs_1.car(p1))) {
+    // an unevaluated call comes back as it is, also inside the result
+    // (a*defint(...)): converting it would evaluate it again, without end
+    const unevaluated = (p) => defs_1.iscons(p) && (defs_1.car(p) === defs_1.car(p1) || p.tail().some(unevaluated));
+    if (!asFloats || unevaluated(result)) {
         return result;
     }
     return zzfloat(result);
@@ -83,8 +85,9 @@ function yyfloat(p1) {
 }
 exports.yyfloat = yyfloat;
 function yyfloat_(p1) {
+    var _a;
     if (defs_1.iscons(p1)) {
-        return list_1.makeList(...p1.map(yyfloat_));
+        return (_a = bigTrig(p1)) !== null && _a !== void 0 ? _a : list_1.makeList(...p1.map(yyfloat_));
     }
     if (defs_1.istensor(p1)) {
         p1 = tensor_1.copy_tensor(p1);
@@ -104,4 +107,22 @@ function yyfloat_(p1) {
         return bignum_1.double(Infinity);
     }
     return p1;
+}
+// sin, cos, tan of an exact argument beyond 2^50: the double of the argument
+// has lost the digits that count (float(sin(3^34)) was -0.24 for 0.69), so
+// the argument is reduced by bigFloat with enough digits of pi.
+function bigTrig(p1) {
+    if (![defs_1.SIN, defs_1.COS, defs_1.TAN].some((f) => defs_1.car(p1) === symbol_1.symbol(f)) || is_1.isfloating(defs_1.cadr(p1))) {
+        return undefined;
+    }
+    const arg = eval_1.Eval(yyfloat_(defs_1.cadr(p1)));
+    if (!defs_1.isdouble(arg) || !(Math.abs(arg.d) > Math.pow(2, 50))) {
+        return undefined;
+    }
+    try {
+        return bignum_1.double(bigfloat_1.bigFloat(p1, 17).d);
+    }
+    catch (e) {
+        return p1; // out of reach: the exact call, not the sine of a rounded argument
+    }
 }

@@ -1,8 +1,14 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.factorpoly = void 0;
 const lcm_1 = require("./lcm");
+const big_integer_1 = __importDefault(require("big-integer"));
 const defs_1 = require("../runtime/defs");
+const factor_zassenhaus_1 = require("./factor_zassenhaus");
+const factor_multivariate_1 = require("./factor_multivariate");
 const find_1 = require("../runtime/find");
 const run_1 = require("../runtime/run");
 const misc_1 = require("../sources/misc");
@@ -63,15 +69,37 @@ function yyfactorpoly(p1, p2) {
     if (is_1.isfloating(p1)) {
         run_1.stop('floating point numbers in polynomial');
     }
+    // 2*x*y+2*x*z: the number comes out first, the root search would put it
+    // into a factor 2*y+2*z
+    const content = numericContent(p1);
+    if (content) {
+        p1 = multiply_1.divide(p1, content);
+    }
     const polycoeff = coeff_1.coeff(p1, p2);
     let factpoly_expo = polycoeff.length - 1;
     let p7 = rationalize_coefficients(polycoeff);
+    if (content) {
+        p7 = multiply_1.multiply(p7, content);
+    }
+    // integer coefficients: the complete algorithm, and much faster than the
+    // searches below, which stay for symbolic coefficients
+    const complete = factorRemainder(p1, p2, polycoeff);
+    if (complete) {
+        return complete.reduce(multiply_1.multiply_noexpand, p7);
+    }
     // for univariate polynomials we could do factpoly_expo > 1
     let whichRootsAreWeFinding = 'real';
     let remainingPoly = null;
     let quadratic;
+    // the searches need the divisors of the first and the last coefficient:
+    // beyond 2^31 they stop with "number too big to factor"
+    const tooBig = (c) => is_1.isinteger(c) && !isFinite(bignum_1.nativeInt(c));
     while (factpoly_expo > 0) {
         var foundComplexRoot, foundRealRoot;
+        if (!is_1.isZeroAtomOrTensor(polycoeff[0]) &&
+            (tooBig(polycoeff[0]) || tooBig(polycoeff[factpoly_expo]))) {
+            break;
+        }
         if (is_1.isZeroAtomOrTensor(polycoeff[0])) {
             p4 = defs_1.Constants.one;
             p5 = defs_1.Constants.zero;
@@ -233,6 +261,19 @@ function yyfactorpoly(p1, p2) {
     if (factpoly_expo > 0 && is_1.isnegativeterm(polycoeff[factpoly_expo])) {
         p1 = multiply_1.negate(p1);
         p7 = multiply_1.negate_noexpand(p7);
+    }
+    // the complete algorithm gave up on the whole polynomial (too many
+    // modular factors): with the small factors gone it may succeed
+    const again = factpoly_expo >= 2
+        ? factorRemainder(p1, p2, coeff_1.coeff(p1, p2)) // p1 may have changed sign
+        : undefined;
+    if (again && again.length > 2) {
+        return again.reduce(multiply_1.multiply_noexpand, p7);
+    }
+    // several variables: the searches above miss x+y+z in x^2+2*x*y+y^2-z^2
+    const multivariate = factpoly_expo > 0 ? factor_multivariate_1.factorKronecker(p1, p2) : undefined;
+    if (multivariate) {
+        return multivariate.reduce(multiply_1.multiply_noexpand, p7);
     }
     p1 = defs_1.noexpand(condense_1.yycondense, p1);
     p7 = multiply_1.multiply_noexpand(p7, p1);
@@ -483,4 +524,39 @@ function Evalpoly(p3, polycoeff, factpoly_expo) {
         temp = add_1.add(multiply_1.multiply(temp, p3), polycoeff[i]);
     }
     return temp;
+}
+// Integer coefficients: irreducible factors from factor_zassenhaus.ts.
+// undefined: symbolic coefficients, or the search was given up.
+function factorRemainder(p, X, cs) {
+    if (!cs.every(is_1.isinteger)) {
+        return;
+    }
+    const result = factor_zassenhaus_1.factorZ(cs.map((c) => c.q.a));
+    if (!result) {
+        return;
+    }
+    const out = [new defs_1.Num(result.content)];
+    for (const [f, mult] of result.factors) {
+        const poly = f.reduce((sum, c, i) => add_1.add(sum, multiply_1.multiply(new defs_1.Num(c), power_1.power(X, bignum_1.integer(i)))), defs_1.Constants.zero);
+        for (let k = 0; k < mult; k++) {
+            out.push(poly);
+        }
+    }
+    return out;
+}
+// gcd of the numerators over lcm of the denominators of the coefficients of
+// a sum, undefined if that is 1 or a coefficient is not rational
+function numericContent(p) {
+    if (!defs_1.isadd(p)) {
+        return;
+    }
+    let num = big_integer_1.default.zero;
+    let den = big_integer_1.default.one;
+    for (const t of p.tail()) {
+        const c = defs_1.ismultiply(t) ? defs_1.cadr(t) : t;
+        const q = defs_1.isrational(c) ? c : defs_1.Constants.one;
+        num = big_integer_1.default.gcd(num, q.a);
+        den = big_integer_1.default.lcm(den, q.b);
+    }
+    return num.equals(1) && den.equals(1) ? undefined : new defs_1.Num(num, den);
 }

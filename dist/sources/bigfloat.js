@@ -3,21 +3,35 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bigFloat = exports.MAX_DIGITS = void 0;
+exports.certifiedSign = exports.bigFloat = exports.MAX_DIGITS = void 0;
 const big_integer_1 = __importDefault(require("big-integer"));
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
+const add_1 = require("./add");
+const bignum_1 = require("./bignum");
+const float_1 = require("./float");
 const is_1 = require("./is");
+const list_1 = require("./list");
+const multiply_1 = require("./multiply");
 const tensor_1 = require("./tensor");
 const zeta_1 = require("./zeta");
 const GUARD = 25;
 const MAX_ATTEMPTS = 6; // the precision doubles each time
 exports.MAX_DIGITS = 1000;
 class Fixed {
-    constructor(P) {
+    // maxDigits bounds the size of exp, integer powers and series terms:
+    // certifiedSign runs unasked, exp(exp(100)) or erf(1000) must fail
+    // there instead of filling the memory
+    constructor(P, maxDigits = Infinity) {
         this.P = P;
+        this.maxDigits = maxDigits;
         this.S = big_integer_1.default(10).pow(P);
+    }
+    checkSize(digits) {
+        if (!(digits <= this.maxDigits)) {
+            throw new Error('out of reach');
+        }
     }
     fromRatio(a, b) {
         return a.multiply(this.S).divide(b);
@@ -51,6 +65,7 @@ class Fixed {
         if (n < 0) {
             return this.div(this.S, this.powInt(a, -n));
         }
+        this.checkSize(n * Math.log10(Math.abs(this.toNumber(a)) || 1));
         let result = this.S;
         for (let base = a; n > 0; n = Math.floor(n / 2)) {
             if (n % 2 === 1) {
@@ -104,6 +119,7 @@ class Fixed {
     }
     // exp(x) = exp(x/2^k)^(2^k), the inner one from its series
     exp(x) {
+        this.checkSize(Math.abs(this.toNumber(x)) * Math.LOG10E);
         const k = Math.max(0, Math.ceil(Math.log2(Math.abs(this.toNumber(x)) + 1)) + 8);
         const r = x.divide(big_integer_1.default(2).pow(k));
         let term = this.S;
@@ -183,6 +199,7 @@ class Fixed {
     // for large x is caught by the precision check of bigFloat
     erf(x) {
         const x2 = this.mul(x, x);
+        this.checkSize(this.toNumber(x2) * Math.LOG10E); // the largest term
         let term = x;
         let sum = x;
         for (let k = 1; !term.isZero(); k++) {
@@ -227,6 +244,106 @@ class Fixed {
             wPow = this.mul(wPow, w2);
         }
         return this.div(this.exp(logGamma), shift);
+    }
+    // digamma(z) = psi(w) - sum_{k<n} 1/(z+k) with w = z+n at least P, where
+    // psi(w) = log w - 1/(2w) - sum B_2k/(2k w^(2k)) reaches the working
+    // precision (the terms fall to about exp(-2 pi w) before they grow);
+    // reflection psi(z) = psi(1-z) - pi*cot(pi z) for z <= 0
+    digamma(z) {
+        if (!z.isPositive()) {
+            if (z.mod(this.S).isZero()) {
+                throw new Error('digamma pole');
+            }
+            const a = this.mul(this.pi(), z);
+            return this.digamma(this.S.subtract(z)).subtract(this.div(this.mul(this.pi(), this.cos(a)), this.sin(a)));
+        }
+        let w = z;
+        let shift = big_integer_1.default.zero;
+        const target = this.S.multiply(Math.max(10, this.P));
+        while (w.lt(target)) {
+            shift = shift.add(this.div(this.S, w));
+            w = w.add(this.S);
+        }
+        let psi = this.log(w).subtract(this.div(this.S, w).divide(2)).subtract(shift);
+        const w2 = this.mul(w, w);
+        let wPow = w2; // w^(2k)
+        for (let k = 1; k < 2000; k++) {
+            const B = zeta_1.bernoulliNumber(2 * k);
+            const term = this.div(this.fromRatio(B.a, B.b), wPow).divide(2 * k);
+            if (term.isZero()) {
+                break;
+            }
+            psi = psi.subtract(term);
+            wPow = this.mul(wPow, w2);
+        }
+        return psi;
+    }
+    eulerGamma() {
+        return this.digamma(this.S).negate();
+    }
+    // zeta(s), s != 1, by Euler-Maclaurin with N = P:
+    //   sum_{k<N} k^-s + N^(1-s)/(s-1) + N^-s/2 + sum_j T_j,
+    //   T_j = B_2j/(2j)! * s(s+1)...(s+2j-2) * N^(1-s-2j)
+    // The error is below the first omitted term once s+2j+1 > 0; the terms
+    // fall to about exp(-2 pi N) N^-s, below the working precision, before
+    // they grow again. powNeg(k) is k^-s.
+    zeta(s, powNeg) {
+        if (s.eq(this.S)) {
+            throw new Error('zeta pole');
+        }
+        const N = Math.max(10, this.P);
+        let sum = big_integer_1.default.zero;
+        for (let k = 1; k < N; k++) {
+            sum = sum.add(powNeg(k));
+        }
+        const Ns = powNeg(N);
+        sum = sum.add(this.div(Ns.multiply(N), s.subtract(this.S))).add(Ns.divide(2));
+        let rising = s; // s(s+1)...(s+2j-2)
+        let scale = big_integer_1.default(2 * N); // (2j)! N^(2j-1)
+        for (let j = 1;; j++) {
+            const B = zeta_1.bernoulliNumber(2 * j);
+            const term = this.mul(this.mul(this.fromRatio(B.a, B.b), rising), Ns).divide(scale);
+            const bounded = s.add(this.S.multiply(2 * j + 1)).isPositive();
+            if (term.isZero() && bounded) {
+                return sum;
+            }
+            if (j > 4 * N) {
+                throw new Error('zeta: no convergence'); // s far to the left
+            }
+            sum = sum.add(term);
+            rising = this.mul(this.mul(rising, s.add(this.S.multiply(2 * j - 1))), s.add(this.S.multiply(2 * j)));
+            scale = scale.multiply((2 * j + 1) * (2 * j + 2)).multiply(N * N);
+        }
+    }
+    // sum_k (+-1)^k t_k/d(k) with t_0 = first and t_k = t_(k-1)*step/m(k).
+    // The cancellation for a large argument is caught by the precision check
+    // of bigFloat.
+    series(first, step, m, d, alternating) {
+        // the largest term: about exp(x), with step = x^2 in the alternating ones
+        const size = Math.abs(this.toNumber(step));
+        this.checkSize((alternating ? Math.sqrt(size) : size) * Math.LOG10E);
+        let term = first;
+        let sum = first.divide(d(0));
+        for (let k = 1; !term.isZero(); k++) {
+            term = this.mul(term, step).divide(m(k));
+            const t = term.divide(d(k));
+            sum = alternating && k % 2 ? sum.subtract(t) : sum.add(t);
+        }
+        return sum;
+    }
+    // Newton on w*exp(w) = x from a double precision start: both real
+    // branches, the start decides which
+    lambertw(x, start) {
+        let w = this.fromNumber(start);
+        for (let i = 0; i < 100; i++) {
+            const e = this.exp(w);
+            const delta = this.div(this.mul(w, e).subtract(x), this.mul(e, w.add(this.S)));
+            w = w.subtract(delta);
+            if (delta.abs().leq(1)) {
+                break;
+            }
+        }
+        return w;
     }
     arcsin(x) {
         if (x.abs().gt(this.S)) {
@@ -314,7 +431,86 @@ function evaluate(p, f) {
                 const [a, b] = expPair();
                 return f.div(a.subtract(b), a.add(b));
             }
+            case defs_1.ARCSINH:
+                return f.log(x().add(f.root(f.mul(x(), x()).add(f.S), 2)));
+            case defs_1.ARCCOSH:
+                return f.log(x().add(f.root(f.mul(x(), x()).subtract(f.S), 2)));
+            case defs_1.ARCTANH:
+                return f.log(f.div(f.S.add(x()), f.S.subtract(x()))).divide(2);
+            case defs_1.FACTORIAL:
+                return f.gamma(x().add(f.S));
+            case defs_1.ZETA: {
+                // k^-s through the power rules above: integer, root or exp(log)
+                const zetaAt = (s) => f.zeta(evaluate(s, f), (k) => evaluate(list_1.makeList(symbol_1.symbol(defs_1.POWER), bignum_1.integer(k), multiply_1.negate(s)), f));
+                const s = x();
+                if (!s.isNegative()) {
+                    return zetaAt(defs_1.cadr(p));
+                }
+                // zeta(s) = 2^s pi^(s-1) sin(pi s/2) Gamma(1-s) zeta(1-s): left of 0
+                // Euler-Maclaurin would sum large terms that cancel
+                const t = f.S.subtract(s);
+                return [
+                    f.exp(f.mul(s, f.log(f.S.multiply(2))).subtract(f.mul(t, f.log(f.pi())))),
+                    f.sin(f.mul(f.pi(), s).divide(2)),
+                    f.gamma(t),
+                    zetaAt(add_1.add(defs_1.Constants.one, multiply_1.negate(defs_1.cadr(p))))
+                ].reduce((a, b) => f.mul(a, b));
+            }
+            case 'digamma':
+                return f.digamma(x());
+            case 'lambertw': {
+                const start = float_1.zzfloat(p);
+                if (!defs_1.isdouble(start)) {
+                    throw new Error('unsupported'); // not real
+                }
+                return f.lambertw(x(), start.d);
+            }
+            // Si(x) = sum (-1)^k x^(2k+1)/((2k+1)!(2k+1))
+            case 'Si':
+                return f.series(x(), f.mul(x(), x()), (k) => 2 * k * (2 * k + 1), (k) => 2 * k + 1, true);
+            // Ci(x) = gamma + log(x) + sum_{k>=1} (-1)^k x^(2k)/((2k)!(2k)), the
+            // series starts with a 1 for k = 0 that is taken off again
+            case 'Ci':
+                return f
+                    .eulerGamma()
+                    .add(f.log(x()))
+                    .add(f.series(f.S, f.mul(x(), x()), (k) => (2 * k - 1) * 2 * k, (k) => 2 * k || 1, true))
+                    .subtract(f.S);
+            // Ei(x) = gamma + log|x| + sum_{k>=1} x^k/(k! k)
+            case 'Ei':
+                return f
+                    .eulerGamma()
+                    .add(f.log(x().abs()))
+                    .add(f.series(f.S, x(), (k) => k, (k) => k || 1, false))
+                    .subtract(f.S);
+            // with u = pi x^2/2: S(x) = x sum (-1)^k u^(2k+1)/((2k+1)!(4k+3)),
+            // C(x) = x sum (-1)^k u^(2k)/((2k)!(4k+1))
+            case 'fresnels':
+            case 'fresnelc': {
+                const u = f.mul(f.pi(), f.mul(x(), x())).divide(2);
+                const sum = name === 'fresnels'
+                    ? f.series(u, f.mul(u, u), (k) => 2 * k * (2 * k + 1), (k) => 4 * k + 3, true)
+                    : f.series(f.S, f.mul(u, u), (k) => (2 * k - 1) * 2 * k, (k) => 4 * k + 1, true);
+                return f.mul(x(), sum);
+            }
+            // J_n(x) = (x/2)^n/n! sum (-1)^k (x^2/4)^k/(k! (n+1)...(n+k)),
+            // J_(-n) = (-1)^n J_n
+            case defs_1.BESSELJ: {
+                const order = defs_1.cadr(p);
+                if (!is_1.isinteger(order) || order.a.abs().gt(1000)) {
+                    throw new Error('no arbitrary precision for besselj of this order');
+                }
+                const n = Math.abs(order.a.toJSNumber());
+                const z = evaluate(defs_1.caddr(p), f);
+                let first = f.powInt(z.divide(2), n);
+                for (let k = 2; k <= n; k++) {
+                    first = first.divide(k);
+                }
+                const J = f.series(first, f.mul(z, z).divide(4), (k) => k * (n + k), () => 1, true);
+                return order.a.isNegative() && n % 2 ? J.negate() : J;
+            }
         }
+        throw new Error(`no arbitrary precision for ${name}`);
     }
     throw new Error('unsupported');
 }
@@ -367,7 +563,9 @@ function bigFloat(p, n) {
             high = evaluate(p, fine);
         }
         catch (e) {
-            return run_1.stop(`float: cannot evaluate ${p} to ${n} digits`);
+            // a function without a method here says so
+            const why = /^no arbitrary precision/.test(e.message) ? `: ${e.message}` : '';
+            return run_1.stop(`float: cannot evaluate ${p} to ${n} digits${why}`);
         }
         const text = format(high, P + GUARD, n);
         const last = attempt === MAX_ATTEMPTS;
@@ -386,3 +584,33 @@ function bigFloat(p, n) {
     }
 }
 exports.bigFloat = bigFloat;
+// The sign of an exact real constant, for decisions (abs, sgn, the order of
+// two bounds): two evaluations 25 digits apart must agree to 12 significant
+// digits, at 30, then 60, then 120 digits. 1 or -1 when they do; 0 when p
+// can be evaluated but not told from zero that way (an exact zero in
+// disguise, sin(10^300)); undefined when there is no real evaluation here
+// (unsupported function, a complex intermediate value: roots and logs of
+// negative numbers throw).
+// ponytail: agreement of two runs, no interval arithmetic. Wrong only if both
+// runs are garbage and still agree to 12 digits.
+function certifiedSign(p) {
+    let result;
+    for (const P of [30, 60, 120]) {
+        let low;
+        let high;
+        try {
+            low = evaluate(p, new Fixed(P, 1000));
+            high = evaluate(p, new Fixed(P + GUARD, 1000));
+        }
+        catch (e) {
+            continue; // may be the precision: 1-sin(10^40)^2 under a root
+        }
+        result = 0;
+        const gap = low.multiply(big_integer_1.default(10).pow(GUARD)).subtract(high).abs();
+        if (!high.isZero() && gap.multiply(1e12).lt(high.abs())) {
+            return high.isNegative() ? -1 : 1;
+        }
+    }
+    return result;
+}
+exports.certifiedSign = certifiedSign;

@@ -30,6 +30,10 @@ function gamma(p1) {
     return gammaf(p1);
 }
 function gammaf(p1) {
+    // the pole at 0, like gamma(-1): left as Gamma(0), 0*Gamma(0) was 0
+    if (is_1.isZeroAtomOrTensor(p1)) {
+        run_1.stop('divide by zero');
+    }
     if (defs_1.isrational(p1) && defs_1.MEQUAL(p1.q.a, 1) && defs_1.MEQUAL(p1.q.b, 2)) {
         return power_1.power(defs_1.Constants.Pi(), bignum_1.rational(1, 2));
     }

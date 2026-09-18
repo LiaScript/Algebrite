@@ -12,6 +12,7 @@ import { print2dascii } from '../sources/print2d';
 import { scan } from '../sources/scan';
 import { simplifyForCodeGeneration } from '../sources/simplify';
 import { subst } from '../sources/subst';
+import { nativeDouble } from '../sources/bignum';
 import {
   AUTOEXPAND,
   BAKE,
@@ -22,6 +23,7 @@ import {
   DEBUG,
   defs,
   dotprod_unicode,
+  isNumericAtom,
   isstr,
   LAST,
   NIL,
@@ -51,6 +53,11 @@ export function stop(s: string): never {
   //if (draw_flag == 2)
   //  longjmp(draw_stop_return, 1)
   //else
+  // A fallback method that catches every error and then gives up with a
+  // message of its own (solve: no solution) would hide the timeout.
+  if (defs.timedOut) {
+    s = timeoutMessage();
+  }
   defs.errorMessage += 'Stop: ';
   defs.errorMessage += s;
   //breakpoint
@@ -900,13 +907,26 @@ export function top_level_eval(expr:U) {
   }
 
   defs.trigmode = 0;
+  startTimelimit();
 
   const shouldAutoexpand = symbol(AUTOEXPAND);
 
   defs.expanding = !isZeroAtomOrTensor(get_binding(shouldAutoexpand));
 
   const originalArgument = expr;
-  let evalledArgument = Eval(expr);
+  let evalledArgument: U;
+  try {
+    evalledArgument = Eval(expr);
+    // a timeout that a fallback method caught and answered with an
+    // unevaluated result
+    if (defs.timedOut) {
+      stop(timeoutMessage());
+    }
+  } finally {
+    // the scanner multiplies too (-1): the next statement must not be read
+    // under the expired deadline of this one
+    defs.deadline = 0;
+  }
 
   // "draw", "for" and "setq" return "nil", there is no result to print
   if (evalledArgument === symbol(NIL)) {
@@ -941,10 +961,36 @@ export function top_level_eval(expr:U) {
   return evalledArgument;
 }
 
+// Called from Eval, add, multiply and the long loops. The clock is read
+// every 256th call only; once the deadline has passed every call stops, so
+// a try/catch around a fallback method cannot swallow the timeout.
+let escTicks = 0;
 export function check_esc_flag() {
   if (defs.esc_flag) {
     stop('esc key');
   }
+  if (
+    defs.deadline &&
+    (++escTicks & 255) === 0 &&
+    Date.now() > defs.deadline
+  ) {
+    escTicks = 255;
+    defs.timedOut = true;
+    stop(timeoutMessage());
+  }
+}
+
+const timeoutMessage = () =>
+  `time limit of ${defs.timelimit} s exceeded, see timelimit`;
+
+// timelimit=20: seconds one top-level statement may run, 0 or a symbol: no
+// limit
+function startTimelimit() {
+  const limit = get_binding(usr_symbol('timelimit'));
+  defs.timelimit = isNumericAtom(limit) ? nativeDouble(limit) : 0;
+  defs.deadline =
+    defs.timelimit > 0 ? Date.now() + 1000 * defs.timelimit : 0;
+  defs.timedOut = false;
 }
 
 // this is called when the whole notebook is re-run

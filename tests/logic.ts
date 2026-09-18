@@ -36,12 +36,12 @@ run_test([
   'or(1,a)',
   '1',
 
-  // otherwise an undecidable argument keeps the call
+  // otherwise the undecidable arguments are left (tests/logic_simplify.ts)
   'and(1,a)',
-  'and(1,a)',
+  'a',
 
   'or(0,a<b)',
-  'or(0,a<b)',
+  'a<b',
 
   // comparisons of rationals and floats
   '1/3<1/2',

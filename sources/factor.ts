@@ -3,8 +3,10 @@ import {
   cadr,
   cdddr,
   Constants,
+  isadd,
   iscons,
   ismultiply,
+  ispower,
   MAXPRIMETAB,
   NIL,
   Num,
@@ -12,21 +14,35 @@ import {
   U
 } from '../runtime/defs';
 import { stop } from '../runtime/run';
-import { symbol } from "../runtime/symbol";
-import { integer } from './bignum';
+import { Find } from '../runtime/find';
+import { collectUserSymbols, symbol } from "../runtime/symbol";
+import { integer, nativeInt } from './bignum';
 import { Eval } from './eval';
 import { factorpoly } from './factorpoly';
 import { guess } from './guess';
-import { isinteger } from './is';
-import { multiply_all_noexpand } from './multiply';
+import { isinteger, isposint } from './is';
+import { factorKronecker } from './factor_multivariate';
+import { multiply_all_noexpand, multiply_noexpand } from './multiply';
 import { factor_number } from './pollard';
 
 // factor a polynomial or integer
 export function Eval_factor(p1: U) {
   const top = Eval(cadr(p1));
   const p2 = Eval(caddr(p1));
-  const variable = p2 === symbol(NIL) ? guess(top) : p2;
+  let variable = p2 === symbol(NIL) ? guess(top) : p2;
+  if (p2 === symbol(NIL) && !Find(top, variable)) {
+    // none of x, y, z, t, s: factor(a^2-b^2) takes a
+    const symbols: U[] = [];
+    collectUserSymbols(top, symbols);
+    variable = symbols[0] || variable;
+  }
   let temp = factor(top, variable);
+
+  // factor(p) is complete: what the main variable leaves over, 4*y^2-1 in
+  // x*(4*y^2-1), is factored too
+  if (p2 === symbol(NIL) && !isinteger(top)) {
+    temp = completeFactors(temp, variable);
+  }
 
   // more factoring?
   p1 = cdddr(p1);
@@ -34,6 +50,34 @@ export function Eval_factor(p1: U) {
     temp = [...p1].reduce((acc: U, p: U) => factor_again(acc, Eval(p)), temp);
   }
   return temp;
+}
+
+// The factors of a product once more: one without the main variable X is
+// factored in its own first symbol, one with X loses what Kronecker's
+// substitution still finds in it (the z in 2*w*z+3*x*z^2). Factoring every
+// factor again in every symbol would only turn signs, -(a+b)*(-a+b).
+function completeFactors(p: U, X: U): U {
+  const factors = ismultiply(p) ? p.tail() : [p];
+  const out: U[] = [];
+  for (const f of factors) {
+    const [base, n] =
+      ispower(f) && isposint(caddr(f)) ? [cadr(f), nativeInt(caddr(f))] : [f, 1];
+    const symbols: U[] = [];
+    collectUserSymbols(base, symbols);
+    let parts: U[] | undefined;
+    if (isadd(base) && symbols.length) {
+      if (!Find(base, X)) {
+        const again = completeFactors(factor(base, symbols[0]), symbols[0]);
+        parts = ismultiply(again) ? again.tail() : [again];
+      } else {
+        parts = factorKronecker(base, X);
+      }
+    }
+    for (let k = 0; k < n; k++) {
+      out.push(...(parts || [base]));
+    }
+  }
+  return out.length === 1 ? out[0] : out.reduce(multiply_noexpand);
 }
 
 function factor_again(p1: U, p2: U): U {

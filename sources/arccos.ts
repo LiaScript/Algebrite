@@ -2,15 +2,12 @@ import {
   ARCCOS,
   cadr,
   car,
-  cdr,
   Constants,
   COS,
   defs,
   isdouble,
-  ismultiply,
   isrational,
   PI,
-  POWER,
   U
 } from '../runtime/defs';
 import { stop } from '../runtime/run';
@@ -18,8 +15,6 @@ import { symbol } from "../runtime/symbol";
 import { double, integer, nativeInt, rational } from './bignum';
 import { Eval } from './eval';
 import {
-  equaln,
-  equalq,
   isminusoneoversqrttwo,
   isMinusSqrtThreeOverTwo,
   isoneoversqrttwo,
@@ -72,30 +67,14 @@ function arccos(x: U): U {
   }
 
   // if x == 1/sqrt(2) then return 1/4*pi (45 degrees)
-  // second if catches the other way of saying it, sqrt(2)/2
-  if (
-    isoneoversqrttwo(x) ||
-    (ismultiply(x) &&
-      equalq(car(cdr(x)), 1, 2) &&
-      car(car(cdr(cdr(x)))) === symbol(POWER) &&
-      equaln(car(cdr(car(cdr(cdr(x))))), 2) &&
-      equalq(car(cdr(cdr(car(cdr(cdr(x)))))), 1, 2))
-  ) {
+  if (isoneoversqrttwo(x)) {
     return defs.evaluatingAsFloats
       ? double(Math.PI / 4.0)
       : multiply(rational(1, 4), symbol(PI));
   }
 
   // if x == -1/sqrt(2) then return 3/4*pi (135 degrees)
-  // second if catches the other way of saying it, -sqrt(2)/2
-  if (
-    isminusoneoversqrttwo(x) ||
-    (ismultiply(x) &&
-      equalq(car(cdr(x)), -1, 2) &&
-      car(car(cdr(cdr(x)))) === symbol(POWER) &&
-      equaln(car(cdr(car(cdr(cdr(x))))), 2) &&
-      equalq(car(cdr(cdr(car(cdr(cdr(x)))))), 1, 2))
-  ) {
+  if (isminusoneoversqrttwo(x)) {
     return defs.evaluatingAsFloats
       ? double((Math.PI * 3.0) / 4.0)
       : multiply(rational(3, 4), symbol(PI));

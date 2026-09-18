@@ -131,6 +131,8 @@ const defn_str = [
     // the name other CAS use for inf
     'infinity=inf',
     'autoexpand=1',
+    // seconds per top-level statement, see check_esc_flag
+    'timelimit=20',
     'assumeRealVariables=1',
     'trange=[-pi,pi]',
     'xrange=[-10,10]',

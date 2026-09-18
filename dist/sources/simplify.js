@@ -19,6 +19,7 @@ const list_1 = require("./list");
 const misc_1 = require("./misc");
 const multiply_1 = require("./multiply");
 const polar_1 = require("./polar");
+const piecewise_1 = require("./piecewise");
 const power_1 = require("./power");
 const rationalize_1 = require("./rationalize");
 const real_1 = require("./real");
@@ -138,6 +139,19 @@ function simplify(p1) {
     if (defs_1.istensor(p1)) {
         return simplify_tensor(p1);
     }
+    // piecewise: inside the branches, the conditions stay as they are
+    if (piecewise_1.hasPiecewise(p1)) {
+        p1 = eval_1.Eval(piecewise_1.mapPiecewise(p1, simplify));
+        if (piecewise_1.isPiecewise(p1)) {
+            return p1;
+        }
+    }
+    // comparisons, and/or/not: the parts are simplified, evaluating the whole
+    // again cancels and joins them (logic_simplify.ts)
+    const logical = [defs_1.TESTEQ, defs_1.TESTLT, defs_1.TESTLE, defs_1.TESTGT, defs_1.TESTGE, defs_1.AND, defs_1.OR, defs_1.NOT];
+    if (defs_1.iscons(p1) && logical.some((name) => defs_1.car(p1) === symbol_1.symbol(name))) {
+        return eval_1.Eval(list_1.makeList(defs_1.car(p1), ...p1.tail().map(simplify)));
+    }
     // nothing to gain on inf, and the rewrites below invert subexpressions,
     // which turns 1/inf = 0 into a division by zero
     if (find_1.Find(p1, symbol_1.symbol(defs_1.INF))) {
@@ -254,8 +268,9 @@ function f3(p1) {
 function f10(p1) {
     const carp1 = defs_1.car(p1);
     if (carp1 === symbol_1.symbol(defs_1.MULTIPLY) || defs_1.isinnerordot(p1)) {
-        // both operands a transpose?
-        if (defs_1.car(defs_1.car(defs_1.cdr(p1))) === symbol_1.symbol(defs_1.TRANSPOSE) &&
+        // both operands a transpose? (two operands, a third one would be lost)
+        if (misc_1.length(p1) === 3 &&
+            defs_1.car(defs_1.car(defs_1.cdr(p1))) === symbol_1.symbol(defs_1.TRANSPOSE) &&
             defs_1.car(defs_1.car(defs_1.cdr(defs_1.cdr(p1)))) === symbol_1.symbol(defs_1.TRANSPOSE)) {
             if (defs_1.DEBUG) {
                 console.log(`maybe collecting a transpose ${p1}`);

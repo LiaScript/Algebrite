@@ -119,7 +119,7 @@ run_test([
 
 run_test([
   'dsolve(d(y(x),x,2)=y(x)*d(y(x),x),y(x))',
-  'Stop: dsolve: only separable, first-order linear, Bernoulli or linear equations with constant coefficients are supported',
+  "Stop: dsolve: unsupported equation. Supported: first order separable, linear, Bernoulli, homogeneous y'=F(y/x), exact; linear with constant coefficients; Euler-Cauchy; y''=f(x,y')",
 
   'dsolve(x^2,y(x))',
   'Stop: dsolve: 1st argument has no derivative of y(x)',

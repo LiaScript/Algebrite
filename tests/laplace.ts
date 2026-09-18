@@ -129,9 +129,21 @@ run_test([
   'invlaplace(laplace(t*exp(-t)*sin(3*t)))',
   't*exp(-t)*sin(3*t)',
 
-  // symbolic coefficients can't be factored, so this stays unevaluated
+  // s^4+2*a^2*s^2+a^4 = (s^2+a^2)^2 is factored now (it stayed unevaluated
+  // before). (sin(b*t)-b*t*cos(b*t))/(2*b^3) with b = abs(a); the value is
+  // even in a, so abs(a) is right for either sign
   'invlaplace(1/(s^2+a^2)^2)',
-  'invlaplace(1/(s^4+2*a^2*s^2+a^4),s,t)',
+  '-t*cos(abs(a)*t)/(2*a^2)+sin(abs(a)*t)/(2*(a^2)^(3/2))',
+
+  // transformed back it is the input
+  'assume(a,positive)',
+  '',
+
+  'simplify(laplace(invlaplace(1/(s^2+a^2)^2))-1/(s^2+a^2)^2)',
+  '0',
+
+  'forget(a)',
+  '',
 
   'invlaplace(laplace(sin(t)+t))',
   't+sin(t)',

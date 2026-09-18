@@ -6,11 +6,14 @@ const find_1 = require("../runtime/find");
 const symbol_1 = require("../runtime/symbol");
 const misc_1 = require("../sources/misc");
 const abs_1 = require("./abs");
+const assume_1 = require("./assume");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const float_1 = require("./float");
 const guess_1 = require("./guess");
+const logic_simplify_1 = require("./logic_simplify");
 const multiply_1 = require("./multiply");
+const simplify_1 = require("./simplify");
 const DEBUG_IS = false;
 // this routine is a simple check on whether we have
 // a basic zero in our hands. It doesn't perform any
@@ -71,6 +74,19 @@ function isZeroLikeOrNonZeroLikeOrUndetermined(valueOrPredicate) {
     // a "true"
     if (defs_1.isNumericAtomOrTensor(evalledArgument)) {
         return true;
+    }
+    // an undecided comparison, and/or/not: floats do not decide it either,
+    // and simplify, gcd and factor stop or loop on its float coefficients
+    if (logic_simplify_1.isLogical(evalledArgument)) {
+        return null;
+    }
+    // a real constant: nonzero with a certified sign, zero with a proof
+    // (simplify), never by its double: 2*sin(1)*cos(1)-sin(2) is 1e-17 there
+    if (defs_1.iscons(evalledArgument) && !assume_1.hasSymbol(evalledArgument)) {
+        const sign = assume_1.constantSign(evalledArgument);
+        if (sign !== undefined) {
+            return sign !== 0 ? true : isZeroAtomOrTensor(simplify_1.simplify(evalledArgument)) ? false : null;
+        }
     }
     // if we are here we are in the case of value that
     // is not a zero and not a simple numeric value.
@@ -477,19 +493,31 @@ function isminusoneovertwo(p) {
     return equalq(p, -1, 2);
 }
 exports.isminusoneovertwo = isminusoneovertwo;
-// p == 1/sqrt(2) ?
+// p == 1/sqrt(2) ? In either spelling, 2^(-1/2) or 1/2*2^(1/2), and the
+// whole product: 1/2*2^(1/2)*y is something else
 function isoneoversqrttwo(p) {
-    return defs_1.ispower(p) && equaln(defs_1.cadr(p), 2) && equalq(defs_1.caddr(p), -1, 2);
+    return ((defs_1.ispower(p) && equaln(defs_1.cadr(p), 2) && equalq(defs_1.caddr(p), -1, 2)) ||
+        isHalfSqrtTwo(p, 1));
 }
 exports.isoneoversqrttwo = isoneoversqrttwo;
 // p == -1/sqrt(2) ?
 function isminusoneoversqrttwo(p) {
-    return (defs_1.ismultiply(p) &&
+    return ((defs_1.ismultiply(p) &&
         equaln(defs_1.cadr(p), -1) &&
         isoneoversqrttwo(defs_1.caddr(p)) &&
-        misc_1.length(p) === 3);
+        misc_1.length(p) === 3) ||
+        isHalfSqrtTwo(p, -1));
 }
 exports.isminusoneoversqrttwo = isminusoneoversqrttwo;
+// p == sign/2*2^(1/2) ?
+function isHalfSqrtTwo(p, sign) {
+    return (defs_1.ismultiply(p) &&
+        misc_1.length(p) === 3 &&
+        equalq(defs_1.cadr(p), sign, 2) &&
+        defs_1.ispower(defs_1.caddr(p)) &&
+        equaln(defs_1.cadr(defs_1.caddr(p)), 2) &&
+        isoneovertwo(defs_1.caddr(defs_1.caddr(p))));
+}
 // Check if the value is sqrt(3)/2
 function isSqrtThreeOverTwo(p) {
     return (defs_1.ismultiply(p) &&

@@ -80,17 +80,17 @@ function rect(p1) {
     }
     // try to get to the rectangular form by doing
     // abs(p1) * (cos (theta) + i * sin(theta))
-    // where theta is arg(p1)
+    // where theta is arg(p1, true)
     // abs(z) * (cos(arg(z)) + i sin(arg(z)))
-    const result = multiply_1.multiply(abs_1.abs(p1), add_1.add(cos_1.cosine(arg_1.arg(p1)), multiply_1.multiply(defs_1.Constants.imaginaryunit, sin_1.sine(arg_1.arg(p1)))));
+    const result = multiply_1.multiply(abs_1.abs(p1), add_1.add(cos_1.cosine(arg_1.arg(p1, true)), multiply_1.multiply(defs_1.Constants.imaginaryunit, sin_1.sine(arg_1.arg(p1, true)))));
     if (DEBUG_RECT) {
         console.log(` rect - ${input} is NOT a sum `);
         console.log(` rect - ${input} abs: ${abs_1.abs(p1)}`);
         console.log(` rect - ${input} arg of ${p1} : ${p1}`);
-        console.log(` rect - ${input} cosine: ${cos_1.cosine(arg_1.arg(p1))}`);
-        console.log(` rect - ${input} sine: ${sin_1.sine(arg_1.arg(p1))}`);
-        console.log(` rect - ${input} i * sine: ${multiply_1.multiply(defs_1.Constants.imaginaryunit, sin_1.sine(arg_1.arg(p1)))}`);
-        console.log(` rect - ${input} cos + i * sine: ${add_1.add(cos_1.cosine(arg_1.arg(p1)), multiply_1.multiply(defs_1.Constants.imaginaryunit, sin_1.sine(arg_1.arg(p1))))}`);
+        console.log(` rect - ${input} cosine: ${cos_1.cosine(arg_1.arg(p1, true))}`);
+        console.log(` rect - ${input} sine: ${sin_1.sine(arg_1.arg(p1, true))}`);
+        console.log(` rect - ${input} i * sine: ${multiply_1.multiply(defs_1.Constants.imaginaryunit, sin_1.sine(arg_1.arg(p1, true)))}`);
+        console.log(` rect - ${input} cos + i * sine: ${add_1.add(cos_1.cosine(arg_1.arg(p1, true)), multiply_1.multiply(defs_1.Constants.imaginaryunit, sin_1.sine(arg_1.arg(p1, true))))}`);
         console.log(`rect of ${input} : ${result}`);
     }
     return result;

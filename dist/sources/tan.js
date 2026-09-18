@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Eval_tan = void 0;
 const defs_1 = require("../runtime/defs");
+const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
@@ -94,6 +95,11 @@ function tangent(p1) {
         case 105:
         case 285:
             return multiply_1.negate(add_1.add(bignum_1.integer(2), power_1.power(bignum_1.integer(3), bignum_1.rational(1, 2))));
+        // the poles, like sec(pi/2) and cot(0): left as tan(1/2*pi), a factor 0
+        // beside it made the product 0 (tan(x)*cos(x) at pi/2 is 1)
+        case 90:
+        case 270:
+            return run_1.stop('divide by zero');
         default:
             return list_1.makeList(symbol_1.symbol(defs_1.TAN), p1);
     }

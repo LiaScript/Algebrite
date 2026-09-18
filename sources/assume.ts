@@ -13,6 +13,7 @@ import {
   E,
   FLOOR,
   isadd,
+  iscons,
   isdouble,
   ismultiply,
   ispower,
@@ -28,6 +29,7 @@ import {
   SINH,
   Str,
   Sym,
+  TAN,
   TANH,
   TESTEQ,
   TESTGE,
@@ -40,6 +42,8 @@ import { stop } from '../runtime/run';
 import { collectUserSymbols, get_binding, symbol } from '../runtime/symbol';
 import { coeff } from './coeff';
 import { Eval } from './eval';
+import { certifiedSign } from './bigfloat';
+import { zzfloat } from './float';
 import { isinteger, ispolyexpandedform, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { build_tensor } from './scan';
@@ -92,9 +96,14 @@ export function clearAssumptions() {
 }
 
 // Runs f with the bound variable x temporarily assumed positive or
-// negative (x -> inf in a limit is large and positive); what the user
-// assumed about x is restored afterwards.
-export function withSign<T>(x: U, sign: 'positive' | 'negative', f: () => T): T {
+// negative (x -> inf in a limit is large and positive), or an integer (the
+// n of a periodic solution family); what the user assumed about x is
+// restored afterwards.
+export function withSign<T>(
+  x: U,
+  sign: 'positive' | 'negative' | 'integer',
+  f: () => T
+): T {
   if (!issymbol(x)) {
     return f();
   }
@@ -169,6 +178,51 @@ const realFacts = (d: number): Facts =>
 
 // Facts about an evaluated expression.
 export function facts(p: U): Facts {
+  const f = structuralFacts(p);
+  // pi-4, 2^(1/2)-3^(1/2), cos(2): a real constant whose sign the rules
+  // cannot derive
+  if (
+    f.real === true &&
+    f.zero !== true &&
+    (f.positive === undefined || f.negative === undefined) &&
+    iscons(p) &&
+    !hasSymbol(p)
+  ) {
+    const s = constantSign(p);
+    return (s && close({ ...f, positive: s > 0, negative: s < 0, zero: false })) || f;
+  }
+  return f;
+}
+
+export const hasSymbol = (p: U): boolean =>
+  iscons(p)
+    ? p.tail().some(hasSymbol)
+    : issymbol(p) && p !== symbol(PI) && p !== symbol(E);
+
+// The sign of a constant without symbols from its certified digits
+// (certifiedSign of bigfloat.ts), never from a double: sin(3^34) or
+// exp(pi*sqrt(163))-262537412640768744 have the wrong sign there. 1 or -1
+// when certain, 0 when the value cannot be told from zero, undefined when
+// it cannot be evaluated as a real number. Kept per cons cell: facts() asks
+// several times for the same expression.
+const signCache = new WeakMap<U, number | undefined>();
+let decidingConstantSign = false; // lambertw starts from a double: Eval, facts
+export function constantSign(p: U): number | undefined {
+  if (decidingConstantSign) {
+    return undefined;
+  }
+  if (!signCache.has(p)) {
+    decidingConstantSign = true;
+    try {
+      signCache.set(p, certifiedSign(p));
+    } finally {
+      decidingConstantSign = false;
+    }
+  }
+  return signCache.get(p);
+}
+
+function structuralFacts(p: U): Facts {
   if (isrational(p)) {
     return close({ ...realFacts(Math.sign(p.q.a.toJSNumber())), integer: isinteger(p) });
   }
@@ -335,7 +389,8 @@ function functionFacts(p: U): Facts {
   }
   if (arg.real) {
     if (f === symbol(COSH)) return close({ positive: true }) ?? {};
-    if ([SIN, COS, SINH, TANH, ARCTAN, ARCSINH].some((n) => f === symbol(n))) {
+    // tan: real wherever it is defined, like 1/x
+    if ([SIN, COS, TAN, SINH, TANH, ARCTAN, ARCSINH].some((n) => f === symbol(n))) {
       return { real: true };
     }
   }
@@ -497,7 +552,25 @@ export function Eval_assumptions() {
 // made explicitly about x. The default realness of symbols doesn't count:
 // solve(x^2+1,x) keeps its complex roots unless x is assumed real.
 export function violatesAssumptions(value: U, x: U): boolean {
-  return violatedBy(facts(value), x);
+  return violatedBy(facts(value), x) || violatedBy(numericSign(value, x), x);
+}
+
+// What the float value tells about a constant the rules above can't decide,
+// such as 1-2^(1/2) or 2*cos(8/9*pi): its sign, and that it is no integer.
+// Only computed when there are assumptions about x; a value within 1e-9 of
+// zero, or within 1e-6 of an integer, stays undecided in that respect.
+function numericSign(value: U, x: U): Facts {
+  if (!issymbol(x) || !assumptions.has(x.printname)) {
+    return {};
+  }
+  const f = zzfloat(value);
+  if (!isdouble(f)) {
+    return {};
+  }
+  const sign: Facts =
+    Math.abs(f.d) > 1e-9 ? { positive: f.d > 0, negative: f.d < 0, zero: false } : {};
+  const fraction: Facts = Math.abs(f.d - Math.round(f.d)) > 1e-6 ? { integer: false } : {};
+  return { real: true, ...sign, ...fraction };
 }
 
 // the same for an approximate number re + i*im (nroots, nsolve): parts

@@ -48,8 +48,10 @@ run_test([
   'condense(x^2*y+x*y^2)',
   'x*y*(x+y)',
 
+  // the same product; the display step for polynomials in x no longer
+  // rewrites a product that has a sum in it as (coefficient)*x
   'condense(x/y+x/z)',
-  '(1/y+1/z)*x',
+  'x*(1/y+1/z)',
 
   // gcd 1.0 must not leave a 1.0*(...) product (arg() recursed on it forever)
   'condense(1.0+1.0*i)',

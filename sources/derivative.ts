@@ -58,6 +58,7 @@ import { isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { logarithm } from './log';
 import { divide, inverse, multiply, multiply_all, negate } from './multiply';
+import { isPiecewise, mapPiecewiseValues } from './piecewise';
 import { power } from './power';
 import { sgn } from './sgn';
 import { simplify } from './simplify';
@@ -273,6 +274,11 @@ function d_scalar_scalar_1(p1: U, p2: Sym): U {
 
   if (car(p1) === symbol(INTEGRAL) && caddr(p1) === p2) {
     return derivative_of_integral(p1);
+  }
+
+  // branch by branch; differentiability at the break points is not decided
+  if (isPiecewise(p1)) {
+    return mapPiecewiseValues(p1, (v) => derivative(v, p2));
   }
 
   const viaSpecial = specialDerivative(p1, (q) => derivative(q, p2));

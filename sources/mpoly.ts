@@ -10,7 +10,7 @@ import {
   Num,
   U,
 } from '../runtime/defs';
-import { stop } from '../runtime/run';
+import { check_esc_flag, stop } from '../runtime/run';
 import { add } from './add';
 import { integer } from './bignum';
 import { isinteger } from './is';
@@ -58,7 +58,7 @@ export const ORDERS: { [name: string]: Order } = {
 };
 
 // Sorts, merges equal monomials and drops zero coefficients.
-function normalize(p: MPoly, ord: Order): MPoly {
+export function mpNormalize(p: MPoly, ord: Order): MPoly {
   const out: MPoly = [];
   for (const t of [...p].sort((s, t) => ord(t.e, s.e))) {
     const last = out[out.length - 1];
@@ -95,7 +95,7 @@ export function toMPoly(p: U, vars: U[], ord: Order): MPoly {
     }
     terms.push({ e, c });
   }
-  return normalize(terms, ord);
+  return mpNormalize(terms, ord);
 }
 
 export function fromMPoly(p: MPoly, vars: U[]): U {
@@ -113,7 +113,7 @@ export function fromMPoly(p: MPoly, vars: U[]): U {
 }
 
 export const mpSub = (p: MPoly, q: MPoly, ord: Order) =>
-  normalize(
+  mpNormalize(
     p.concat(q.map((t) => ({ e: t.e, c: qmul(t.c, Constants.negOne) }))),
     ord
   );
@@ -134,6 +134,7 @@ export function mpReduce(f: MPoly, G: MPoly[], ord: Order): MPoly {
   const r: MPoly = [];
   let p = f;
   while (p.length) {
+    check_esc_flag(); // nothing here goes through Eval
     const t = p[0];
     const g = G.find((g) => divides(g[0].e, t.e));
     if (g) {
