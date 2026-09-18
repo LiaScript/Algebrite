@@ -10,7 +10,7 @@ import {
 } from '../runtime/defs';
 import { alloc_tensor } from '../runtime/alloc';
 import { stop } from '../runtime/run';
-import { symbol } from '../runtime/symbol';
+import { collectUserSymbols, symbol } from '../runtime/symbol';
 import { add, subtract } from './add';
 import { derivative } from './derivative';
 import { det } from './det';
@@ -19,7 +19,8 @@ import { inner } from './inner';
 import { inv } from './inv';
 import { ispolyexpandedform, isZeroAtomOrTensor } from './is';
 import { multiply, negate } from './multiply';
-import { normalizeEquation, roots } from './roots';
+import { equationToExpr, normalizeEquation, roots } from './roots';
+import { build_tensor } from './scan';
 import { simplify } from './simplify';
 import { subst } from './subst';
 import { check_tensor_dimensions } from './tensor';
@@ -29,16 +30,24 @@ import { check_tensor_dimensions } from './tensor';
 // equations (e.g. transcendental) are explicitly out of scope for now.
 //
 // solve([eq1, eq2, ...], [x, y, ...]): linear system, see solveLinearSystem.
+// Equations may use = or ==; without the variable list the variables are
+// collected from the equations in order of first appearance.
 export function Eval_solve(p1: U) {
-  // The 2nd arg is checked first: evaluating the 1st arg of solve(x=3,x)
-  // would perform the assignment, so leave that to normalizeEquation.
+  // A literal list of equations is converted element-wise before anything is
+  // evaluated: Eval of [x+y=3] would treat x+y=3 as a function definition.
+  const eqsArg = cadr(p1);
   const vars = Eval(caddr(p1));
-  if (istensor(vars)) {
-    const eqs = Eval(cadr(p1));
+  if (istensor(eqsArg) || istensor(vars)) {
+    const eqs = istensor(eqsArg)
+      ? build_tensor(eqsArg.elem.map(equationToExpr))
+      : Eval(eqsArg);
     if (!istensor(eqs)) {
       stop('solve: a list of variables needs a list of equations');
     }
-    return solveLinearSystem(eqs, vars);
+    return solveLinearSystem(
+      eqs,
+      istensor(vars) ? vars : build_tensor(freeSymbols(eqs))
+    );
   }
 
   const [POLY1, X1] = normalizeEquation(p1);
@@ -52,6 +61,13 @@ export function Eval_solve(p1: U) {
   }
 
   return roots(POLY1, X1);
+}
+
+// Variables in order of first appearance.
+function freeSymbols(p: U): U[] {
+  const acc: U[] = [];
+  collectUserSymbols(p, acc);
+  return acc;
 }
 
 // Returns the solution vector in variable order. Coefficients come from the

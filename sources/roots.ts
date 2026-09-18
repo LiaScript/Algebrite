@@ -51,23 +51,24 @@ const flatten = (arr: any[]) => [].concat(...arr);
 // into a [POLY1, X1] pair where POLY1 is `lhs - rhs` (or the bare expr) and
 // X1 is the given variable, or a guessed one if omitted. Shared by roots()
 // and solve(), which both solve POLY1 == 0 for X1, just via different means.
-export function normalizeEquation(callExpr: U): [U, U] {
-  // A == B -> A - B
-  let X = cadr(callExpr);
-  let POLY1: U;
-  if (car(X) === symbol(SETQ) || car(X) === symbol(TESTEQ)) {
-    POLY1 = subtract(Eval(cadr(X)), Eval(caddr(X)));
-  } else {
-    X = Eval(X);
-    if (car(X) === symbol(SETQ) || car(X) === symbol(TESTEQ)) {
-      POLY1 = subtract(Eval(cadr(X)), Eval(caddr(X)));
-    } else {
-      POLY1 = X;
-    }
+// A = B / A == B -> A - B (evaluated), anything else is just evaluated.
+// The unevaluated SETQ must be caught here: Eval would treat x+y=3 as an
+// assignment/function definition.
+export function equationToExpr(e: U): U {
+  if (car(e) !== symbol(SETQ) && car(e) !== symbol(TESTEQ)) {
+    e = Eval(e);
   }
+  if (car(e) === symbol(SETQ) || car(e) === symbol(TESTEQ)) {
+    return subtract(Eval(cadr(e)), Eval(caddr(e)));
+  }
+  return e;
+}
+
+export function normalizeEquation(callExpr: U): [U, U] {
+  const POLY1 = equationToExpr(cadr(callExpr));
 
   // 2nd arg, x
-  X = Eval(caddr(callExpr));
+  const X = Eval(caddr(callExpr));
 
   const X1 = X === symbol(NIL) ? guess(POLY1) : X;
 

@@ -17,8 +17,7 @@ run_test([
   '[-i,i]',
 
   // Linear systems: solve([eq1, eq2, ...], [x, y, ...]) returns the values
-  // in variable order. Equations are expressions (= 0) or use ==; a single
-  // = inside a list is an assignment and cannot be used here.
+  // in variable order. Equations are expressions (= 0) or use = / ==.
   'solve([x+y-3,x-y-1],[x,y])',
   '[2,1]',
 
@@ -47,5 +46,25 @@ run_test([
   'Stop: solve: system is not linear in the given variables',
 
   'solve([x+y-1],[x,y])',
+  'Stop: solve: need as many equations as variables',
+
+  'solve([x+y=3,x-y=1],[x,y])',
+  '[2,1]',
+
+  'solve([x+y+z=6,x-y+z=2,2*x+y-z=1],[x,y,z])',
+  '[1,2,3]',
+
+  // = in a list must not define a function as a side effect
+  'x+y',
+  'x+y',
+
+  // Without a variable list: variables in order of first appearance.
+  'solve([x+y=3,x-y=1])',
+  '[2,1]',
+
+  'solve([2*b+a=5,a-b=-1])',
+  '[1,2]',
+
+  'solve([x+y=3])',
   'Stop: solve: need as many equations as variables',
 ]);
