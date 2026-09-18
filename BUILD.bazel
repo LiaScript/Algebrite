@@ -1219,6 +1219,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_timelimit",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/timelimit.ts",
+)
+
+nodejs_test(
     name = "test_trace",
     data = [
         ":tsc",
@@ -1413,6 +1422,24 @@ nodejs_test(
         "@npm//big-integer",
     ],
     entry_point = ":tests/draw.ts",
+)
+
+nodejs_test(
+    name = "test_factor_complete",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/factor_complete.ts",
+)
+
+nodejs_test(
+    name = "test_factor_multivariate",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/factor_multivariate.ts",
 )
 
 nodejs_test(
