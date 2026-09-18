@@ -106,9 +106,32 @@ run_test([
   'invlaplace(3)',
   '3*dirac(t)',
 
-  // repeated quadratic factors are not covered
+  // repeated quadratic factors: derivative with respect to c of the
+  // inverse of 1/(u^2+c)^(n-1)
   'invlaplace(1/(s^2+1)^2)',
-  'invlaplace(1/((s^2+1)^2),s,t)',
+  '1/2*sin(t)-1/2*t*cos(t)',
+
+  'invlaplace(s/(s^2+4)^2)',
+  '1/4*t*sin(2*t)',
+
+  'invlaplace(1/(s^2+1)^3)',
+  '3/8*sin(t)-3/8*t*cos(t)-1/8*t^2*sin(t)',
+
+  'invlaplace(1/(s^2+2*s+5)^2)',
+  '-1/8*t*exp(-t)*cos(2*t)+1/16*exp(-t)*sin(2*t)',
+
+  'invlaplace(1/((s-1)*(s^2+1)^2))',
+  '-1/4*cos(t)+1/4*exp(t)-1/2*sin(t)+1/4*t*cos(t)-1/4*t*sin(t)',
+
+  'invlaplace(laplace(t^2*sin(t)))',
+  't^2*sin(t)',
+
+  'invlaplace(laplace(t*exp(-t)*sin(3*t)))',
+  't*exp(-t)*sin(3*t)',
+
+  // symbolic coefficients can't be factored, so this stays unevaluated
+  'invlaplace(1/(s^2+a^2)^2)',
+  'invlaplace(1/(s^4+2*a^2*s^2+a^4),s,t)',
 
   'invlaplace(laplace(sin(t)+t))',
   't+sin(t)',

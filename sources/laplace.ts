@@ -270,34 +270,41 @@ function invterm(G: U, s: U, t: U): U {
       factorial(integer(n - 1))
     );
   }
-  if (n !== 1) {
-    return unevaluated;
-  }
-
-  // (alpha s + beta)/(b2 s^2 + b1 s + b0), and
-  // s^2 + b1/b2 s + b0/b2 = (s - h)^2 + w2
+  // (alpha s + beta)/(b2 s^2 + b1 s + b0)^n, and
+  // s^2 + b1/b2 s + b0/b2 = (s - h)^2 + w2, so with u = s - h this is
+  // (A u + B)/(u^2 + w2)^n, shifted by exp(h t)
   const b2 = divide(d2, integer(2));
   const b1 = Eval(subst(d1, s, zero));
   const b0 = Eval(subst(base, s, zero));
   const h = negate(divide(b1, d2));
   const w2 = subtract(divide(b0, b2), multiply(h, h));
-  const A = divide(alpha, b2);
-  const B = divide(add(beta, multiply(alpha, h)), b2);
+  const bn = power(b2, integer(n));
+  const A = divide(alpha, bn);
+  const B = divide(add(beta, multiply(alpha, h)), bn);
   const eht = exponential(multiply(h, t));
   const sign = cmp_values(w2, zero);
 
   if (sign === 0) {
-    // (s - h)^2: exp(h t) (A + B t)
-    return multiply(eht, add(A, multiply(B, t)));
+    // (s - h)^2n: apart gives linear factors, so only n = 1 gets here
+    return n === 1 ? multiply(eht, add(A, multiply(B, t))) : unevaluated;
   }
   const hyperbolic = sign === -1;
-  const w = power(hyperbolic ? negate(w2) : w2, rational(1, 2));
-  const wt = multiply(w, t);
-  return multiply(
-    eht,
-    add(
-      multiply(A, call(hyperbolic ? COSH : COS, wt)),
-      multiply(divide(B, w), call(hyperbolic ? SINH : SIN, wt))
-    )
-  );
+  const [p, q] = quadratic(n, hyperbolic ? negate(w2) : w2, hyperbolic, t);
+  return multiply(eht, add(multiply(A, p), multiply(B, q)));
+}
+
+// Inverses of u/(u^2 + c)^n and 1/(u^2 + c)^n (u^2 - c when hyperbolic).
+// n = 1 is the table; since d/dc (u^2 + c)^-n = -n (u^2 + c)^-(n+1),
+// each further power is -1/n (+1/n when hyperbolic) times the c-derivative.
+function quadratic(n: number, c: U, hyperbolic: boolean, t: U): [U, U] {
+  const k = usr_symbol('$c'); // placeholder for c, the parser can't produce it
+  const r = power(k, rational(1, 2));
+  let p = call(hyperbolic ? COSH : COS, multiply(r, t));
+  let q = divide(call(hyperbolic ? SINH : SIN, multiply(r, t)), r);
+  for (let i = 1; i < n; i++) {
+    const f = rational(hyperbolic ? 1 : -1, i);
+    p = multiply(f, derivative(p, k));
+    q = multiply(f, derivative(q, k));
+  }
+  return [Eval(subst(p, k, c)), Eval(subst(q, k, c))];
 }
