@@ -832,6 +832,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_fix_sum_dsolve",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/fix_sum_dsolve.ts",
+)
+
+nodejs_test(
     name = "test_factorpoly",
     data = [
         ":tsc",
