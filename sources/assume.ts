@@ -13,6 +13,7 @@ import {
   E,
   FLOOR,
   isadd,
+  iscons,
   isdouble,
   ismultiply,
   ispower,
@@ -176,6 +177,47 @@ const realFacts = (d: number): Facts =>
 
 // Facts about an evaluated expression.
 export function facts(p: U): Facts {
+  const f = structuralFacts(p);
+  // pi-4, 2^(1/2)-3^(1/2), cos(2): a real constant whose sign the rules
+  // cannot derive
+  if (
+    f.real === true &&
+    f.zero !== true &&
+    (f.positive === undefined || f.negative === undefined) &&
+    iscons(p) &&
+    !hasSymbol(p)
+  ) {
+    return close({ ...f, ...constantSign(p) }) ?? f;
+  }
+  return f;
+}
+
+const hasSymbol = (p: U): boolean =>
+  iscons(p)
+    ? p.tail().some(hasSymbol)
+    : issymbol(p) && p !== symbol(PI) && p !== symbol(E);
+
+// The sign of the float value, undecided within 1e-6 of zero. facts() is
+// asked again while the value is computed (abs, sqrt), hence the guard.
+let decidingConstantSign = false;
+function constantSign(p: U): Facts {
+  if (decidingConstantSign) {
+    return {};
+  }
+  decidingConstantSign = true;
+  try {
+    const v = zzfloat(p);
+    return isdouble(v) && Math.abs(v.d) > 1e-6
+      ? { positive: v.d > 0, negative: v.d < 0, zero: false }
+      : {};
+  } catch (error) {
+    return {};
+  } finally {
+    decidingConstantSign = false;
+  }
+}
+
+function structuralFacts(p: U): Facts {
   if (isrational(p)) {
     return close({ ...realFacts(Math.sign(p.q.a.toJSNumber())), integer: isinteger(p) });
   }

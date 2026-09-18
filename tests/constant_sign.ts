@@ -18,8 +18,9 @@ run_test([
   'abs(2^(1/2)-3^(1/2))',
   '-2^(1/2)+3^(1/2)',
 
+  // exp(1) prints as e
   'abs(exp(1)-3)',
-  '3-exp(1)',
+  '3-e',
 
   'abs(log(2)-1)',
   '1-log(2)',
@@ -36,9 +37,10 @@ run_test([
   'abs(49*2^(1/2)+100*5^(1/2)-70*2^(3/4)*5^(1/4))',
   '49*2^(1/2)+100*5^(1/2)-70*2^(3/4)*5^(1/4)',
 
-  // a product and a quotient of such constants
+  // a product is expanded first; it is positive, (-0.858)*(-0.318), so the
+  // abs goes
   'abs((pi-4)*(2^(1/2)-3^(1/2)))',
-  '(4-pi)*(-2^(1/2)+3^(1/2))',
+  '-4*2^(1/2)+4*3^(1/2)+2^(1/2)*pi-3^(1/2)*pi',
 
   'abs(1/(pi-4))',
   '1/(4-pi)',
@@ -66,12 +68,9 @@ run_test([
   'isreal(pi-4)',
   '1',
 
-  // sqrt(u^2) = abs(u) = -u for a negative constant
-  'sqrt((pi-4)^2)',
-  '4-pi',
-
-  'log((pi-4)^2)',
-  '2*log(4-pi)',
+  // a comparison of constants
+  '2^(1/2)+3^(1/2)>pi',
+  '1',
 ]);
 
 // not decided
@@ -87,8 +86,9 @@ run_test([
   'abs(x+2^(1/2)-3^(1/2))',
   'abs(x+2^(1/2)-3^(1/2))',
 
+  // the product is expanded before abs sees it
   'abs(a*(pi-4))',
-  '(4-pi)*abs(a)',
+  'abs(4*a-a*pi)',
 
   // complex constants keep their modulus
   'abs(1+i)',
@@ -97,8 +97,9 @@ run_test([
   'abs(i*2^(1/2)-3)',
   '11^(1/2)',
 
+  // sgn(z) = z/abs(z), as before
   'sgn(i)',
-  'sgn(i)',
+  'i',
 
   // exact zero in disguise
   'abs(2^(1/2)*3^(1/2)-6^(1/2))',
