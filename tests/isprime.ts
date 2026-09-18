@@ -32,4 +32,42 @@ run_test([
 
   'isprime(2^40-87)',
   '1',
+
+  'isprime(2)',
+  '1',
+
+  'isprime(4)',
+  '0',
+
+  // primes are positive here
+  'isprime(-7)',
+  '0',
+
+  'isprime(3/2)',
+  '0',
+
+  // Carmichael number, fools the Fermat test
+  'isprime(561)',
+  '0',
+
+  'isprime(prime(10000))',
+  '1',
+
+  // Fermat number F5 = 641*6700417
+  'isprime(2^32+1)',
+  '0',
+
+  // Mersenne primes beyond 2^53
+  'isprime(2^61-1)',
+  '1',
+
+  'isprime(2^89-1)',
+  '1',
+
+  // 2^67-1 = 193707721*761838257287 (Cole)
+  'isprime(2^67-1)',
+  '0',
+
+  'isprime(10^20+39)',
+  '1',
 ]);
