@@ -1383,3 +1383,12 @@ nodejs_test(
     ],
     entry_point = ":tests/assume_limit.ts",
 )
+
+nodejs_test(
+    name = "test_assume_simplify",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/assume_simplify.ts",
+)

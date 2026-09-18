@@ -1,3 +1,4 @@
+import { isInteger } from './assume';
 import {
   ARCSIN,
   ARCTAN,
@@ -8,6 +9,9 @@ import {
   isadd,
   iscons,
   isdouble,
+  ismultiply,
+  isNumericAtom,
+  PI,
   SIN,
   U
 } from '../runtime/defs';
@@ -45,7 +49,7 @@ function sine_of_angle_sum(p1: U): U {
   let p2 = cdr(p1);
   while (iscons(p2)) {
     const B = car(p2);
-    if (isnpi(B)) {
+    if (isnpi(B) || integerTimesPi(B)) {
       const A = subtract(p1, B);
       return add(multiply(sine(A), cosine(B)), multiply(cosine(A), sine(B)));
     }
@@ -54,9 +58,24 @@ function sine_of_angle_sum(p1: U): U {
   return sine_of_angle(p1);
 }
 
+// p = k*pi with k a symbolic integer (from the assumptions): k, else
+// undefined. Numeric multiples are left to isnpi and the degree tables.
+export function integerTimesPi(p: U): U | undefined {
+  if (!ismultiply(p) || !p.tail().includes(symbol(PI))) {
+    return undefined;
+  }
+  const k = divide(p, symbol(PI));
+  return isInteger(k) && !isNumericAtom(k) ? k : undefined;
+}
+
 function sine_of_angle(p1: U): U {
   if (car(p1) === symbol(ARCSIN)) {
     return cadr(p1);
+  }
+
+  // sin(k*pi) = 0 for integer k
+  if (integerTimesPi(p1)) {
+    return Constants.zero;
   }
 
   if (isdouble(p1)) {

@@ -253,8 +253,9 @@ run_test([
   'limit(x^(1/x),x,inf)',
   "Stop: limit: could not resolve after repeated L'Hopital iterations",
 
+  // exp(-x)^(1/x) is exp(-1) for real x, so this one is not indeterminate
   'limit(exp(-x)^(1/x),x,inf)',
-  "Stop: limit: could not resolve after repeated L'Hopital iterations",
+  'exp(-1)',
 
   // no limit
   'limit(sin(x),x,inf)',

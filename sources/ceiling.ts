@@ -1,3 +1,4 @@
+import { isInteger } from './assume';
 import {
   cadr,
   CEILING,
@@ -43,7 +44,8 @@ function ceiling(p1: U): U {
 
 function yyceiling(p1: U): U {
   if (!isNumericAtom(p1)) {
-    return makeList(symbol(CEILING), p1);
+    // an integer by the assumptions, e.g. n or n^2+1 for integer n
+    return isInteger(p1) ? p1 : makeList(symbol(CEILING), p1);
   }
 
   if (isdouble(p1)) {

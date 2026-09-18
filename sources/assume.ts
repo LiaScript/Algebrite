@@ -6,10 +6,12 @@ import {
   caddr,
   cadr,
   car,
+  CEILING,
   Constants,
   COS,
   COSH,
   E,
+  FLOOR,
   isadd,
   isdouble,
   ismultiply,
@@ -20,6 +22,7 @@ import {
   NIL,
   NOT,
   PI,
+  ROUND,
   SIN,
   SINH,
   Str,
@@ -265,6 +268,9 @@ function functionFacts(p: U): Facts {
   if (f === symbol(ABS)) {
     return close({ real: true, negative: false, zero: arg.zero }) ?? {};
   }
+  if (isRoundingFunction(f) && arg.real) {
+    return { real: true, integer: true };
+  }
   if (arg.real) {
     if (f === symbol(COSH)) return close({ positive: true }) ?? {};
     if ([SIN, COS, SINH, TANH, ARCTAN, ARCSINH].some((n) => f === symbol(n))) {
@@ -275,6 +281,11 @@ function functionFacts(p: U): Facts {
     return { real: true };
   }
   return {};
+}
+
+// floor, ceiling and round give integers
+function isRoundingFunction(f: U): boolean {
+  return [FLOOR, CEILING, ROUND].some((n) => f === symbol(n));
 }
 
 // three-valued queries on an evaluated expression

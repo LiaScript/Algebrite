@@ -18,7 +18,7 @@ import { isnegative, isnpi } from './is';
 import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
-import { sine } from './sin';
+import { integerTimesPi, sine } from './sin';
 import { requireDimensionless } from './quantity';
 
 /* cos =====================================================================
@@ -51,7 +51,7 @@ export function cosine(p1: U): U {
 function cosine_of_angle_sum(p1: U): U {
   if (iscons(p1)) {
     for (const B of p1.tail()) {
-      if (isnpi(B)) {
+      if (isnpi(B) || integerTimesPi(B)) {
         const A = subtract(p1, B);
         return subtract(
           multiply(cosine(A), cosine(B)),
@@ -66,6 +66,12 @@ function cosine_of_angle_sum(p1: U): U {
 function cosine_of_angle(p1: U): U {
   if (car(p1) === symbol(ARCCOS)) {
     return cadr(p1);
+  }
+
+  // cos(k*pi) = (-1)^k for integer k
+  const k = integerTimesPi(p1);
+  if (k) {
+    return power(Constants.negOne, k);
   }
 
   if (isdouble(p1)) {

@@ -1,3 +1,4 @@
+import { isInteger } from './assume';
 import {
   cadr,
   Constants,
@@ -27,7 +28,8 @@ export function yfloor(p1: U): U {
 
 function yyfloor(p1: U): U {
   if (!isNumericAtom(p1)) {
-    return makeList(symbol(FLOOR), p1);
+    // an integer by the assumptions, e.g. n or n^2+1 for integer n
+    return isInteger(p1) ? p1 : makeList(symbol(FLOOR), p1);
   }
 
   if (isdouble(p1)) {

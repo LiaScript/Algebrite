@@ -3,6 +3,7 @@ import {
   cadr,
   car,
   Constants,
+  isadd,
   isdouble,
   TAN,
   U
@@ -15,6 +16,8 @@ import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { requireDimensionless } from './quantity';
+import { subtract } from './add';
+import { integerTimesPi } from './sin';
 
 // Tangent function of numerical and symbolic arguments
 export function Eval_tan(p1: U) {
@@ -24,6 +27,18 @@ export function Eval_tan(p1: U) {
 function tangent(p1: U): U {
   if (car(p1) === symbol(ARCTAN)) {
     return cadr(p1);
+  }
+
+  // tan has period pi: tan(k*pi) = 0 and tan(x + k*pi) = tan(x) for
+  // integer k
+  if (integerTimesPi(p1)) {
+    return Constants.zero;
+  }
+  if (isadd(p1)) {
+    const B = p1.tail().find((t) => integerTimesPi(t));
+    if (B) {
+      return tangent(subtract(p1, B));
+    }
   }
 
   if (isdouble(p1)) {
