@@ -1470,6 +1470,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_logic_simplify",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/logic_simplify.ts",
+)
+
+nodejs_test(
     name = "test_quote",
     data = [
         ":tsc",

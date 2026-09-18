@@ -147,6 +147,13 @@ export function solveInequalities(rels: U[], x: U): U {
     stop('solve: inequalities with parameters are not supported');
   }
 
+  return joinPieces(x, pts, segments);
+}
+
+// The runs of true segments as conditions on x: even indices are the open
+// intervals (2*j is the one below pts[j]), odd indices 2*j+1 are pts[j].
+// One piece, or(...) of several, 1 for the whole line, 0 for nothing.
+export function joinPieces(x: U, pts: U[], segments: boolean[]): U {
   const pieces: U[] = [];
   let start = -1;
   for (let i = 0; i <= segments.length; i++) {
@@ -163,9 +170,6 @@ export function solveInequalities(rels: U[], x: U): U {
   }
   if (pieces.length === 0) {
     return Constants.zero;
-  }
-  if (pieces.length === 1 && pieces[0] === Constants.one) {
-    return Constants.one;
   }
   return pieces.length === 1 ? pieces[0] : makeList(symbol(OR), ...pieces);
 }
