@@ -63,4 +63,24 @@ run_test([
 
   'k',
   'k',
+
+  // clearall removes patterns and resets settings, units(1) included
+  'pattern(q(a_),r(a_))',
+  'q(a_)->r(a_)',
+
+  'units(1)',
+  '1',
+
+  'clearall',
+  '',
+
+  'simplify(q(1))',
+  'q(1)',
+
+  'units()',
+  '0',
+
+  // plain symbols again, no conversion
+  '12cm+5m',
+  '12*cm+5*m',
 ]);
