@@ -28,6 +28,7 @@ import {
   SINH,
   Str,
   Sym,
+  TAN,
   TANH,
   TESTEQ,
   TESTGE,
@@ -341,7 +342,8 @@ function functionFacts(p: U): Facts {
   }
   if (arg.real) {
     if (f === symbol(COSH)) return close({ positive: true }) ?? {};
-    if ([SIN, COS, SINH, TANH, ARCTAN, ARCSINH].some((n) => f === symbol(n))) {
+    // tan: real wherever it is defined, like 1/x
+    if ([SIN, COS, TAN, SINH, TANH, ARCTAN, ARCSINH].some((n) => f === symbol(n))) {
       return { real: true };
     }
   }

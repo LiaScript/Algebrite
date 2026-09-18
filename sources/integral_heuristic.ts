@@ -3,6 +3,7 @@ import {
   ARCCOS,
   ARCSIN,
   ARCTAN,
+  ARCTANH,
   caddr,
   cadr,
   car,
@@ -12,10 +13,14 @@ import {
   ERF,
   COSH,
   doexpand,
+  noexpand,
   iscons,
   isdouble,
+  isadd,
   ismultiply,
+  isNumericAtom,
   ispower,
+  isrational,
   LOG,
   SIN,
   SINH,
@@ -23,27 +28,37 @@ import {
   U
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
+import { abs } from './abs';
 import { symbol, usr_symbol } from '../runtime/symbol';
 import { add, subtract } from './add';
 import { integer, rational } from './bignum';
 import { coeff } from './coeff';
+import { denominator } from './denominator';
 import { derivative } from './derivative';
 import { Eval } from './eval';
 import { zzfloat } from './float';
+import { gcd } from './gcd';
 import { integral } from './integral';
 import { equal } from './misc';
-import { isPositive } from './assume';
+import { isNegative, isPositive } from './assume';
 import {
+  equalq,
   iseveninteger,
+  isinteger,
+  isnegativeterm,
   isnegativenumber,
   isposint,
   ispolyexpandedform,
   isZeroAtomOrTensor
 } from './is';
 import { makeList } from './list';
+import { logarithm } from './log';
 import { divide, multiply, negate } from './multiply';
+import { numerator } from './numerator';
 import { partition } from './partition';
 import { power } from './power';
+import { divpoly } from './quotient';
+import { rationalize } from './rationalize';
 import { subst } from './subst';
 
 // Integration methods tried when the table (and partial fractions) fail:
@@ -51,8 +66,10 @@ import { subst } from './subst';
 // real roots), then tan^2 rewriting, u-substitution and integration by
 // parts. Each returns undefined when it does not apply. Sub-integrals go
 // back through integral(), so the methods combine; depth bounds the recursion.
-// ponytail: no Risch, no trig half-angle substitution; add a method here
-// when a class of integrands keeps failing.
+// A quadratic with a linear term is shifted to the table forms, a rational
+// function of sin, cos, tan becomes one of u = tan(x) or of t = tan(x/2).
+// ponytail: no Risch; add a method here when a class of integrands keeps
+// failing.
 
 const MAX_DEPTH = 5;
 
@@ -66,11 +83,15 @@ export function heuristicIntegral(F: U, X: U, depth: number): U | undefined {
     expTrig(G, X) ||
     absLinear(G, X) ||
     quadraticLog(G, X) ||
+    completeSquare(G, X, depth) ||
     specialIntegral(G, X) ||
+    sqrtTan(G, X) ||
     quarticReciprocal(G, X) ||
     hyperbolicToExp(G, X, depth) ||
     tanSquared(G, X, depth) ||
     bySubstitution(G, X, depth) ||
+    tanSubstitution(G, X, depth) ||
+    weierstrass(G, X, depth) ||
     byParts(G, X, depth);
   return r === undefined ? undefined : multiply(c, r);
 }
@@ -246,8 +267,9 @@ function hyperbolicToExp(F: U, X: U, depth: number): U | undefined {
 // 1/(a+b*cos(q)) and 1/(a+b*sin(q)), q linear in X, numbers a^2 > b^2:
 //   cos: 2/s*arctan(sqrt((a-b)/(a+b))*tan(q/2)), s = sqrt(a^2-b^2)
 //   sin: 2/s*arctan((a*tan(q/2)+b)/s)
+// With a^2 < b^2 the half-angle substitution gives real logarithms.
 // Tried before the table, whose entry for these is a complex logarithm.
-export function realTrigReciprocal(F: U, X: U): U | undefined {
+export function realTrigReciprocal(F: U, X: U, depth: number): U | undefined {
   if (!ispower(F) || !equal(caddr(F), Constants.negOne)) {
     return undefined;
   }
@@ -263,11 +285,15 @@ export function realTrigReciprocal(F: U, X: U): U | undefined {
   const b = derivative(Su, u);
   const a = Eval(subtract(Su, multiply(b, u)));
   const [an, bn] = [zzfloat(a), zzfloat(b)];
-  if (!slopeQ || !isdouble(an) || !isdouble(bn) || an.d * an.d <= bn.d * bn.d) {
+  // a = 0 is 1/cos or 1/sin, a^2 = b^2 has a tan without a log: both in the table
+  if (!slopeQ || !isdouble(an) || !isdouble(bn) || an.d === 0 || an.d * an.d === bn.d * bn.d) {
     return undefined;
   }
+  if (an.d * an.d < bn.d * bn.d) {
+    return weierstrass(F, X, depth);
+  }
   if (an.d < 0) {
-    const flipped = realTrigReciprocal(power(negate(S), Constants.negOne), X);
+    const flipped = realTrigReciprocal(power(negate(S), Constants.negOne), X, depth);
     return flipped && negate(flipped);
   }
   const s = power(subtract(power(a, integer(2)), power(b, integer(2))), rational(1, 2));
@@ -278,6 +304,202 @@ export function realTrigReciprocal(F: U, X: U): U | undefined {
   return Eval(
     divide(multiply(integer(2), makeList(symbol(ARCTAN), inner)), multiply(s, slopeQ))
   );
+}
+
+// (c2*X^2+c1*X+c0)^r with c1 != 0, r a root or a negative power: with
+// u = X+c1/(2*c2) the quadratic is c2*u^2+c0-c1^2/(4*c2), a table form.
+// For an integer r the table picks arctan or log by the sign of
+// 4*c0*c2-c1^2 and takes an undecidable sign as met, so it is asked here;
+// the entries for the roots ask for the sign of c2 themselves.
+function completeSquare(F: U, X: U, depth: number): U | undefined {
+  let k: U[] = [];
+  const q = findWhere(F, (p) => {
+    if (!ispower(p) || !isNumericAtom(caddr(p)) || isposint(caddr(p))) {
+      return false;
+    }
+    if (!ispolyexpandedform(cadr(p), X)) {
+      return false;
+    }
+    k = coeff(cadr(p), X);
+    return k.length === 3 && !isZeroAtomOrTensor(k[1]);
+  });
+  if (!q) {
+    return undefined;
+  }
+  const [c0, c1, c2] = k;
+  const D = subtract(multiply(integer(4), multiply(c0, c2)), power(c1, integer(2)));
+  if (isinteger(caddr(q)) && isPositive(D) !== true && isNegative(D) !== true) {
+    return undefined;
+  }
+  const u = usr_symbol('integral_v');
+  const h = divide(c1, multiply(integer(2), c2));
+  const shifted = add(
+    multiply(c2, power(u, integer(2))),
+    subtract(c0, divide(power(c1, integer(2)), multiply(integer(4), c2)))
+  );
+  const G = subst(subst(F, cadr(q), shifted), X, subtract(u, h));
+  const I = tryIntegral(doexpand(Eval, G), u, depth);
+  return I && Eval(subst(I, u, add(X, h)));
+}
+
+// sqrt(tan(q)), q linear in X: with u = sqrt(tan(q)) the integrand is
+// 2*u^2/(1+u^4), so with m = sqrt(2)*u the integral is
+// (log(u^2-m+1)-log(u^2+m+1))/(2*sqrt(2)) + (arctan(m+1)+arctan(m-1))/sqrt(2)
+function sqrtTan(F: U, X: U): U | undefined {
+  if (!ispower(F) || !isFn(cadr(F), TAN) || !equalq(caddr(F), 1, 2)) {
+    return undefined;
+  }
+  const a = slope(cadr(cadr(F)), X);
+  if (!a) {
+    return undefined;
+  }
+  const r2 = power(integer(2), rational(1, 2));
+  const m = multiply(r2, F);
+  const t1 = add(cadr(F), Constants.one);
+  // both arguments are positive: (u-1/sqrt(2))^2+1/2 and (u+1/sqrt(2))^2+1/2
+  const log = subtract(makeList(symbol(LOG), subtract(t1, m)), makeList(symbol(LOG), add(t1, m)));
+  const atan = add(
+    makeList(symbol(ARCTAN), add(m, Constants.one)),
+    makeList(symbol(ARCTAN), subtract(m, Constants.one))
+  );
+  return Eval(divide(add(divide(log, multiply(integer(2), r2)), divide(atan, r2)), a));
+}
+
+// the argument q of the first sin, cos or tan with X in it, if linear in X
+function trigArgument(F: U, X: U): U | undefined {
+  const t = findWhere(
+    F,
+    (p) => (isFn(p, SIN) || isFn(p, COS) || isFn(p, TAN)) && Find(cadr(p), X)
+  );
+  return t && slope(cadr(t), X) ? cadr(t) : undefined;
+}
+
+function substTrig(F: U, q: U, sin: U, cos: U, tan: U): U {
+  const at = (name: string) => makeList(symbol(name), q);
+  return subst(subst(subst(F, at(SIN), sin), at(COS), cos), at(TAN), tan);
+}
+
+// rationalize() leaves the fractions inside a denominator: bottom-up, and
+// unexpanded, or Eval distributes each numerator over its denominator again
+function together(p: U): U {
+  return iscons(p)
+    ? rationalize(noexpand(Eval, makeList(car(p), ...p.tail().map(together))))
+    : p;
+}
+
+const MAX_DEGREE = 8;
+
+// N/D in lowest terms, undefined unless both are polynomials in u of a
+// degree the partial fractions can take
+function lowestTerms(N: U, D: U, u: U): U | undefined {
+  [N, D] = [N, D].map((p) => doexpand(Eval, p));
+  const isPoly = (p: U) =>
+    !Find(p, u) || (ispolyexpandedform(p, u) && coeff(p, u).length <= MAX_DEGREE + 1);
+  if (!isPoly(N) || !isPoly(D)) {
+    return undefined;
+  }
+  const g = gcd(N, D);
+  return Find(g, u) ? divide(divpoly(N, g, u), divpoly(D, g, u)) : divide(N, D);
+}
+
+// A rational function of tan(q), sin(q)^2, cos(q)^2 and sin(q)*cos(q) (it
+// has the period pi), q linear in X: u = tan(q), sin = u*c, cos = c,
+// c^2 = 1/(1+u^2), dX = du/(q'*(1+u^2)). Numerator and denominator are
+// either both even or both odd in c; if odd, both are multiplied by c.
+function tanSubstitution(F: U, X: U, depth: number): U | undefined {
+  const q = trigArgument(F, X);
+  if (!q) {
+    return undefined;
+  }
+  const u = usr_symbol('integral_t');
+  const c = usr_symbol('integral_c');
+  const G = together(substTrig(F, q, multiply(u, c), c, u));
+  if (Find(G, X)) {
+    return undefined;
+  }
+  const w = add(Constants.one, power(u, integer(2)));
+  const inU = (p: U) =>
+    doexpand(Eval, evenPowers(doexpand(Eval, p), c, power(w, Constants.negOne)));
+  let [N, D] = [numerator(G), denominator(G)].map(inU);
+  if (Find(N, c) || Find(D, c)) {
+    [N, D] = [numerator(G), denominator(G)].map((p) => inU(multiply(p, c)));
+  }
+  if (Find(N, c) || Find(D, c)) {
+    return undefined;
+  }
+  const H = together(divide(N, multiply(D, multiply(slope(q, X), w))));
+  const R = lowestTerms(numerator(H), denominator(H), u);
+  const I = R && tryIntegral(R, u, depth);
+  return I && backSubstitute(I, u, makeList(symbol(TAN), q), q);
+}
+
+// Any rational function of sin(q), cos(q), tan(q), q linear in X:
+// t = tan(q/2), sin = 2*t/(1+t^2), cos = (1-t^2)/(1+t^2), dX = 2*dt/(q'*(1+t^2))
+function weierstrass(F: U, X: U, depth: number): U | undefined {
+  const q = trigArgument(F, X);
+  if (!q) {
+    return undefined;
+  }
+  const t = usr_symbol('integral_t');
+  const t2 = power(t, integer(2));
+  const w = add(Constants.one, t2);
+  const sin = divide(multiply(integer(2), t), w);
+  const tan = divide(multiply(integer(2), t), subtract(Constants.one, t2));
+  const G = substTrig(F, q, sin, divide(subtract(Constants.one, t2), w), tan);
+  if (Find(G, X)) {
+    return undefined;
+  }
+  const H = together(divide(multiply(integer(2), G), multiply(slope(q, X), w)));
+  const R = lowestTerms(numerator(H), denominator(H), t);
+  const I = R && tryIntegral(R, t, depth);
+  const half = divide(q, integer(2));
+  return I && backSubstitute(I, t, makeList(symbol(TAN), half), half);
+}
+
+// u = tan(angle) again: arctan(u) is the angle itself (up to a constant on
+// each interval between the poles), and every log gets a readable argument
+function backSubstitute(I: U, u: U, tan: U, angle: U): U {
+  const terms = isadd(I) ? I.tail() : [I];
+  const split = terms.reduce((acc: U, term: U) => add(acc, splitLog(term, u)), Constants.zero);
+  return Eval(subst(subst(split, makeList(symbol(ARCTAN), u), angle), u, tan));
+}
+
+// c*log(N/D) = c*log|N| - c*log|D| up to a constant, where N and D lose
+// their numeric content; c*arctanh(w) = c/2*log((1+w)/(1-w)) is only real
+// for |w| < 1, the logs of the absolute values everywhere
+function splitLog(term: U, u: U): U {
+  const fs = factorsOf(term);
+  const withU = fs.filter((f) => Find(f, u));
+  const L = withU[0];
+  if (withU.length !== 1 || !(isFn(L, LOG) || isFn(L, ARCTANH))) {
+    return term;
+  }
+  let c = product(fs.filter((f) => f !== L));
+  let w = cadr(L);
+  if (isFn(L, ARCTANH)) {
+    c = divide(c, integer(2));
+    w = divide(add(Constants.one, w), subtract(Constants.one, w));
+  }
+  w = together(w);
+  const part = (p: U): U => {
+    p = primitivePart(isFn(p, ABS) ? cadr(p) : p, u);
+    return !Find(p, u) ? Constants.zero : logarithm(isPositive(p) === true ? p : abs(p));
+  };
+  return multiply(c, subtract(part(numerator(w)), part(denominator(w))));
+}
+
+// 6*u+2 becomes 3*u+1, sqrt(2)*u-2 becomes u-sqrt(2), -u+2 becomes u-2
+function primitivePart(p: U, u: U): U {
+  if (!Find(p, u) || !ispolyexpandedform(p, u)) {
+    return p;
+  }
+  const k = coeff(p, u);
+  const lead = k[k.length - 1];
+  let g = k.every((n) => isrational(n)) ? k.reduce(gcd) : lead;
+  if (isnegativeterm(lead) !== isnegativeterm(g)) {
+    g = negate(g);
+  }
+  return doexpand(Eval, divide(p, g));
 }
 
 // tan(u)^2 = 1/cos(u)^2 - 1
@@ -324,9 +546,9 @@ function bySubstitution(F: U, X: U, depth: number): U | undefined {
       h = subst(h, power(symbol(E), negate(caddr(g))), power(u, Constants.negOne));
     }
     if (Find(h, X) && isFn(g, SIN)) {
-      h = evenPowersToU(h, makeList(symbol(COS), X), u);
+      h = evenPowers(h, makeList(symbol(COS), X), oneMinusSquare(u));
     } else if (Find(h, X) && isFn(g, COS)) {
-      h = evenPowersToU(h, makeList(symbol(SIN), X), u);
+      h = evenPowers(h, makeList(symbol(SIN), X), oneMinusSquare(u));
     }
     if (Find(h, X)) {
       continue;
@@ -362,16 +584,19 @@ function candidates(F: U, X: U): U[] {
   return acc;
 }
 
-// fn^(2k) becomes (1-u^2)^k
-function evenPowersToU(p: U, fn: U, u: U): U {
+function oneMinusSquare(u: U): U {
+  return subtract(Constants.one, power(u, integer(2)));
+}
+
+// fn^(2k) becomes square^k
+function evenPowers(p: U, fn: U, square: U): U {
   if (!iscons(p)) {
     return p;
   }
   if (ispower(p) && equal(cadr(p), fn) && iseveninteger(caddr(p))) {
-    const k = divide(caddr(p), integer(2));
-    return power(subtract(Constants.one, power(u, integer(2))), k);
+    return power(square, divide(caddr(p), integer(2)));
   }
-  return makeList(...p.map((el) => evenPowersToU(el, fn, u)));
+  return makeList(...p.map((el) => evenPowers(el, fn, square)));
 }
 
 // Integration by parts, u chosen by LIATE: a log, inverse trig or erf

@@ -5,6 +5,7 @@ import {
   car,
   cdr,
   Constants,
+  DERIVATIVE,
   E,
   EXP,
   INTEGRAL,
@@ -151,7 +152,10 @@ const itab: string[] = [
   'f(1/x*1/(a+b*x^2),1/2*1/a*log(x^2/(a+b*x^2)))',
   //71
   'f(1/x^2*1/(a+b*x^2),-1/(a*x)-b/a*integral(1/(a+b*x^2),x))',
-  //74
+  //74: with numbers c = (a/b)^(1/3) is taken real, and there is one log
+  // per factor of x^3+c^3 = (x+c)*(x^2-c*x+c^2)
+  'f(1/(a+b*x^3),(a/b)^(1/3)/(3*a)*(log(x+(a/b)^(1/3))-1/2*log(x^2-(a/b)^(1/3)*x+(a/b)^(2/3))+sqrt(3)*arctan((2*x-(a/b)^(1/3))/((a/b)^(1/3)*sqrt(3)))),and(number(a*b>0),a*b>0))',
+  'f(1/(a+b*x^3),-(-a/b)^(1/3)/(3*a)*(log(x-(-a/b)^(1/3))-1/2*log(x^2+(-a/b)^(1/3)*x+(-a/b)^(2/3))-sqrt(3)*arctan((2*x+(-a/b)^(1/3))/((-a/b)^(1/3)*sqrt(3)))),and(number(a*b<0),a*b<0))',
   'f(1/(a+b*x^3),1/3*1/a*(a/b)^(1/3)*(1/2*log(((a/b)^(1/3)+x)^3/(a+b*x^3))+sqrt(3)*arctan((2*x-(a/b)^(1/3))*(a/b)^(-1/3)/sqrt(3))))',
   //76
   'f(x^2/(a+b*x^3),1/3*1/b*log(a+b*x^3))',
@@ -285,6 +289,13 @@ const itab: string[] = [
   'f(sqrt(a*x^2+b),x*sqrt(a*x^2+b)/2+b*log(x*sqrt(a)+sqrt(a*x^2+b))/2/sqrt(a),and(number(a>0),a>0))',
   // 274
   'f(sqrt(a*x^2+b),x*sqrt(a*x^2+b)/2+b*arcsin(x*sqrt(-a/b))/2/sqrt(-a),and(number(a<0),a<0))',
+  // a*x^2+b under a root: log or arcsin by the sign of a, which must be known
+  'f(1/sqrt(a*x^2+b),log(x*sqrt(a)+sqrt(a*x^2+b))/sqrt(a),and(number(a>0),a>0))',
+  'f(1/sqrt(a*x^2+b),arcsin(x*sqrt(-a/b))/sqrt(-a),and(number(a<0),a<0))',
+  'f(x/sqrt(a*x^2+b),sqrt(a*x^2+b)/a)',
+  'f(x*sqrt(a*x^2+b),(a*x^2+b)^(3/2)/(3*a))',
+  'f(1/(a*x^2+b)^(3/2),x/(b*sqrt(a*x^2+b)))',
+  'f(x/(a*x^2+b)^(3/2),-1/(a*sqrt(a*x^2+b)))',
   // 290
   'f(sin(a*x),-cos(a*x)/a)',
   // 291
@@ -470,7 +481,7 @@ function evalIntegral(p1: U) {
     if (n >= 0) {
       for (let i = 0; i < n; i++) {
         // with log already in the integrand it isn't real for u < 0 anyway
-        const G = integral(temp, X);
+        const G = withoutConstant(integral(temp, X));
         temp = Find(temp, symbol(LOG)) ? G : realLogs(G, X);
       }
     } else {
@@ -518,6 +529,14 @@ function evalIntegral(p1: U) {
   return F;
 }
 
+// simplify can leave a number behind (1/(2*cos(x)^2)-1/2 for tan(x)^2/2):
+// it is a constant of integration
+function withoutConstant(F: U): U {
+  return isadd(F)
+    ? F.tail().filter((t) => !isNumericAtom(t)).reduce(add, Constants.zero)
+    : F;
+}
+
 // A term c*log(u) with c free of X and u real (not known positive) becomes
 // c*log(abs(u)): d/dX log|u| = u'/u as well, so it is still an
 // antiderivative, and the real one where u < 0. Only such terms: in
@@ -548,14 +567,22 @@ export function integral(F: U, X: U, depth = 0): U {
     return q;
   }
 
-  const real = realTrigReciprocal(F, X);
+  const real = realTrigReciprocal(F, X, depth);
   if (real !== undefined) {
     return real;
   }
 
   let integ: U;
   if (isadd(F)) {
-    integ = integral_of_sum(F, X, depth);
+    try {
+      integ = integral_of_sum(F, X, depth);
+    } catch (e) {
+      const P = productRule(F, X, depth);
+      if (P === undefined) {
+        throw e;
+      }
+      integ = P;
+    }
   } else if (ismultiply(F)) {
     integ = integral_of_product(F, X);
   } else {
@@ -578,6 +605,25 @@ export function integral(F: U, X: U, depth = 0): U {
   }
   // polish then normalize
   return Eval(simplify(integ));
+}
+
+// f'*g+f*g' = (f*g)': a term with a factor d(B,X) proposes the product P
+// with B in its place; P is taken when F-P' has fewer terms than F
+function productRule(F: U, X: U, depth: number): U | undefined {
+  const terms = isadd(F) ? F.tail() : [F];
+  for (const term of terms) {
+    const factors = ismultiply(term) ? term.tail() : [term];
+    const D = factors.find((f) => car(f) === symbol(DERIVATIVE) && equal(caddr(f), X));
+    if (!D) {
+      continue;
+    }
+    const P = factors.reduce((acc: U, f: U) => multiply(acc, f === D ? cadr(D) : f), Constants.one);
+    const rest = Eval(add(F, multiply(Constants.negOne, derivative(P, X))));
+    if ((isadd(rest) ? rest.tail().length : 1) < terms.length) {
+      return add(P, integral(rest, X, depth + 1));
+    }
+  }
+  return undefined;
 }
 
 function isrationalfunction(F: U, X: U): boolean {
@@ -799,6 +845,8 @@ var hashed_itab: { [key: string]: string[] } = {
     'f(1/sqrt(a-x^2),-i*log(x+sqrt(x^2-a)),a<0)',
     'f(1/sqrt(a+x^2),log(x+sqrt(a+x^2)))',
     'f(1/sqrt(x^2+a),log(x+sqrt(x^2+a)))',
+    'f(1/sqrt(a*x^2+b),log(x*sqrt(a)+sqrt(a*x^2+b))/sqrt(a),and(number(a>0),a>0))',
+    'f(1/sqrt(a*x^2+b),arcsin(x*sqrt(-a/b))/sqrt(-a),and(number(a<0),a<0))',
   ],
   '0.476307': ['f(1/(a+b*x),1/b*log(a+b*x))'],
   '0.226868': ['f(1/(a+b*x)^2,-1/(b*(a+b*x)))'],
@@ -832,6 +880,8 @@ var hashed_itab: { [key: string]: string[] } = {
   '0.508931': ['f(1/x*1/(a+b*x^2),1/2*1/a*log(x^2/(a+b*x^2)))'],
   '0.532733': ['f(1/x^2*1/(a+b*x^2),-1/(a*x)-b/a*integral(1/(a+b*x^2),x))'],
   '0.480638': [
+    'f(1/(a+b*x^3),(a/b)^(1/3)/(3*a)*(log(x+(a/b)^(1/3))-1/2*log(x^2-(a/b)^(1/3)*x+(a/b)^(2/3))+sqrt(3)*arctan((2*x-(a/b)^(1/3))/((a/b)^(1/3)*sqrt(3)))),and(number(a*b>0),a*b>0))',
+    'f(1/(a+b*x^3),-(-a/b)^(1/3)/(3*a)*(log(x-(-a/b)^(1/3))-1/2*log(x^2+(-a/b)^(1/3)*x+(-a/b)^(2/3))-sqrt(3)*arctan((2*x+(-a/b)^(1/3))/((-a/b)^(1/3)*sqrt(3)))),and(number(a*b<0),a*b<0))',
     'f(1/(a+b*x^3),1/3*1/a*(a/b)^(1/3)*(1/2*log(((a/b)^(1/3)+x)^3/(a+b*x^3))+sqrt(3)*arctan((2*x-(a/b)^(1/3))*(a/b)^(-1/3)/sqrt(3))))',
   ],
   '0.438648': ['f(x^2/(a+b*x^3),1/3*1/b*log(a+b*x^3))'],
@@ -879,10 +929,15 @@ var hashed_itab: { [key: string]: string[] } = {
     'f(sqrt(x^2+a)/x,sqrt(x^2+a)-sqrt(-a)*arcsec(x/sqrt(-a)),a<0)',
     'f(sqrt(a-x^2)/x,sqrt(a-x^2)-sqrt(a)*log((sqrt(a)+sqrt(a-x^2))/x),a>0)',
   ],
-  '0.666120': ['f(x/sqrt(x^2+a),sqrt(x^2+a))', 'f(x/sqrt(a-x^2),-sqrt(a-x^2))'],
+  '0.666120': [
+    'f(x/sqrt(x^2+a),sqrt(x^2+a))',
+    'f(x/sqrt(a-x^2),-sqrt(a-x^2))',
+    'f(x/sqrt(a*x^2+b),sqrt(a*x^2+b)/a)',
+  ],
   '1.370077': [
     'f(x*sqrt(x^2+a),1/3*(x^2+a)^(3/2))',
     'f(x*sqrt(a-x^2),-1/3*(a-x^2)^(3/2))',
+    'f(x*sqrt(a*x^2+b),(a*x^2+b)^(3/2)/(3*a))',
   ],
   '1.730087': [
     'f(sqrt(a+x^6+3*a^(1/3)*x^4+3*a^(2/3)*x^2),1/4*(x*(x^2+a^(1/3))^(3/2)+3/2*a^(1/3)*x*sqrt(x^2+a^(1/3))+3/2*a^(2/3)*log(x+sqrt(x^2+a^(1/3)))))',
@@ -1018,6 +1073,8 @@ var hashed_itab: { [key: string]: string[] } = {
   '1.242392': [
     'f(x^3*exp(a*x+b),exp(a*x+b)*x^3/a-3/a*integral(x^2*exp(a*x+b),x))',
   ],
+  '2.820017': ['f(1/(a*x^2+b)^(3/2),x/(b*sqrt(a*x^2+b)))'],
+  '2.694019': ['f(x/(a*x^2+b)^(3/2),-1/(a*sqrt(a*x^2+b)))'],
   '0.331992': [
     'f(1/(x^2+a*x+b),2/sqrt(4*b-a^2)*arctan((2*x+a)/sqrt(4*b-a^2)),4*b-a^2>0)',
     'f(1/(x^2+a*x+b),log((2*x+a-sqrt(a^2-4*b))/(2*x+a+sqrt(a^2-4*b)))/sqrt(a^2-4*b),and(not(number(a^2-4*b)),a^2-4*b>0))',

@@ -5,9 +5,11 @@ import { run_test } from '../test-harness';
 // real roots), u-substitution (F = h(g)*g'), integration by parts (LIATE),
 // tan^2 = 1/cos^2-1 and odd trig powers via sin/cos substitution.
 // chk(F) is 1 when d/dx integral(F) - F vanishes numerically at x = 7/10:
-// used where the exact printed form is not worth pinning down.
+// used where the exact printed form is not worth pinning down. The value is
+// made a float before abs: the exact abs of a constant with nested radicals
+// (1/(2*x^4+5)) can overflow the stack in numerator/rationalize.
 run_test([
-  'chk(F)=float(abs(eval(d(integral(F,x),x)-F,x,7/10)))<10^(-9)',
+  'chk(F)=abs(float(eval(d(integral(F,x),x)-F,x,7/10)))<10^(-9)',
   '',
 
   // u-substitution
