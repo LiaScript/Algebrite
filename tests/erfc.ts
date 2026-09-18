@@ -25,6 +25,21 @@ run_test([
   'float(erfc(1))',
   '0.157299...',
 
+  'erfc(1.0)',
+  '0.157299...',
+
+  'erfc(-1.0)',
+  '1.842701...',
+
+  'erfc(2.0)',
+  '0.004678...',
+
+  'erfc(0.5)',
+  '0.479500...',
+
+  'd(erfc(x),x)',
+  '-2*exp(-x^2)/(pi^(1/2))',
+
   // wrong number of arguments
   'erfc()',
   'Stop: erfc: expected 1 argument, got 0',
