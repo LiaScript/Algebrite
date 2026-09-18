@@ -24,13 +24,13 @@ run_test([
   'solve((sin(2*x)+1)*(sin(2*x)+sqrt(3)/2)=0,x,n)',
   '[-1/4*pi+n*pi,-1/6*pi+n*pi,2/3*pi+n*pi]',
 
-  // sin = 1, sqrt(3) (none), -1/3
+  // sin = 1, sqrt(3) (none), -1/3; arcsin(-1/3) = -arcsin(1/3) is not rewritten
   'solve(expand((sin(x)-1)*(sin(x)-sqrt(3))*(sin(x)+1/3))=0,x,n)',
-  '[-arcsin(1/3)+2*n*pi,1/2*pi+2*n*pi,pi+arcsin(1/3)+2*n*pi]',
+  '[arcsin(-1/3)+2*n*pi,1/2*pi+2*n*pi,pi-arcsin(-1/3)+2*n*pi]',
 
-  // (c-1)*(c-3/2)*(c+sqrt(3)/3): cos = 1, 3/2 (none), -sqrt(3)/3
+  // (c-1)*(c-3/2)*(c+sqrt(3)/3): cos = 1, 3/2 (none), -sqrt(3)/3 = -1/sqrt(3)
   'solve(cos(x)^3-5*cos(x)^2/2+sqrt(3)*cos(x)^2/3-5*sqrt(3)*cos(x)/6+3*cos(x)/2+sqrt(3)/2=0,x,n)',
-  '[-arccos(-1/3*3^(1/2))+2*n*pi,2*n*pi,arccos(-1/3*3^(1/2))+2*n*pi]',
+  '[-arccos(-1/(3^(1/2)))+2*n*pi,2*n*pi,arccos(-1/(3^(1/2)))+2*n*pi]',
 
   // cos = 1, -sqrt(2)/2
   'solve(expand((cos(x)-1)*(cos(x)+sqrt(2)/2))=0,x,n)',
@@ -40,9 +40,50 @@ run_test([
   'solve(expand((sin(x)-1)*(sin(x)-sqrt(2)/2))=0,x,n)',
   '[1/4*pi+2*n*pi,1/2*pi+2*n*pi,3/4*pi+2*n*pi]',
 
+  // a double root: (sin(x)+1)^2*(sin(x)+sqrt(3)/2)
+  'solve(expand((sin(x)+1)^2*(sin(x)+sqrt(3)/2))=0,x,n)',
+  '[-1/2*pi+2*n*pi,-1/3*pi+2*n*pi,4/3*pi+2*n*pi]',
+
+  // 3*y = 2*m*pi or +-3/4*pi+2*m*pi
+  'solve(expand((cos(3*y)-1)*(cos(3*y)+sqrt(2)/2))=0,y,m)',
+  '[-1/4*pi+2/3*m*pi,2/3*m*pi,1/4*pi+2/3*m*pi]',
+
+  'float(solve((sin(x)+1)*(sin(x)+sqrt(3)/2)=0,x))',
+  '[-1.570796...,-1.047198...,4.188790...]',
+
+  // the solutions are filtered by the assumptions as before
+  'assume(x,positive)\nsolve((sin(x)+1)*(sin(x)+sqrt(3)/2)=0,x)',
+  '4/3*pi',
+
+  'forget(x)\nassume(x,negative)\nsolve((sin(x)+1)*(sin(x)+sqrt(3)/2)=0,x)',
+  '[-1/2*pi,-1/3*pi]',
+
+  'forget(x)',
+  '',
+
+  // a symbolic coefficient: roots -1 and -a
+  'solve(expand((sin(x)+a)*(sin(x)+1))=0,x)',
+  '[-1/2*pi,arcsin(-a),pi-arcsin(-a)]',
+
   // cos = -1, sqrt(3)/2, 1/2
   'solve(expand((cos(x)+1)*(cos(x)-sqrt(3)/2)*(cos(x)-1/2))=0,x,n)',
   '[-1/3*pi+2*n*pi,-1/6*pi+2*n*pi,1/6*pi+2*n*pi,1/3*pi+2*n*pi,pi+2*n*pi]',
+]);
+
+// these took 7 to 10 s (the time limit of the tester): every candidate was a
+// Cardano form that holds() had to simplify
+run_test([
+  // (T+2)*(T-sqrt(2)/2)*(T+sqrt(3)/3)
+  'solve(tan(x)^3-sqrt(2)*tan(x)^2/2+sqrt(3)*tan(x)^2/3+2*tan(x)^2-sqrt(2)*tan(x)-sqrt(6)*tan(x)/6+2*sqrt(3)*tan(x)/3-sqrt(6)/3=0,x,n)',
+  '[-arctan(2)+n*pi,-1/6*pi+n*pi,arctan(1/2^(1/2))+n*pi]',
+
+  // 2*(T-2/5)*(T-sqrt(2)/4)*(T+sqrt(3)/3) in T = cos(2*x)
+  'solve(2*cos(2*x)^3-4*cos(2*x)^2/5-sqrt(2)*cos(2*x)^2/2+2*sqrt(3)*cos(2*x)^2/3-4*sqrt(3)*cos(2*x)/15-sqrt(6)*cos(2*x)/6+sqrt(2)*cos(2*x)/5+sqrt(6)/15=0,x,n)',
+  '[-1/2*arccos(-1/(3^(1/2)))+n*pi,-1/2*arccos(1/(2*2^(1/2)))+n*pi,-1/2*arccos(2/5)+n*pi,1/2*arccos(2/5)+n*pi,1/2*arccos(1/(2*2^(1/2)))+n*pi,1/2*arccos(-1/(3^(1/2)))+n*pi]',
+
+  // 2*(T-1/5)*(T+1/2)*(T+sqrt(3)/2), was "time limit exceeded"
+  'solve(2*sin(x)^3+3*sin(x)^2/5+sqrt(3)*sin(x)^2-sin(x)/5+3*sqrt(3)*sin(x)/10-sqrt(3)/10=0,x,n)',
+  '[-1/3*pi+2*n*pi,-1/6*pi+2*n*pi,arcsin(1/5)+2*n*pi,pi-arcsin(1/5)+2*n*pi,7/6*pi+2*n*pi,4/3*pi+2*n*pi]',
 ]);
 
 // the same cleaning for the other kernels: no family was lost here, but the
@@ -56,13 +97,17 @@ run_test([
   'solve(expand((tan(x)-sqrt(3))*(tan(x)+1/sqrt(3))*(tan(x)-2))=0,x,n)',
   '[-1/6*pi+1/2*n*pi,arctan(2)+n*pi]',
 
+  // exp(x) = 1, sqrt(2)
+  'solve(exp(2*x)-(1+sqrt(2))*exp(x)+sqrt(2)=0,x)',
+  '[0,1/2*log(2)]',
+
   // exp(x) = 1, sqrt(3)
   'solve(expand((exp(x)-1)*(exp(x)-sqrt(3)))=0,x)',
   '[0,1/2*log(3)]',
 
-  // log(x) = 1, sqrt(2)
+  // log(x) = 1, sqrt(2); exp(1) prints as e
   'solve(log(x)^2-(1+sqrt(2))*log(x)+sqrt(2)=0,x)',
-  '[exp(1),exp(2^(1/2))]',
+  '[e,exp(2^(1/2))]',
 
   // sqrt(x) = 1, sqrt(3)
   'solve(x-(1+sqrt(3))*sqrt(x)+sqrt(3)=0,x)',
@@ -92,6 +137,15 @@ run_test([
 
   'solve(tan(x)^2+4=0,x)',
   'Stop: solve: no solution',
+
+  // cos(x)^2 = 1/2-sqrt(2)/4 is positive: roots() writes its root as
+  // i*(-1/2+1/4*2^(1/2))^(1/2), which is real. x = +-3/8*pi, +-5/8*pi:
+  // -cos(3/4*pi) = -cos(5/4*pi) = sqrt(2)/2
+  'solve(sin(x)^2-cos(x)^2=sqrt(2)/2,x)',
+  '[-arccos(-(1/2-1/4*2^(1/2))^(1/2)),-arccos((1/2-1/4*2^(1/2))^(1/2)),arccos((1/2-1/4*2^(1/2))^(1/2)),arccos(-(1/2-1/4*2^(1/2))^(1/2))]',
+
+  'float(solve(sin(x)^2-cos(x)^2=sqrt(2)/2,x))',
+  '[-1.963495...,-1.178097...,1.178097...,1.963495...]',
 
   // the real family stays
   'solve((sin(x)^2+1)*(sin(x)-1/2)=0,x)',
@@ -137,6 +191,11 @@ run_test([
   // sin = (-1+sqrt(5))/2, the other root is below -1
   'solve(sin(x)^2+sin(x)-1=0,x)',
   '[arcsin(-1/2+1/2*5^(1/2)),pi-arcsin(-1/2+1/2*5^(1/2))]',
+
+  // (6^(1/2)-2^(1/2))/4 has no root inside a root and is not touched:
+  // arcsin knows it in this form only
+  'solve(sin(x)=sin(pi/12),x)',
+  '[1/12*pi,11/12*pi]',
 
   // exp keeps its complex solutions
   'solve(exp(x)=-1,x)',
@@ -217,6 +276,14 @@ run_test([
   '1',
 
   'gcd(x+y,x-y)',
+  '1',
+
+  // coprime and dense: decided by evaluating at integers, the remainder
+  // sequence would explode
+  'gcd(expand((x+y+z+w+1)^6),expand((x-y+z-w+2)^6))',
+  '1',
+
+  'gcd(expand((x^2+y^2+z^2+a^2+b^2+1)^3),expand((x*y+y*z+z*a+a*b+b*x+3)^3))',
   '1',
 
   // numeric content only
