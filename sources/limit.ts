@@ -16,6 +16,7 @@ import {
   INF,
   iscons,
   isdouble,
+  ismultiply,
   isNumericAtom,
   LOG,
   NIL,
@@ -27,6 +28,7 @@ import {
   U
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
+import { facts } from './assume';
 import { stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
 import { double, integer } from './bignum';
@@ -38,7 +40,7 @@ import { zzfloat } from './float';
 import { isnegativenumber, isplusone, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { checkArgCount, equal } from './misc';
-import { divide, multiply, negate } from './multiply';
+import { divide, multiply, multiply_all, negate } from './multiply';
 import { numerator } from './numerator';
 import { rationalize } from './rationalize';
 import { simplify } from './simplify';
@@ -181,6 +183,13 @@ function resolveInf(p: U): U {
     ) {
       stop('limit: indeterminate power');
     }
+    // inf^a for a of known sign
+    if (arg === inf && !Find(exponent, inf)) {
+      const e = facts(exponent);
+      if (e.positive || e.negative) {
+        return e.positive ? inf : Constants.zero;
+      }
+    }
     if (isInfinite(exponent)) {
       const base = arg === symbol(E) ? double(Math.E) : zzfloat(arg);
       if (isdouble(base) && base.d > 0) {
@@ -211,7 +220,22 @@ function resolveInf(p: U): U {
         }
     }
   }
-  return Eval(makeList(head, ...args));
+  return signedInf(Eval(makeList(head, ...args)));
+}
+
+// c*inf is inf or -inf when the sign of c is known (a*inf with a > 0,
+// inf/a, pi*inf); otherwise it is left as it is
+function signedInf(p: U): U {
+  if (!ismultiply(p)) {
+    return p;
+  }
+  const factors = p.tail();
+  const rest = factors.filter((f) => f !== symbol(INF));
+  if (rest.length !== factors.length - 1 || rest.some((f) => Find(f, symbol(INF)))) {
+    return p;
+  }
+  const c = facts(multiply_all(rest));
+  return c.positive ? symbol(INF) : c.negative ? negate(symbol(INF)) : p;
 }
 
 // L'Hopital directly in x for inf/inf and 0/0 at infinity (x*exp(-x) is
@@ -249,6 +273,11 @@ function infiniteLimit(F: U, X: U, A: U, sides: number[]): U {
   const eps = 1e-6 * Math.max(1, Math.abs(a.d));
   const positive = sides.map((side) => {
     const v = zzfloat(subst(F, X, double(a.d + side * eps)));
+    // symbolic: the sign may be known from the assumptions (a/x, a > 0)
+    const known = isdouble(v) ? undefined : facts(v);
+    if (known?.positive || known?.negative) {
+      return known.positive;
+    }
     if (!isdouble(v)) {
       stop(
         'limit: could not determine a real sign beside the point — try a one-sided limit'
