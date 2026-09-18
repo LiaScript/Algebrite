@@ -207,3 +207,34 @@ run_test([
   'factor(x^2-y^(1/2)*x+z)',
   'z+x^2-y^(1/2)*x',
 ]);
+
+// factor(p) without a variable is complete: what the main variable leaves
+// over, and the factors found first, are factored in the other symbols too
+// (sympy.factor for the expected values). factor(p, x) still factors in x
+// only.
+run_test([
+  'factor(36*y^2*z-120*y*z+100*z)',
+  '4*z*(3*y-5)^2',
+
+  'factor(x^2*z+2*x*z+z)',
+  'z*(x+1)^2',
+
+  'factor(x*y^2-x)',
+  'x*(y-1)*(y+1)',
+
+  'factor(8*x*y^2*z+16*y*z)',
+  '8*y*z*(x*y+2)',
+
+  'factor(-108*b^3*z-27*b^3-864*b^2*z-216*b^2-2304*b*z-576*b-2048*z-512)',
+  '-(3*b+8)^3*(4*z+1)',
+
+  'factor(10*w^2*x*z+15*w*x^2*z^2+10*w*x*z^2+15*x^2*z^3)',
+  '5*x*z*(w+z)*(2*w+3*x*z)',
+
+  'factor((x+1)*(x+2)*(y+3)*(y+4))',
+  '(x+1)*(x+2)*(y+3)*(y+4)',
+
+  // with the variable named, only that one
+  'factor((x+1)*(x+2)*(y+3)*(y+4),x)',
+  '(x+1)*(x+2)*(y^2+7*y+12)',
+]);
