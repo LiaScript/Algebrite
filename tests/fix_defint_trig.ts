@@ -272,6 +272,18 @@ run_test([
   'limit(log(abs(2+tan(x)))+log(abs(cos(x))),x,pi/2,right)',
   '0',
 
+  // the same logs with the rational coefficient of the antiderivative and
+  // a further term: 2/5*pi/2+log(1)/5 = pi/5 = 0.628318530718 from both sides
+  'limit(2/5*x+1/5*log(abs(2+tan(x)))+1/5*log(abs(cos(x))),x,pi/2,left)',
+  '1/5*pi',
+
+  'limit(2/5*x+1/5*log(abs(2+tan(x)))+1/5*log(abs(cos(x))),x,pi/2,right)',
+  '1/5*pi',
+
+  // pi/4 = 0.785398163397
+  'limit(1/2*x+1/2*log(abs(1+tan(x)))+1/2*log(abs(cos(x))),x,pi/2)',
+  '1/4*pi',
+
   // (sqrt(3)*cos-sin)/(sqrt(3)*cos+sin) at x/2 = pi/2 is -1, log(1) = 0
   'limit(log(abs(sqrt(3)-tan(x/2)))-log(abs(sqrt(3)+tan(x/2))),x,pi)',
   '0',
