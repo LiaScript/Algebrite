@@ -10,6 +10,7 @@ import {
 import { stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
 import { double } from './bignum';
+import { approxViolatesAssumptions } from './assume';
 import { derivative } from './derivative';
 import { Eval } from './eval';
 import { zzfloat } from './float';
@@ -30,6 +31,12 @@ export function Eval_nsolve(p1: U) {
   const start = Eval(cadddr(p1));
 
   const fn = (v: number) => toNumber(subst(f, x, double(v)));
+  const checked = (root: number) => {
+    if (approxViolatesAssumptions(root, 0, x)) {
+      stop(`nsolve: the root found contradicts the assumptions about ${x}, try another start value`);
+    }
+    return double(root);
+  };
 
   if (istensor(start)) {
     if (start.nelem !== 2) {
@@ -40,9 +47,9 @@ export function Eval_nsolve(p1: U) {
     const fa = fn(a);
     const fb = fn(b);
     if (fa === 0 || fb === 0) {
-      return double(fa === 0 ? a : b);
+      return checked(fa === 0 ? a : b);
     }
-    return double(
+    return checked(
       Math.sign(fa) * Math.sign(fb) < 0
         ? bisection(fn, a, b, fa, fb)
         : secant(fn, a, b)
@@ -51,7 +58,7 @@ export function Eval_nsolve(p1: U) {
 
   const df = derivative(f, x);
   const x0 = start === symbol(NIL) ? 0 : toNumber(start);
-  return double(newton(fn, (v) => toNumber(subst(df, x, double(v))), x0));
+  return checked(newton(fn, (v) => toNumber(subst(df, x, double(v))), x0));
 }
 
 function toNumber(p: U): number {

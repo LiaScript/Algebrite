@@ -21,7 +21,8 @@ import { inner } from './inner';
 import { inv } from './inv';
 import { ispolyexpandedform, isZeroAtomOrTensor } from './is';
 import { multiply, negate } from './multiply';
-import { equationToExpr, normalizeEquation, roots } from './roots';
+import { violatesAssumptions } from './assume';
+import { equationToExpr, keepAssumedRoots, normalizeEquation, roots } from './roots';
 import { build_tensor } from './scan';
 import { simplify } from './simplify';
 import { subst } from './subst';
@@ -64,7 +65,7 @@ export function Eval_solve(p1: U) {
     );
   }
 
-  return roots(POLY1, X1);
+  return keepAssumedRoots(roots(POLY1, X1), X1, 'solve');
 }
 
 // Variables in order of first appearance.
@@ -115,5 +116,11 @@ function solveLinearSystem(eqs: Tensor, vars: Tensor): U {
   if (isZeroAtomOrTensor(det(A))) {
     stop('solve: system has no unique solution');
   }
-  return inner(inv(A), b);
+  const solution = inner(inv(A), b) as Tensor;
+  vars.elem.forEach((v, i) => {
+    if (violatesAssumptions(solution.elem[i], v)) {
+      stop(`solve: no solution satisfies the assumptions about ${v}`);
+    }
+  });
+  return solution;
 }

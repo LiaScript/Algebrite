@@ -4,6 +4,7 @@ import { stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
 import { cmp_expr } from '../sources/misc';
 import { add } from './add';
+import { approxViolatesAssumptions } from './assume';
 import { double } from './bignum';
 import { coeff } from './coeff';
 import { Eval } from './eval';
@@ -55,6 +56,7 @@ export function Eval_nroots(p1: U) {
   p1 = Eval(cadr(p1));
 
   p2 = p2 === symbol(NIL) ? guess(p1) : p2;
+  const x = p2;
 
   if (!ispolyexpandedform(p1, p2)) {
     stop('nroots: polynomial?');
@@ -91,17 +93,23 @@ export function Eval_nroots(p1: U) {
     if (Math.abs(nroots_a.i) < NROOTS_DELTA) {
       nroots_a.i = 0.0;
     }
-    roots.push(
-      add(
-        double(nroots_a.r),
-        multiply(double(nroots_a.i), Constants.imaginaryunit)
-      )
-    );
+    // roots known to violate the assumptions about x are left out
+    if (!approxViolatesAssumptions(nroots_a.r, nroots_a.i, x)) {
+      roots.push(
+        add(
+          double(nroots_a.r),
+          multiply(double(nroots_a.i), Constants.imaginaryunit)
+        )
+      );
+    }
     NROOTS_divpoly(k);
   }
 
   // now make n equal to the number of roots
   n = roots.length;
+  if (n == 0 && cs.length > 1) {
+    stop(`nroots: no solution satisfies the assumptions about ${x}`);
+  }
   if (n == 1) {
     return roots[0];
   } else if (n > 1) {

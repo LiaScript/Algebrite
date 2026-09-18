@@ -20,6 +20,7 @@ import { stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
 import { cmp_expr, sort } from '../sources/misc';
 import { absValFloat } from './abs';
+import { violatesAssumptions } from './assume';
 import { add, add_all, subtract } from './add';
 import { integer, rational } from './bignum';
 import { coeff } from './coeff';
@@ -29,6 +30,7 @@ import { guess } from './guess';
 import { iscomplexnumber, ispolyexpandedform, isposint, isZeroAtomOrTensor } from './is';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
+import { build_tensor } from './scan';
 import { simplify } from './simplify';
 
 const log = {
@@ -83,7 +85,22 @@ export function Eval_roots(POLY: U) {
     stop('roots: 1st argument is not a polynomial in the variable ' + X1);
   }
 
-  return roots(POLY1, X1);
+  return keepAssumedRoots(roots(POLY1, X1), X1, 'roots');
+}
+
+// Drops the roots known to violate the assumptions about x. What is left
+// has the shape roots() gives: a lone root bare, several as a list, none
+// is a stop, as for a polynomial roots() can't solve.
+export function keepAssumedRoots(result: U, x: U, fn: string): U {
+  const all = istensor(result) ? result.tensor.elem : [result];
+  const kept = all.filter((r) => !violatesAssumptions(r, x));
+  if (kept.length === all.length) {
+    return result;
+  }
+  if (kept.length === 0) {
+    stop(`${fn}: no solution satisfies the assumptions about ${x}`);
+  }
+  return kept.length === 1 ? kept[0] : build_tensor(kept);
 }
 
 function hasImaginaryCoeff(k: U[]): boolean {
