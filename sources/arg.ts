@@ -14,6 +14,7 @@ import {
   ismultiply,
   ispower,
   issymbol,
+  istensor,
   PI,
   SIN,
   U
@@ -42,6 +43,7 @@ import { numerator } from './numerator';
 import { real } from './real';
 import { rect } from './rect';
 import { mapQuantity } from './quantity';
+import { copy_tensor } from './tensor';
 
 /* arg =====================================================================
 
@@ -115,6 +117,11 @@ export function Eval_arg(z: U) {
 }
 
 export function arg(z: U): U {
+  if (istensor(z)) {
+    const t = copy_tensor(z);
+    t.tensor.elem = t.tensor.elem.map(arg);
+    return t;
+  }
   return (
     mapQuantity(z, arg, false) ||
     principal(subtract(yyarg(numerator(z)), yyarg(denominator(z))))
