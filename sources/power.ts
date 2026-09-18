@@ -69,6 +69,7 @@ import { powerUnitAware } from './quantity';
 import { rect } from './rect';
 import { sine } from './sin';
 import { power_tensor } from './tensor';
+import { requireDimensionless } from './quantity';
 
 /* Power function
 
@@ -134,6 +135,7 @@ function yypower(base: U, exponent: U): U {
   }
 
   // is the base a Quantity, or (with units() on) a bare unit symbol?
+  requireDimensionless(exponent, 'power: exponent');
   const unitResult = powerUnitAware(base, exponent);
   if (unitResult !== undefined) {
     return unitResult;

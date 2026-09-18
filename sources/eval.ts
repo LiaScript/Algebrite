@@ -48,6 +48,7 @@ import { isfloating, isinteger, isintegerorintegerfloat, isZeroLikeOrNonZeroLike
 import { makeList } from './list';
 import { exponential } from './misc';
 import { power } from './power';
+import { makeQuantity, requireDimensionless } from './quantity';
 import { subst } from './subst';
 import { check_tensor_dimensions, Eval_tensor } from './tensor';
 import { Eval_user_function } from './userfunc';
@@ -112,6 +113,13 @@ export function Eval_sym(p1: Sym): U {
     return Eval(makeList(p1, symbol(LAST)));
   } else if (p1 === symbol(PI) && defs.evaluatingAsFloats) {
     return Constants.piAsDouble;
+  }
+
+  // With units() on, an unbound unit symbol IS a quantity of one unit, so
+  // that "m" and "1m" (which the scanner folds to a bare "m") behave like
+  // any other quantity instead of staying a free variable.
+  if (defs.unitsAutoDetect && p1.unitDef && get_binding(p1) === p1) {
+    return makeQuantity(p1.unitDef.scale, p1.unitDef.dim);
   }
 
   // Evaluate symbol's binding
@@ -317,7 +325,7 @@ export function Eval_Eval(p1: U) {
 // exp evaluation: it replaces itself with
 // a POWER(E,something) node and evals that one
 export function Eval_exp(p1: U) {
-  return exponential(Eval(cadr(p1)));
+  return exponential(requireDimensionless(Eval(cadr(p1)), 'exp'));
 }
 
 export function Eval_factorial(p1: U) {

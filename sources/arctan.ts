@@ -24,6 +24,7 @@ import { equaln, equalq, isnegative, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { multiply, negate } from './multiply';
 import { numerator } from './numerator';
+import { requireDimensionless } from './quantity';
 
 /* arctan =====================================================================
 
@@ -41,7 +42,7 @@ Returns the inverse tangent of x.
 
 */
 export function Eval_arctan(x: U) {
-    return arctan(Eval(cadr(x)));
+    return arctan(requireDimensionless(Eval(cadr(x)), 'arctan'));
 }
 
 export function arctan(x: U): U {

@@ -34,6 +34,7 @@ import { divide, multiply, negate } from './multiply';
 import { numerator } from './numerator';
 import { real } from './real';
 import { rect } from './rect';
+import { mapQuantity } from './quantity';
 
 /* arg =====================================================================
 
@@ -107,7 +108,10 @@ export function Eval_arg(z: U) {
 }
 
 export function arg(z: U): U {
-  return subtract(yyarg(numerator(z)), yyarg(denominator(z)));
+  return (
+    mapQuantity(z, arg, false) ||
+    subtract(yyarg(numerator(z)), yyarg(denominator(z)))
+  );
 }
 
 function yyarg(p1: U): U {

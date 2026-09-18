@@ -16,6 +16,7 @@ import { makeList } from './list';
 import { mmul } from './mmul';
 import { multiply, negate } from './multiply';
 import { power } from './power';
+import { mapQuantity } from './quantity';
 
 //-----------------------------------------------------------------------------
 //
@@ -26,7 +27,8 @@ import { power } from './power';
 //
 //-----------------------------------------------------------------------------
 export function Eval_sgn(p1: U) {
-  return sgn(Eval(cadr(p1)));
+  const arg = Eval(cadr(p1));
+  return mapQuantity(arg, sgn, false) || sgn(arg);
 }
 
 export function sgn(X: U): U {

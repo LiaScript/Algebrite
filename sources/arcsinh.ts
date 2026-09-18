@@ -12,6 +12,7 @@ import { double } from './bignum';
 import { Eval } from './eval';
 import { isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
+import { requireDimensionless } from './quantity';
 
 /* arcsinh =====================================================================
 
@@ -29,7 +30,7 @@ Returns the inverse hyperbolic sine of x.
 
 */
 export function Eval_arcsinh(x: U) {
-    return arcsinh(Eval(cadr(x)));
+    return arcsinh(requireDimensionless(Eval(cadr(x)), 'arcsinh'));
 }
 
 function arcsinh(x: U): U {

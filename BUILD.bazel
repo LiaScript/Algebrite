@@ -122,6 +122,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_quantities",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/quantities.ts",
+)
+
+nodejs_test(
     name = "test_transpose",
     data = [
         ":tsc",

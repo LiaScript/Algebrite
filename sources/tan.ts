@@ -14,10 +14,11 @@ import { isnegative } from './is';
 import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
+import { requireDimensionless } from './quantity';
 
 // Tangent function of numerical and symbolic arguments
 export function Eval_tan(p1: U) {
-  return tangent(Eval(cadr(p1)));
+  return tangent(requireDimensionless(Eval(cadr(p1)), 'tan'));
 }
 
 function tangent(p1: U): U {

@@ -14,9 +14,11 @@ import { Eval } from './eval';
 import { isinteger, isnegativenumber } from './is';
 import { makeList } from './list';
 import { mdiv } from './mmul';
+import { mapQuantity } from './quantity';
 
 export function Eval_floor(p1: U) {
-  return yfloor(Eval(cadr(p1)));
+  const arg = Eval(cadr(p1));
+  return mapQuantity(arg, yfloor) || yfloor(arg);
 }
 
 function yfloor(p1: U): U {

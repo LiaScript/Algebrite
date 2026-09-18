@@ -12,6 +12,7 @@ import { double } from './bignum';
 import { Eval } from './eval';
 import { isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
+import { requireDimensionless } from './quantity';
 
 /* cosh =====================================================================
 
@@ -35,7 +36,7 @@ Returns the hyperbolic cosine of x
 
 */
 export function Eval_cosh(p1: U) {
-  return ycosh(Eval(cadr(p1)));
+  return ycosh(requireDimensionless(Eval(cadr(p1)), 'cosh'));
 }
 
 export function ycosh(p1: U): U {

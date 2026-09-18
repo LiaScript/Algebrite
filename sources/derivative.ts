@@ -64,6 +64,7 @@ import { sine } from './sin';
 import { ysinh } from './sinh';
 import { subst } from './subst';
 import { d_scalar_tensor, d_tensor_scalar, d_tensor_tensor } from './tensor';
+import { mapQuantity } from './quantity';
 
 // derivative
 
@@ -167,6 +168,10 @@ export function Eval_derivative(p1: U): U {
 }
 
 export function derivative(p1: U, p2: U): U {
+  const q = mapQuantity(p1, (magnitude) => derivative(magnitude, p2));
+  if (q) {
+    return q;
+  }
   if (isNumericAtom(p2)) {
     stop('undefined function');
   }

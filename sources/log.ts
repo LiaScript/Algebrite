@@ -23,6 +23,7 @@ import { equal } from './misc';
 import { divide, multiply, negate } from './multiply';
 import { numerator } from './numerator';
 import { power } from './power';
+import { requireDimensionless } from './quantity';
 
 // Natural logarithm.
 //
@@ -34,11 +35,11 @@ import { power } from './power';
 // calculations use log for the common logarithm.
 // log(x) is the natural logarithm; log(x, base) = log(x)/log(base).
 export function Eval_log(p1: U) {
-  const x = Eval(cadr(p1));
+  const x = requireDimensionless(Eval(cadr(p1)), 'log');
   if (!iscons(cddr(p1))) {
     return logarithm(x);
   }
-  const base = Eval(caddr(p1));
+  const base = requireDimensionless(Eval(caddr(p1)), 'log');
   return exactLog(x, base) || divide(logarithm(x), logarithm(base));
 }
 

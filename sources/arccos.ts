@@ -26,6 +26,7 @@ import {
 } from './is';
 import { makeList } from './list';
 import { multiply } from './multiply';
+import { requireDimensionless } from './quantity';
 
 /* arccos =====================================================================
 
@@ -43,7 +44,7 @@ Returns the inverse cosine of x.
 
 */
 export function Eval_arccos(x: U) {
-  return arccos(Eval(cadr(x)));
+  return arccos(requireDimensionless(Eval(cadr(x)), 'arccos'));
 }
 
 function arccos(x: U): U {

@@ -13,6 +13,7 @@ import { double } from './bignum';
 import { Eval } from './eval';
 import { isplusone } from './is';
 import { makeList } from './list';
+import { requireDimensionless } from './quantity';
 
 /* arccosh =====================================================================
 
@@ -30,7 +31,7 @@ Returns the inverse hyperbolic cosine of x.
 
 */
 export function Eval_arccosh(x: U) {
-  return arccosh(Eval(cadr(x)));
+  return arccosh(requireDimensionless(Eval(cadr(x)), 'arccosh'));
 }
 
 function arccosh(x: U): U {

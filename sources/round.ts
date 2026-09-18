@@ -12,9 +12,11 @@ import { Eval } from './eval';
 import { yyfloat } from './float';
 import { isinteger } from './is';
 import { makeList } from './list';
+import { mapQuantity } from './quantity';
 
 export function Eval_round(p1: U) {
-  return yround(Eval(cadr(p1)));
+  const arg = Eval(cadr(p1));
+  return mapQuantity(arg, yround) || yround(arg);
 }
 
 function yround(p1: U): U {

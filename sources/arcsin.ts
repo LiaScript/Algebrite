@@ -26,6 +26,7 @@ import {
 } from './is';
 import { makeList } from './list';
 import { multiply } from './multiply';
+import { requireDimensionless } from './quantity';
 
 /* arcsin =====================================================================
 
@@ -43,7 +44,7 @@ Returns the inverse sine of x.
 
 */
 export function Eval_arcsin(x: U) {
-    return arcsin(Eval(cadr(x)));
+    return arcsin(requireDimensionless(Eval(cadr(x)), 'arcsin'));
 }
 
 function arcsin(x: U): U {

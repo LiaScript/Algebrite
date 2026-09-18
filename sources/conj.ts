@@ -5,6 +5,7 @@ import { Eval } from './eval';
 import { negate } from './multiply';
 import { polar } from './polar';
 import { subst } from './subst';
+import { mapQuantity } from './quantity';
 
 /* conj =====================================================================
 
@@ -34,6 +35,11 @@ export function Eval_conj(p1: U) {
 // careful is you pass this one an expression with
 // i (instead of (-1)^(1/2)) then this doesn't work!
 export function conjugate(p1: U): U {
+  const q = mapQuantity(p1, conjugate);
+  if (q) {
+    return q;
+  }
+
   return Eval(
     subst(p1, Constants.imaginaryunit, negate(Constants.imaginaryunit))
   );

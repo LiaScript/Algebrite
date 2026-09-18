@@ -20,10 +20,11 @@ import { isnegative, isnpi } from './is';
 import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
+import { requireDimensionless } from './quantity';
 
 // Sine function of numerical and symbolic arguments
 export function Eval_sin(p1: U) {
-  return sine(Eval(cadr(p1)));
+  return sine(requireDimensionless(Eval(cadr(p1)), 'sin'));
 }
 
 export function sine(p1: U): U {

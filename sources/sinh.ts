@@ -12,12 +12,13 @@ import { double } from './bignum';
 import { Eval } from './eval';
 import { isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
+import { requireDimensionless } from './quantity';
 
 //            exp(x) - exp(-x)
 //  sinh(x) = ----------------
 //                   2
 export function Eval_sinh(p1: U) {
-  return ysinh(Eval(cadr(p1)));
+  return ysinh(requireDimensionless(Eval(cadr(p1)), 'sinh'));
 }
 
 export function ysinh(p1: U): U {

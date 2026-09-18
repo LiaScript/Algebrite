@@ -19,6 +19,7 @@ import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
 import { sine } from './sin';
+import { requireDimensionless } from './quantity';
 
 /* cos =====================================================================
 
@@ -36,7 +37,7 @@ Returns the cosine of x.
 
 */
 export function Eval_cos(p1: U) {
-  return cosine(Eval(cadr(p1)));
+  return cosine(requireDimensionless(Eval(cadr(p1)), 'cos'));
 }
 
 export function cosine(p1: U): U {

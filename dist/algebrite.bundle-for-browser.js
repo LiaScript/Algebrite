@@ -1837,6 +1837,371 @@
     }
   });
 
+  // bazel-out/k8-fastbuild/bin/sources/unit.js
+  var require_unit = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/unit.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.defineUnits = exports.formatDimensionLatex = exports.formatDimension = exports.lookupUnit = exports.ZERO_DIM = exports.DIM_COUNT = exports.DIM_LUMINOUS = exports.DIM_AMOUNT = exports.DIM_TEMPERATURE = exports.DIM_CURRENT = exports.DIM_TIME = exports.DIM_MASS = exports.DIM_LENGTH = void 0;
+      var symbol_1 = require_symbol();
+      var bignum_1 = require_bignum();
+      exports.DIM_LENGTH = 0;
+      exports.DIM_MASS = 1;
+      exports.DIM_TIME = 2;
+      exports.DIM_CURRENT = 3;
+      exports.DIM_TEMPERATURE = 4;
+      exports.DIM_AMOUNT = 5;
+      exports.DIM_LUMINOUS = 6;
+      exports.DIM_COUNT = 7;
+      exports.ZERO_DIM = [0, 0, 0, 0, 0, 0, 0];
+      var BASE_UNITS = {
+        m: [1, 0, 0, 0, 0, 0, 0],
+        g: [0, 1, 0, 0, 0, 0, 0],
+        s: [0, 0, 1, 0, 0, 0, 0],
+        A: [0, 0, 0, 1, 0, 0, 0],
+        K: [0, 0, 0, 0, 1, 0, 0],
+        mol: [0, 0, 0, 0, 0, 1, 0],
+        cd: [0, 0, 0, 0, 0, 0, 1]
+      };
+      var DERIVED_UNITS = {
+        N: [1, 1, -2, 0, 0, 0, 0],
+        J: [2, 1, -2, 0, 0, 0, 0],
+        W: [2, 1, -3, 0, 0, 0, 0],
+        Pa: [-1, 1, -2, 0, 0, 0, 0],
+        Hz: [0, 0, -1, 0, 0, 0, 0],
+        C: [0, 0, 1, 1, 0, 0, 0],
+        V: [2, 1, -3, -1, 0, 0, 0],
+        F: [-2, -1, 4, 2, 0, 0, 0],
+        ohm: [2, 1, -3, -2, 0, 0, 0],
+        H: [2, 1, -2, -2, 0, 0, 0],
+        T: [0, 1, -2, -1, 0, 0, 0],
+        Wb: [2, 1, -2, -1, 0, 0, 0]
+      };
+      var PREFIXES = {
+        Y: 24,
+        Z: 21,
+        E: 18,
+        P: 15,
+        T: 12,
+        G: 9,
+        M: 6,
+        k: 3,
+        h: 2,
+        da: 1,
+        d: -1,
+        c: -2,
+        m: -3,
+        u: -6,
+        n: -9,
+        p: -12,
+        f: -15,
+        a: -18,
+        z: -21,
+        y: -24
+      };
+      function unitScale(name) {
+        return name === "g" ? bignum_1.rational(1, 1e3) : bignum_1.integer(1);
+      }
+      function buildUnitTable() {
+        const table = new Map();
+        const stems = Object.assign(Object.assign({}, BASE_UNITS), DERIVED_UNITS);
+        for (const [name, dim] of Object.entries(stems)) {
+          table.set(name, { dim, scale: unitScale(name) });
+        }
+        for (const [prefix, pow10] of Object.entries(PREFIXES)) {
+          for (const [stem, dim] of Object.entries(stems)) {
+            const key = prefix + stem;
+            if (table.has(key)) {
+              continue;
+            }
+            table.set(key, {
+              dim,
+              scale: bignum_1.multiply_numbers(unitScale(stem), bignum_1.bignum_power_number(bignum_1.integer(10), pow10))
+            });
+          }
+        }
+        return table;
+      }
+      var unitTable = null;
+      var reverseNameTable = null;
+      function getUnitTable() {
+        if (!unitTable) {
+          unitTable = buildUnitTable();
+        }
+        return unitTable;
+      }
+      function getReverseNameTable() {
+        if (!reverseNameTable) {
+          reverseNameTable = new Map();
+          const stems = Object.assign(Object.assign({}, BASE_UNITS), DERIVED_UNITS);
+          for (const [name, dim] of Object.entries(stems)) {
+            reverseNameTable.set(dim.join(","), name);
+          }
+          reverseNameTable.set(BASE_UNITS.g.join(","), "kg");
+        }
+        return reverseNameTable;
+      }
+      function lookupUnit(name) {
+        return getUnitTable().get(name);
+      }
+      exports.lookupUnit = lookupUnit;
+      var DIM_NAMES = ["m", "kg", "s", "A", "K", "mol", "cd"];
+      function formatDimension(dim) {
+        const exact = getReverseNameTable().get(dim.join(","));
+        if (exact) {
+          return exact;
+        }
+        const parts = [];
+        for (let i = 0; i < exports.DIM_COUNT; i++) {
+          if (dim[i] === 0) {
+            continue;
+          }
+          parts.push(dim[i] === 1 ? DIM_NAMES[i] : `${DIM_NAMES[i]}^${dim[i]}`);
+        }
+        return parts.length ? parts.join("*") : "1";
+      }
+      exports.formatDimension = formatDimension;
+      function formatDimensionLatex(dim) {
+        const exact = getReverseNameTable().get(dim.join(","));
+        if (exact) {
+          return `\\text{${exact}}`;
+        }
+        const parts = [];
+        for (let i = 0; i < exports.DIM_COUNT; i++) {
+          if (dim[i] === 0) {
+            continue;
+          }
+          parts.push(dim[i] === 1 ? `\\text{${DIM_NAMES[i]}}` : `\\text{${DIM_NAMES[i]}}^{${dim[i]}}`);
+        }
+        return parts.length ? parts.join("\\cdot ") : "1";
+      }
+      exports.formatDimensionLatex = formatDimensionLatex;
+      function defineUnits() {
+        for (const [name, def] of getUnitTable()) {
+          symbol_1.std_unit_symbol(name, def.dim, def.scale);
+        }
+      }
+      exports.defineUnits = defineUnits;
+    }
+  });
+
+  // bazel-out/k8-fastbuild/bin/sources/quantity.js
+  var require_quantity = __commonJS({
+    "bazel-out/k8-fastbuild/bin/sources/quantity.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.Eval_dimensionof = exports.Eval_convert = exports.Eval_units = exports.Eval_quantity = exports.requireDimensionless = exports.mapQuantity = exports.addQuantities = exports.powerUnitAware = exports.multiplyUnitAware = exports.makeQuantity = exports.isQuantity = exports.dimsEqual = exports.scaleDims = exports.subDims = exports.addDims = void 0;
+      var alloc_1 = require_alloc();
+      var defs_1 = require_defs();
+      var run_1 = require_run();
+      var symbol_1 = require_symbol();
+      var bignum_1 = require_bignum();
+      var eval_1 = require_eval();
+      var is_1 = require_is();
+      var list_1 = require_list();
+      var multiply_1 = require_multiply();
+      var add_1 = require_add();
+      var power_1 = require_power();
+      var unit_1 = require_unit();
+      function addDims(a, b) {
+        return a.map((v, i) => v + b[i]);
+      }
+      exports.addDims = addDims;
+      function subDims(a, b) {
+        return a.map((v, i) => v - b[i]);
+      }
+      exports.subDims = subDims;
+      function scaleDims(a, k) {
+        return a.map((v) => v * k);
+      }
+      exports.scaleDims = scaleDims;
+      function dimsEqual(a, b) {
+        return a.every((v, i) => v === b[i]);
+      }
+      exports.dimsEqual = dimsEqual;
+      function dimToNum(n) {
+        if (Number.isInteger(n)) {
+          return bignum_1.integer(n);
+        }
+        for (let denom = 2; denom <= 12; denom++) {
+          const numer = n * denom;
+          if (Math.abs(numer - Math.round(numer)) < 1e-9) {
+            return bignum_1.rational(Math.round(numer), denom);
+          }
+        }
+        return bignum_1.rational(Math.round(n * 1e6), 1e6);
+      }
+      function dimToTensor(dim) {
+        const t = alloc_1.alloc_tensor(unit_1.DIM_COUNT);
+        t.tensor.ndim = 1;
+        t.tensor.dim[0] = unit_1.DIM_COUNT;
+        for (let i = 0; i < unit_1.DIM_COUNT; i++) {
+          t.tensor.elem[i] = dimToNum(dim[i]);
+        }
+        return t;
+      }
+      function dimArrayOf(dimValue) {
+        const t = dimValue;
+        return t.tensor.elem.map((e) => bignum_1.nativeDouble(e));
+      }
+      function isQuantity(p) {
+        return defs_1.iscons(p) && defs_1.car(p) === symbol_1.symbol(defs_1.QUANTITY) && defs_1.istensor(defs_1.caddr(p));
+      }
+      exports.isQuantity = isQuantity;
+      function makeQuantity(magnitude, dim) {
+        if (dimsEqual(dim, unit_1.ZERO_DIM) || is_1.isZeroAtom(magnitude)) {
+          return magnitude;
+        }
+        return list_1.makeList(symbol_1.symbol(defs_1.QUANTITY), magnitude, dimToTensor(dim));
+      }
+      exports.makeQuantity = makeQuantity;
+      function classify(p, allowSymbolAutoDetect) {
+        if (isQuantity(p)) {
+          return { magnitude: defs_1.cadr(p), dim: dimArrayOf(defs_1.caddr(p)) };
+        }
+        if (allowSymbolAutoDetect && defs_1.issymbol(p) && p.unitDef) {
+          const def = p.unitDef;
+          return { magnitude: def.scale, dim: def.dim };
+        }
+        if (defs_1.isNumericAtom(p)) {
+          return "numeric";
+        }
+        return "other";
+      }
+      function multiplyUnitAware(p1, p2) {
+        const allow = defs_1.defs.unitsAutoDetect;
+        const c1 = classify(p1, allow);
+        const c2 = classify(p2, allow);
+        if (typeof c1 === "string" && typeof c2 === "string") {
+          return void 0;
+        }
+        if (c1 === "other" && defs_1.istensor(p1) || c2 === "other" && defs_1.istensor(p2)) {
+          return void 0;
+        }
+        const mag1 = c1 === "numeric" || c1 === "other" ? p1 : c1.magnitude;
+        const dim1 = c1 === "numeric" || c1 === "other" ? unit_1.ZERO_DIM : c1.dim;
+        const mag2 = c2 === "numeric" || c2 === "other" ? p2 : c2.magnitude;
+        const dim2 = c2 === "numeric" || c2 === "other" ? unit_1.ZERO_DIM : c2.dim;
+        return makeQuantity(multiply_1.multiply(mag1, mag2), addDims(dim1, dim2));
+      }
+      exports.multiplyUnitAware = multiplyUnitAware;
+      function powerUnitAware(base, exponent) {
+        const c = classify(base, defs_1.defs.unitsAutoDetect);
+        if (c === "other" || c === "numeric" || !defs_1.isNumericAtom(exponent)) {
+          return void 0;
+        }
+        const newDim = scaleDims(c.dim, bignum_1.nativeDouble(exponent));
+        const newMag = power_1.power(c.magnitude, exponent);
+        return makeQuantity(newMag, newDim);
+      }
+      exports.powerUnitAware = powerUnitAware;
+      function addQuantities(terms) {
+        const quantityTerms = terms.filter(isQuantity);
+        if (quantityTerms.length === 0) {
+          return void 0;
+        }
+        const dim = dimArrayOf(defs_1.caddr(quantityTerms[0]));
+        for (const t of terms) {
+          if (isQuantity(t)) {
+            const otherDim = dimArrayOf(defs_1.caddr(t));
+            if (!dimsEqual(otherDim, dim)) {
+              run_1.stop(`incompatible units: cannot add ${unit_1.formatDimension(dim)} and ${unit_1.formatDimension(otherDim)}`);
+            }
+          } else if (!is_1.isZeroAtom(t)) {
+            run_1.stop(`incompatible units: cannot add ${unit_1.formatDimension(dim)} and a dimensionless value`);
+          }
+        }
+        let sum = defs_1.Constants.Zero();
+        for (const t of terms) {
+          if (isQuantity(t)) {
+            sum = add_1.add(sum, defs_1.cadr(t));
+          }
+        }
+        return makeQuantity(sum, dim);
+      }
+      exports.addQuantities = addQuantities;
+      function mapQuantity(p, f, keepUnit = true) {
+        if (!isQuantity(p)) {
+          return void 0;
+        }
+        const magnitude = f(defs_1.cadr(p));
+        return keepUnit ? makeQuantity(magnitude, dimArrayOf(defs_1.caddr(p))) : magnitude;
+      }
+      exports.mapQuantity = mapQuantity;
+      function requireDimensionless(p, fnName) {
+        if (isQuantity(p)) {
+          run_1.stop(`${fnName}: argument must be dimensionless, got ${unit_1.formatDimension(dimArrayOf(defs_1.caddr(p)))}`);
+        }
+        return p;
+      }
+      exports.requireDimensionless = requireDimensionless;
+      function Eval_quantity(p1) {
+        const magnitude = eval_1.Eval(defs_1.cadr(p1));
+        const savedAutoDetect = defs_1.defs.unitsAutoDetect;
+        defs_1.defs.unitsAutoDetect = true;
+        let unitArg;
+        try {
+          unitArg = eval_1.Eval(defs_1.caddr(p1));
+        } finally {
+          defs_1.defs.unitsAutoDetect = savedAutoDetect;
+        }
+        if (defs_1.istensor(unitArg)) {
+          return makeQuantity(magnitude, dimArrayOf(unitArg));
+        }
+        if (isQuantity(unitArg)) {
+          const scale = defs_1.cadr(unitArg);
+          return makeQuantity(multiply_1.multiply(magnitude, scale), dimArrayOf(defs_1.caddr(unitArg)));
+        }
+        if (defs_1.issymbol(unitArg) && unitArg.unitDef) {
+          const def = unitArg.unitDef;
+          return makeQuantity(multiply_1.multiply(magnitude, def.scale), def.dim);
+        }
+        run_1.stop("quantity: 2nd argument must be a unit symbol or unit expression, e.g. quantity(5, m) or quantity(3, s/kg)");
+      }
+      exports.Eval_quantity = Eval_quantity;
+      function Eval_units(p1) {
+        const arg = defs_1.cadr(p1);
+        if (arg !== symbol_1.symbol(defs_1.NIL)) {
+          defs_1.defs.unitsAutoDetect = !is_1.isZeroAtom(eval_1.Eval(arg));
+        }
+        return defs_1.defs.unitsAutoDetect ? defs_1.Constants.One() : defs_1.Constants.Zero();
+      }
+      exports.Eval_units = Eval_units;
+      function Eval_convert(p1) {
+        const value = eval_1.Eval(defs_1.cadr(p1));
+        const savedAutoDetect = defs_1.defs.unitsAutoDetect;
+        defs_1.defs.unitsAutoDetect = false;
+        let targetSym;
+        try {
+          targetSym = eval_1.Eval(defs_1.caddr(p1));
+        } finally {
+          defs_1.defs.unitsAutoDetect = savedAutoDetect;
+        }
+        if (!isQuantity(value)) {
+          run_1.stop("convert: 1st argument must be a quantity, e.g. convert(quantity(5,m), cm)");
+        }
+        if (!(defs_1.issymbol(targetSym) && targetSym.unitDef)) {
+          run_1.stop("convert: 2nd argument must be a unit symbol, e.g. convert(quantity(5,m), cm)");
+        }
+        const targetDef = targetSym.unitDef;
+        const dim = dimArrayOf(defs_1.caddr(value));
+        if (!dimsEqual(dim, targetDef.dim)) {
+          run_1.stop(`convert: incompatible units: cannot convert ${unit_1.formatDimension(dim)} to ${unit_1.formatDimension(targetDef.dim)}`);
+        }
+        return bignum_1.divide_numbers(defs_1.cadr(value), targetDef.scale);
+      }
+      exports.Eval_convert = Eval_convert;
+      function Eval_dimensionof(p1) {
+        const value = eval_1.Eval(defs_1.cadr(p1));
+        if (isQuantity(value)) {
+          return defs_1.caddr(value);
+        }
+        return dimToTensor(unit_1.ZERO_DIM);
+      }
+      exports.Eval_dimensionof = Eval_dimensionof;
+    }
+  });
+
   // bazel-out/k8-fastbuild/bin/sources/conj.js
   var require_conj = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/conj.js"(exports) {
@@ -1850,6 +2215,7 @@
       var multiply_1 = require_multiply();
       var polar_1 = require_polar();
       var subst_1 = require_subst();
+      var quantity_1 = require_quantity();
       function Eval_conj(p1) {
         p1 = eval_1.Eval(defs_1.cadr(p1));
         if (!find_1.Find(p1, defs_1.Constants.imaginaryunit)) {
@@ -1860,6 +2226,10 @@
       }
       exports.Eval_conj = Eval_conj;
       function conjugate(p1) {
+        const q = quantity_1.mapQuantity(p1, conjugate);
+        if (q) {
+          return q;
+        }
         return eval_1.Eval(subst_1.subst(p1, defs_1.Constants.imaginaryunit, multiply_1.negate(defs_1.Constants.imaginaryunit)));
       }
       exports.conjugate = conjugate;
@@ -2356,8 +2726,9 @@
       var list_1 = require_list();
       var multiply_1 = require_multiply();
       var power_1 = require_power();
+      var quantity_1 = require_quantity();
       function Eval_sin(p1) {
-        return sine(eval_1.Eval(defs_1.cadr(p1)));
+        return sine(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), "sin"));
       }
       exports.Eval_sin = Eval_sin;
       function sine(p1) {
@@ -2449,8 +2820,9 @@
       var multiply_1 = require_multiply();
       var power_1 = require_power();
       var sin_1 = require_sin();
+      var quantity_1 = require_quantity();
       function Eval_cos(p1) {
-        return cosine(eval_1.Eval(defs_1.cadr(p1)));
+        return cosine(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), "cos"));
       }
       exports.Eval_cos = Eval_cos;
       function cosine(p1) {
@@ -3263,8 +3635,9 @@ FACTOR=${p8}`);
       var list_1 = require_list();
       var multiply_1 = require_multiply();
       var numerator_1 = require_numerator();
+      var quantity_1 = require_quantity();
       function Eval_arctan(x) {
-        return arctan(eval_1.Eval(defs_1.cadr(x)));
+        return arctan(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), "arctan"));
       }
       exports.Eval_arctan = Eval_arctan;
       function arctan(x) {
@@ -3381,13 +3754,14 @@ FACTOR=${p8}`);
       var numerator_1 = require_numerator();
       var real_1 = require_real();
       var rect_1 = require_rect();
+      var quantity_1 = require_quantity();
       var DEBUG_ARG = false;
       function Eval_arg(z) {
         return arg(eval_1.Eval(defs_1.cadr(z)));
       }
       exports.Eval_arg = Eval_arg;
       function arg(z) {
-        return add_1.subtract(yyarg(numerator_1.numerator(z)), yyarg(denominator_1.denominator(z)));
+        return quantity_1.mapQuantity(z, arg, false) || add_1.subtract(yyarg(numerator_1.numerator(z)), yyarg(denominator_1.denominator(z)));
       }
       exports.arg = arg;
       function yyarg(p1) {
@@ -3725,347 +4099,6 @@ FACTOR=${p8}`);
     }
   });
 
-  // bazel-out/k8-fastbuild/bin/sources/unit.js
-  var require_unit = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/unit.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.defineUnits = exports.formatDimensionLatex = exports.formatDimension = exports.lookupUnit = exports.ZERO_DIM = exports.DIM_COUNT = exports.DIM_LUMINOUS = exports.DIM_AMOUNT = exports.DIM_TEMPERATURE = exports.DIM_CURRENT = exports.DIM_TIME = exports.DIM_MASS = exports.DIM_LENGTH = void 0;
-      var symbol_1 = require_symbol();
-      var bignum_1 = require_bignum();
-      exports.DIM_LENGTH = 0;
-      exports.DIM_MASS = 1;
-      exports.DIM_TIME = 2;
-      exports.DIM_CURRENT = 3;
-      exports.DIM_TEMPERATURE = 4;
-      exports.DIM_AMOUNT = 5;
-      exports.DIM_LUMINOUS = 6;
-      exports.DIM_COUNT = 7;
-      exports.ZERO_DIM = [0, 0, 0, 0, 0, 0, 0];
-      var BASE_UNITS = {
-        m: [1, 0, 0, 0, 0, 0, 0],
-        g: [0, 1, 0, 0, 0, 0, 0],
-        s: [0, 0, 1, 0, 0, 0, 0],
-        A: [0, 0, 0, 1, 0, 0, 0],
-        K: [0, 0, 0, 0, 1, 0, 0],
-        mol: [0, 0, 0, 0, 0, 1, 0],
-        cd: [0, 0, 0, 0, 0, 0, 1]
-      };
-      var DERIVED_UNITS = {
-        N: [1, 1, -2, 0, 0, 0, 0],
-        J: [2, 1, -2, 0, 0, 0, 0],
-        W: [2, 1, -3, 0, 0, 0, 0],
-        Pa: [-1, 1, -2, 0, 0, 0, 0],
-        Hz: [0, 0, -1, 0, 0, 0, 0],
-        C: [0, 0, 1, 1, 0, 0, 0],
-        V: [2, 1, -3, -1, 0, 0, 0],
-        F: [-2, -1, 4, 2, 0, 0, 0],
-        ohm: [2, 1, -3, -2, 0, 0, 0],
-        H: [2, 1, -2, -2, 0, 0, 0],
-        T: [0, 1, -2, -1, 0, 0, 0],
-        Wb: [2, 1, -2, -1, 0, 0, 0]
-      };
-      var PREFIXES = {
-        Y: 24,
-        Z: 21,
-        E: 18,
-        P: 15,
-        T: 12,
-        G: 9,
-        M: 6,
-        k: 3,
-        h: 2,
-        da: 1,
-        d: -1,
-        c: -2,
-        m: -3,
-        u: -6,
-        n: -9,
-        p: -12,
-        f: -15,
-        a: -18,
-        z: -21,
-        y: -24
-      };
-      function unitScale(name) {
-        return name === "g" ? bignum_1.rational(1, 1e3) : bignum_1.integer(1);
-      }
-      function buildUnitTable() {
-        const table = new Map();
-        const stems = Object.assign(Object.assign({}, BASE_UNITS), DERIVED_UNITS);
-        for (const [name, dim] of Object.entries(stems)) {
-          table.set(name, { dim, scale: unitScale(name) });
-        }
-        for (const [prefix, pow10] of Object.entries(PREFIXES)) {
-          for (const [stem, dim] of Object.entries(stems)) {
-            const key = prefix + stem;
-            if (table.has(key)) {
-              continue;
-            }
-            table.set(key, {
-              dim,
-              scale: bignum_1.multiply_numbers(unitScale(stem), bignum_1.bignum_power_number(bignum_1.integer(10), pow10))
-            });
-          }
-        }
-        return table;
-      }
-      var unitTable = null;
-      var reverseNameTable = null;
-      function getUnitTable() {
-        if (!unitTable) {
-          unitTable = buildUnitTable();
-        }
-        return unitTable;
-      }
-      function getReverseNameTable() {
-        if (!reverseNameTable) {
-          reverseNameTable = new Map();
-          const stems = Object.assign(Object.assign({}, BASE_UNITS), DERIVED_UNITS);
-          for (const [name, dim] of Object.entries(stems)) {
-            reverseNameTable.set(dim.join(","), name);
-          }
-          reverseNameTable.set(BASE_UNITS.g.join(","), "kg");
-        }
-        return reverseNameTable;
-      }
-      function lookupUnit(name) {
-        return getUnitTable().get(name);
-      }
-      exports.lookupUnit = lookupUnit;
-      var DIM_NAMES = ["m", "kg", "s", "A", "K", "mol", "cd"];
-      function formatDimension(dim) {
-        const exact = getReverseNameTable().get(dim.join(","));
-        if (exact) {
-          return exact;
-        }
-        const parts = [];
-        for (let i = 0; i < exports.DIM_COUNT; i++) {
-          if (dim[i] === 0) {
-            continue;
-          }
-          parts.push(dim[i] === 1 ? DIM_NAMES[i] : `${DIM_NAMES[i]}^${dim[i]}`);
-        }
-        return parts.length ? parts.join("*") : "1";
-      }
-      exports.formatDimension = formatDimension;
-      function formatDimensionLatex(dim) {
-        const exact = getReverseNameTable().get(dim.join(","));
-        if (exact) {
-          return `\\text{${exact}}`;
-        }
-        const parts = [];
-        for (let i = 0; i < exports.DIM_COUNT; i++) {
-          if (dim[i] === 0) {
-            continue;
-          }
-          parts.push(dim[i] === 1 ? `\\text{${DIM_NAMES[i]}}` : `\\text{${DIM_NAMES[i]}}^{${dim[i]}}`);
-        }
-        return parts.length ? parts.join("\\cdot ") : "1";
-      }
-      exports.formatDimensionLatex = formatDimensionLatex;
-      function defineUnits() {
-        for (const [name, def] of getUnitTable()) {
-          symbol_1.std_unit_symbol(name, def.dim, def.scale);
-        }
-      }
-      exports.defineUnits = defineUnits;
-    }
-  });
-
-  // bazel-out/k8-fastbuild/bin/sources/quantity.js
-  var require_quantity = __commonJS({
-    "bazel-out/k8-fastbuild/bin/sources/quantity.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.Eval_dimensionof = exports.Eval_convert = exports.Eval_units = exports.Eval_quantity = exports.addQuantities = exports.powerUnitAware = exports.multiplyUnitAware = exports.makeQuantity = exports.isQuantity = exports.dimsEqual = exports.scaleDims = exports.subDims = exports.addDims = void 0;
-      var alloc_1 = require_alloc();
-      var defs_1 = require_defs();
-      var run_1 = require_run();
-      var symbol_1 = require_symbol();
-      var bignum_1 = require_bignum();
-      var eval_1 = require_eval();
-      var is_1 = require_is();
-      var list_1 = require_list();
-      var power_1 = require_power();
-      var unit_1 = require_unit();
-      function addDims(a, b) {
-        return a.map((v, i) => v + b[i]);
-      }
-      exports.addDims = addDims;
-      function subDims(a, b) {
-        return a.map((v, i) => v - b[i]);
-      }
-      exports.subDims = subDims;
-      function scaleDims(a, k) {
-        return a.map((v) => v * k);
-      }
-      exports.scaleDims = scaleDims;
-      function dimsEqual(a, b) {
-        return a.every((v, i) => v === b[i]);
-      }
-      exports.dimsEqual = dimsEqual;
-      function dimToNum(n) {
-        if (Number.isInteger(n)) {
-          return bignum_1.integer(n);
-        }
-        for (let denom = 2; denom <= 12; denom++) {
-          const numer = n * denom;
-          if (Math.abs(numer - Math.round(numer)) < 1e-9) {
-            return bignum_1.rational(Math.round(numer), denom);
-          }
-        }
-        return bignum_1.rational(Math.round(n * 1e6), 1e6);
-      }
-      function dimToTensor(dim) {
-        const t = alloc_1.alloc_tensor(unit_1.DIM_COUNT);
-        t.tensor.ndim = 1;
-        t.tensor.dim[0] = unit_1.DIM_COUNT;
-        for (let i = 0; i < unit_1.DIM_COUNT; i++) {
-          t.tensor.elem[i] = dimToNum(dim[i]);
-        }
-        return t;
-      }
-      function dimArrayOf(dimValue) {
-        const t = dimValue;
-        return t.tensor.elem.map((e) => bignum_1.nativeDouble(e));
-      }
-      function isQuantity(p) {
-        return defs_1.iscons(p) && defs_1.car(p) === symbol_1.symbol(defs_1.QUANTITY) && defs_1.istensor(defs_1.caddr(p));
-      }
-      exports.isQuantity = isQuantity;
-      function makeQuantity(magnitude, dim) {
-        if (dimsEqual(dim, unit_1.ZERO_DIM)) {
-          return magnitude;
-        }
-        return list_1.makeList(symbol_1.symbol(defs_1.QUANTITY), magnitude, dimToTensor(dim));
-      }
-      exports.makeQuantity = makeQuantity;
-      function classify(p, allowSymbolAutoDetect) {
-        if (isQuantity(p)) {
-          return { magnitude: defs_1.cadr(p), dim: dimArrayOf(defs_1.caddr(p)) };
-        }
-        if (allowSymbolAutoDetect && defs_1.issymbol(p) && p.unitDef) {
-          const def = p.unitDef;
-          return { magnitude: def.scale, dim: def.dim };
-        }
-        if (defs_1.isNumericAtom(p)) {
-          return "numeric";
-        }
-        return "other";
-      }
-      function multiplyUnitAware(p1, p2) {
-        const allow = defs_1.defs.unitsAutoDetect;
-        const c1 = classify(p1, allow);
-        const c2 = classify(p2, allow);
-        if (c1 === "other" || c2 === "other") {
-          return void 0;
-        }
-        if (c1 === "numeric" && c2 === "numeric") {
-          return void 0;
-        }
-        const mag1 = c1 === "numeric" ? p1 : c1.magnitude;
-        const dim1 = c1 === "numeric" ? unit_1.ZERO_DIM : c1.dim;
-        const mag2 = c2 === "numeric" ? p2 : c2.magnitude;
-        const dim2 = c2 === "numeric" ? unit_1.ZERO_DIM : c2.dim;
-        return makeQuantity(bignum_1.multiply_numbers(mag1, mag2), addDims(dim1, dim2));
-      }
-      exports.multiplyUnitAware = multiplyUnitAware;
-      function powerUnitAware(base, exponent) {
-        const c = classify(base, defs_1.defs.unitsAutoDetect);
-        if (c === "other" || c === "numeric" || !defs_1.isNumericAtom(exponent)) {
-          return void 0;
-        }
-        const newDim = scaleDims(c.dim, bignum_1.nativeDouble(exponent));
-        const newMag = power_1.power(c.magnitude, exponent);
-        return makeQuantity(newMag, newDim);
-      }
-      exports.powerUnitAware = powerUnitAware;
-      function addQuantities(terms) {
-        const quantityTerms = terms.filter(isQuantity);
-        if (quantityTerms.length === 0) {
-          return void 0;
-        }
-        const dim = dimArrayOf(defs_1.caddr(quantityTerms[0]));
-        for (const t of terms) {
-          if (isQuantity(t)) {
-            const otherDim = dimArrayOf(defs_1.caddr(t));
-            if (!dimsEqual(otherDim, dim)) {
-              run_1.stop(`incompatible units: cannot add ${unit_1.formatDimension(dim)} and ${unit_1.formatDimension(otherDim)}`);
-            }
-          } else if (!is_1.isZeroAtom(t)) {
-            run_1.stop(`incompatible units: cannot add ${unit_1.formatDimension(dim)} and a dimensionless value`);
-          }
-        }
-        let sum = defs_1.Constants.Zero();
-        for (const t of terms) {
-          if (isQuantity(t)) {
-            sum = bignum_1.add_numbers(sum, defs_1.cadr(t));
-          }
-        }
-        return makeQuantity(sum, dim);
-      }
-      exports.addQuantities = addQuantities;
-      function Eval_quantity(p1) {
-        const magnitude = eval_1.Eval(defs_1.cadr(p1));
-        const savedAutoDetect = defs_1.defs.unitsAutoDetect;
-        defs_1.defs.unitsAutoDetect = true;
-        let unitArg;
-        try {
-          unitArg = eval_1.Eval(defs_1.caddr(p1));
-        } finally {
-          defs_1.defs.unitsAutoDetect = savedAutoDetect;
-        }
-        if (defs_1.istensor(unitArg)) {
-          return makeQuantity(magnitude, dimArrayOf(unitArg));
-        }
-        if (isQuantity(unitArg)) {
-          const scale = defs_1.cadr(unitArg);
-          return makeQuantity(bignum_1.multiply_numbers(magnitude, scale), dimArrayOf(defs_1.caddr(unitArg)));
-        }
-        if (defs_1.issymbol(unitArg) && unitArg.unitDef) {
-          const def = unitArg.unitDef;
-          return makeQuantity(bignum_1.multiply_numbers(magnitude, def.scale), def.dim);
-        }
-        run_1.stop("quantity: 2nd argument must be a unit symbol or unit expression, e.g. quantity(5, m) or quantity(3, s/kg)");
-      }
-      exports.Eval_quantity = Eval_quantity;
-      function Eval_units(p1) {
-        const arg = defs_1.cadr(p1);
-        if (arg !== symbol_1.symbol(defs_1.NIL)) {
-          defs_1.defs.unitsAutoDetect = !is_1.isZeroAtom(eval_1.Eval(arg));
-        }
-        return defs_1.defs.unitsAutoDetect ? defs_1.Constants.One() : defs_1.Constants.Zero();
-      }
-      exports.Eval_units = Eval_units;
-      function Eval_convert(p1) {
-        const value = eval_1.Eval(defs_1.cadr(p1));
-        const targetSym = eval_1.Eval(defs_1.caddr(p1));
-        if (!isQuantity(value)) {
-          run_1.stop("convert: 1st argument must be a quantity, e.g. convert(quantity(5,m), cm)");
-        }
-        if (!(defs_1.issymbol(targetSym) && targetSym.unitDef)) {
-          run_1.stop("convert: 2nd argument must be a unit symbol, e.g. convert(quantity(5,m), cm)");
-        }
-        const targetDef = targetSym.unitDef;
-        const dim = dimArrayOf(defs_1.caddr(value));
-        if (!dimsEqual(dim, targetDef.dim)) {
-          run_1.stop(`convert: incompatible units: cannot convert ${unit_1.formatDimension(dim)} to ${unit_1.formatDimension(targetDef.dim)}`);
-        }
-        return bignum_1.divide_numbers(defs_1.cadr(value), targetDef.scale);
-      }
-      exports.Eval_convert = Eval_convert;
-      function Eval_dimensionof(p1) {
-        const value = eval_1.Eval(defs_1.cadr(p1));
-        if (isQuantity(value)) {
-          return defs_1.caddr(value);
-        }
-        return dimToTensor(unit_1.ZERO_DIM);
-      }
-      exports.Eval_dimensionof = Eval_dimensionof;
-    }
-  });
-
   // bazel-out/k8-fastbuild/bin/sources/power.js
   var require_power = __commonJS({
     "bazel-out/k8-fastbuild/bin/sources/power.js"(exports) {
@@ -4094,6 +4127,7 @@ FACTOR=${p8}`);
       var rect_1 = require_rect();
       var sin_1 = require_sin();
       var tensor_1 = require_tensor();
+      var quantity_2 = require_quantity();
       var DEBUG_POWER = false;
       function Eval_power(p1) {
         if (DEBUG_POWER) {
@@ -4136,6 +4170,7 @@ FACTOR=${p8}`);
           }
           return base;
         }
+        quantity_2.requireDimensionless(exponent, "power: exponent");
         const unitResult = quantity_1.powerUnitAware(base, exponent);
         if (unitResult !== void 0) {
           return unitResult;
@@ -5427,8 +5462,9 @@ FACTOR=${p8}`);
       var eval_1 = require_eval();
       var is_1 = require_is();
       var list_1 = require_list();
+      var quantity_1 = require_quantity();
       function Eval_cosh(p1) {
-        return ycosh(eval_1.Eval(defs_1.cadr(p1)));
+        return ycosh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), "cosh"));
       }
       exports.Eval_cosh = Eval_cosh;
       function ycosh(p1) {
@@ -7698,6 +7734,7 @@ FACTOR=${p8}`);
       var scan_1 = require_scan();
       var simplify_1 = require_simplify();
       var transform_1 = require_transform();
+      var quantity_1 = require_quantity();
       var itab = [
         "f(a,a*x)",
         "f(1/x,log(x))",
@@ -7924,6 +7961,10 @@ FACTOR=${p8}`);
       }
       exports.Eval_integral = Eval_integral;
       function integral(F, X) {
+        const q = quantity_1.mapQuantity(F, (magnitude) => integral(magnitude, X));
+        if (q) {
+          return q;
+        }
         let integ;
         if (defs_1.isadd(F)) {
           integ = integral_of_sum(F, X);
@@ -8358,12 +8399,13 @@ FACTOR=${p8}`);
       var multiply_1 = require_multiply();
       var numerator_1 = require_numerator();
       var power_1 = require_power();
+      var quantity_1 = require_quantity();
       function Eval_log(p1) {
-        const x = eval_1.Eval(defs_1.cadr(p1));
+        const x = quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), "log");
         if (!defs_1.iscons(defs_1.cddr(p1))) {
           return logarithm(x);
         }
-        const base = eval_1.Eval(defs_1.caddr(p1));
+        const base = quantity_1.requireDimensionless(eval_1.Eval(defs_1.caddr(p1)), "log");
         return exactLog(x, base) || multiply_1.divide(logarithm(x), logarithm(base));
       }
       exports.Eval_log = Eval_log;
@@ -8420,8 +8462,10 @@ FACTOR=${p8}`);
       var mmul_1 = require_mmul();
       var multiply_1 = require_multiply();
       var power_1 = require_power();
+      var quantity_1 = require_quantity();
       function Eval_sgn(p1) {
-        return sgn(eval_1.Eval(defs_1.cadr(p1)));
+        const arg = eval_1.Eval(defs_1.cadr(p1));
+        return quantity_1.mapQuantity(arg, sgn, false) || sgn(arg);
       }
       exports.Eval_sgn = Eval_sgn;
       function sgn(X) {
@@ -8467,8 +8511,9 @@ FACTOR=${p8}`);
       var eval_1 = require_eval();
       var is_1 = require_is();
       var list_1 = require_list();
+      var quantity_1 = require_quantity();
       function Eval_sinh(p1) {
-        return ysinh(eval_1.Eval(defs_1.cadr(p1)));
+        return ysinh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), "sinh"));
       }
       exports.Eval_sinh = Eval_sinh;
       function ysinh(p1) {
@@ -8524,6 +8569,7 @@ FACTOR=${p8}`);
       var sinh_1 = require_sinh();
       var subst_1 = require_subst();
       var tensor_1 = require_tensor();
+      var quantity_1 = require_quantity();
       function Eval_derivative(p1) {
         p1 = defs_1.cdr(p1);
         let F = eval_1.Eval(defs_1.car(p1));
@@ -8587,6 +8633,10 @@ FACTOR=${p8}`);
       }
       exports.Eval_derivative = Eval_derivative;
       function derivative(p1, p2) {
+        const q = quantity_1.mapQuantity(p1, (magnitude) => derivative(magnitude, p2));
+        if (q) {
+          return q;
+        }
         if (defs_1.isNumericAtom(p2)) {
           run_1.stop("undefined function");
         }
@@ -8946,6 +8996,7 @@ FACTOR=${p8}`);
       var list_1 = require_list();
       var misc_1 = require_misc();
       var power_1 = require_power();
+      var quantity_1 = require_quantity();
       var subst_1 = require_subst();
       var tensor_1 = require_tensor();
       var userfunc_1 = require_userfunc();
@@ -8991,6 +9042,9 @@ FACTOR=${p8}`);
           return Eval(list_1.makeList(p1, symbol_1.symbol(defs_1.LAST)));
         } else if (p1 === symbol_1.symbol(defs_1.PI) && defs_1.defs.evaluatingAsFloats) {
           return defs_1.Constants.piAsDouble;
+        }
+        if (defs_1.defs.unitsAutoDetect && p1.unitDef && symbol_1.get_binding(p1) === p1) {
+          return quantity_1.makeQuantity(p1.unitDef.scale, p1.unitDef.dim);
         }
         let p2 = symbol_1.get_binding(p1);
         if (defs_1.DEBUG) {
@@ -9090,7 +9144,7 @@ FACTOR=${p8}`);
       }
       exports.Eval_Eval = Eval_Eval;
       function Eval_exp(p1) {
-        return misc_1.exponential(Eval(defs_1.cadr(p1)));
+        return misc_1.exponential(quantity_1.requireDimensionless(Eval(defs_1.cadr(p1)), "exp"));
       }
       exports.Eval_exp = Eval_exp;
       function Eval_factorial(p1) {
@@ -11908,8 +11962,9 @@ FACTOR=${p8}`);
       var is_1 = require_is();
       var list_1 = require_list();
       var multiply_1 = require_multiply();
+      var quantity_1 = require_quantity();
       function Eval_arccos(x) {
-        return arccos(eval_1.Eval(defs_1.cadr(x)));
+        return arccos(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), "arccos"));
       }
       exports.Eval_arccos = Eval_arccos;
       function arccos(x) {
@@ -11966,8 +12021,9 @@ FACTOR=${p8}`);
       var eval_1 = require_eval();
       var is_1 = require_is();
       var list_1 = require_list();
+      var quantity_1 = require_quantity();
       function Eval_arccosh(x) {
-        return arccosh(eval_1.Eval(defs_1.cadr(x)));
+        return arccosh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), "arccosh"));
       }
       exports.Eval_arccosh = Eval_arccosh;
       function arccosh(x) {
@@ -12003,8 +12059,9 @@ FACTOR=${p8}`);
       var is_1 = require_is();
       var list_1 = require_list();
       var multiply_1 = require_multiply();
+      var quantity_1 = require_quantity();
       function Eval_arcsin(x) {
-        return arcsin(eval_1.Eval(defs_1.cadr(x)));
+        return arcsin(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), "arcsin"));
       }
       exports.Eval_arcsin = Eval_arcsin;
       function arcsin(x) {
@@ -12060,8 +12117,9 @@ FACTOR=${p8}`);
       var eval_1 = require_eval();
       var is_1 = require_is();
       var list_1 = require_list();
+      var quantity_1 = require_quantity();
       function Eval_arcsinh(x) {
-        return arcsinh(eval_1.Eval(defs_1.cadr(x)));
+        return arcsinh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), "arcsinh"));
       }
       exports.Eval_arcsinh = Eval_arcsinh;
       function arcsinh(x) {
@@ -12094,8 +12152,9 @@ FACTOR=${p8}`);
       var eval_1 = require_eval();
       var is_1 = require_is();
       var list_1 = require_list();
+      var quantity_1 = require_quantity();
       function Eval_arctanh(x) {
-        return arctanh(eval_1.Eval(defs_1.cadr(x)));
+        return arctanh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(x)), "arctanh"));
       }
       exports.Eval_arctanh = Eval_arctanh;
       function arctanh(x) {
@@ -12204,8 +12263,10 @@ FACTOR=${p8}`);
       var is_1 = require_is();
       var list_1 = require_list();
       var mmul_1 = require_mmul();
+      var quantity_1 = require_quantity();
       function Eval_ceiling(p1) {
-        return ceiling(eval_1.Eval(defs_1.cadr(p1)));
+        const arg = eval_1.Eval(defs_1.cadr(p1));
+        return quantity_1.mapQuantity(arg, ceiling) || ceiling(arg);
       }
       exports.Eval_ceiling = Eval_ceiling;
       function ceiling(p1) {
@@ -13060,8 +13121,10 @@ FACTOR=${p8}`);
       var is_1 = require_is();
       var list_1 = require_list();
       var mmul_1 = require_mmul();
+      var quantity_1 = require_quantity();
       function Eval_floor(p1) {
-        return yfloor(eval_1.Eval(defs_1.cadr(p1)));
+        const arg = eval_1.Eval(defs_1.cadr(p1));
+        return quantity_1.mapQuantity(arg, yfloor) || yfloor(arg);
       }
       exports.Eval_floor = Eval_floor;
       function yfloor(p1) {
@@ -14321,8 +14384,10 @@ FACTOR=${p8}`);
       var float_1 = require_float();
       var is_1 = require_is();
       var list_1 = require_list();
+      var quantity_1 = require_quantity();
       function Eval_round(p1) {
-        return yround(eval_1.Eval(defs_1.cadr(p1)));
+        const arg = eval_1.Eval(defs_1.cadr(p1));
+        return quantity_1.mapQuantity(arg, yround) || yround(arg);
       }
       exports.Eval_round = Eval_round;
       function yround(p1) {
@@ -14645,8 +14710,9 @@ FACTOR=${p8}`);
       var list_1 = require_list();
       var multiply_1 = require_multiply();
       var power_1 = require_power();
+      var quantity_1 = require_quantity();
       function Eval_tan(p1) {
-        return tangent(eval_1.Eval(defs_1.cadr(p1)));
+        return tangent(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), "tan"));
       }
       exports.Eval_tan = Eval_tan;
       function tangent(p1) {
@@ -14708,8 +14774,9 @@ FACTOR=${p8}`);
       var eval_1 = require_eval();
       var is_1 = require_is();
       var list_1 = require_list();
+      var quantity_1 = require_quantity();
       function Eval_tanh(p1) {
-        return tanh(eval_1.Eval(defs_1.cadr(p1)));
+        return tanh(quantity_1.requireDimensionless(eval_1.Eval(defs_1.cadr(p1)), "tanh"));
       }
       exports.Eval_tanh = Eval_tanh;
       function tanh(p1) {

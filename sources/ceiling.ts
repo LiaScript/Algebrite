@@ -14,6 +14,7 @@ import { Eval } from './eval';
 import { isinteger, isnegativenumber } from './is';
 import { makeList } from './list';
 import { mdiv } from './mmul';
+import { mapQuantity } from './quantity';
 
 /* ceiling =====================================================================
 
@@ -32,7 +33,8 @@ Returns the smallest integer not less than x.
 
 */
 export function Eval_ceiling(p1: U) {
-  return ceiling(Eval(cadr(p1)));
+  const arg = Eval(cadr(p1));
+  return mapQuantity(arg, ceiling) || ceiling(arg);
 }
 
 function ceiling(p1: U): U {

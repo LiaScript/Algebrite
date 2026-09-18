@@ -24,6 +24,8 @@ import { add_numbers, divide_numbers, integer, multiply_numbers, nativeDouble, r
 import { Eval } from './eval';
 import { isZeroAtom } from './is';
 import { makeList } from './list';
+import { multiply } from './multiply';
+import { add } from './add';
 import { power } from './power';
 import { DIM_COUNT, formatDimension, ZERO_DIM } from './unit';
 
@@ -88,13 +90,15 @@ export function isQuantity(p: U): p is Cons {
 // Builds a Quantity value, or collapses to the bare (already SI-normalized)
 // magnitude when the dimension has fully cancelled out (e.g. m/m).
 export function makeQuantity(magnitude: U, dim: number[]): U {
-  if (dimsEqual(dim, ZERO_DIM)) {
+  // zero is zero in any unit, and keeping the dimension on it makes
+  // comparisons against plain 0 fail
+  if (dimsEqual(dim, ZERO_DIM) || isZeroAtom(magnitude)) {
     return magnitude;
   }
   return makeList(symbol(QUANTITY), magnitude, dimToTensor(dim));
 }
 
-type Classification = 'numeric' | 'other' | { magnitude: Num | Double; dim: number[] };
+type Classification = 'numeric' | 'other' | { magnitude: U; dim: number[] };
 
 // A bare unit *symbol* (m, kg, ...) only classifies as unit-bearing when
 // unit auto-detection is on (defs.unitsAutoDetect) or the value already is
@@ -120,19 +124,22 @@ export function multiplyUnitAware(p1: U, p2: U): U | undefined {
   const allow = defs.unitsAutoDetect;
   const c1 = classify(p1, allow);
   const c2 = classify(p2, allow);
-  if (c1 === 'other' || c2 === 'other') {
+  // at least one side has to carry a unit, or this is an ordinary multiply
+  if (typeof c1 === 'string' && typeof c2 === 'string') {
     return undefined;
   }
-  if (c1 === 'numeric' && c2 === 'numeric') {
+  // a symbolic factor joins the magnitude (x*2m -> 2x m), but a tensor has
+  // to keep distributing over its elements instead
+  if ((c1 === 'other' && istensor(p1)) || (c2 === 'other' && istensor(p2))) {
     return undefined;
   }
 
-  const mag1 = c1 === 'numeric' ? (p1 as Num | Double) : c1.magnitude;
-  const dim1 = c1 === 'numeric' ? ZERO_DIM : c1.dim;
-  const mag2 = c2 === 'numeric' ? (p2 as Num | Double) : c2.magnitude;
-  const dim2 = c2 === 'numeric' ? ZERO_DIM : c2.dim;
+  const mag1 = c1 === 'numeric' || c1 === 'other' ? p1 : c1.magnitude;
+  const dim1 = c1 === 'numeric' || c1 === 'other' ? ZERO_DIM : c1.dim;
+  const mag2 = c2 === 'numeric' || c2 === 'other' ? p2 : c2.magnitude;
+  const dim2 = c2 === 'numeric' || c2 === 'other' ? ZERO_DIM : c2.dim;
 
-  return makeQuantity(multiply_numbers(mag1, mag2), addDims(dim1, dim2));
+  return makeQuantity(multiply(mag1, mag2), addDims(dim1, dim2));
 }
 
 // undefined means "not our concern, fall through to ordinary power".
@@ -169,13 +176,43 @@ export function addQuantities(terms: U[]): U | undefined {
     }
   }
 
-  let sum: Num | Double = Constants.Zero();
+  let sum: U = Constants.Zero();
   for (const t of terms) {
     if (isQuantity(t)) {
-      sum = add_numbers(sum, cadr(t) as Num | Double);
+      sum = add(sum, cadr(t));
     }
   }
   return makeQuantity(sum, dim);
+}
+
+// Apply f to a quantity's magnitude, e.g. floor(2.7m) = floor(2.7) m.
+// keepUnit=false for functions whose result carries no unit (sgn, arg).
+// undefined means "not a quantity", so callers fall through to their
+// ordinary path.
+export function mapQuantity(
+  p: U,
+  f: (magnitude: U) => U,
+  keepUnit = true
+): U | undefined {
+  if (!isQuantity(p)) {
+    return undefined;
+  }
+  const magnitude = f(cadr(p));
+  return keepUnit ? makeQuantity(magnitude, dimArrayOf(caddr(p))) : magnitude;
+}
+
+// sin/log/exp and friends need a plain number: their series expansions add
+// up different powers of the argument (sin x = x - x^3/6 + ...), which no
+// unit survives. A ratio like 3m/m has already collapsed to a number by
+// the time it gets here, and with units() off there is no Quantity at all,
+// so a bare "m" variable still passes through as an ordinary symbol.
+export function requireDimensionless(p: U, fnName: string): U {
+  if (isQuantity(p)) {
+    stop(
+      `${fnName}: argument must be dimensionless, got ${formatDimension(dimArrayOf(caddr(p)))}`
+    );
+  }
+  return p;
 }
 
 // quantity(value, unit): explicit constructor, always available regardless
@@ -206,12 +243,12 @@ export function Eval_quantity(p1: Cons): U {
 
   if (isQuantity(unitArg)) {
     const scale = cadr(unitArg) as Num | Double;
-    return makeQuantity(multiply_numbers(magnitude as Num | Double, scale), dimArrayOf(caddr(unitArg)));
+    return makeQuantity(multiply(magnitude, scale), dimArrayOf(caddr(unitArg)));
   }
 
   if (issymbol(unitArg) && (unitArg as Sym).unitDef) {
     const def = (unitArg as Sym).unitDef;
-    return makeQuantity(multiply_numbers(magnitude as Num | Double, def.scale), def.dim);
+    return makeQuantity(multiply(magnitude, def.scale), def.dim);
   }
 
   stop('quantity: 2nd argument must be a unit symbol or unit expression, e.g. quantity(5, m) or quantity(3, s/kg)');
@@ -236,7 +273,16 @@ export function Eval_units(p1: Cons): U {
 // built here).
 export function Eval_convert(p1: Cons): U {
   const value = Eval(cadr(p1));
-  const targetSym = Eval(caddr(p1));
+  // the target unit is only a name here, so keep it a Sym: with units() on
+  // Eval would already have turned it into a quantity of one unit
+  const savedAutoDetect = defs.unitsAutoDetect;
+  defs.unitsAutoDetect = false;
+  let targetSym: U;
+  try {
+    targetSym = Eval(caddr(p1));
+  } finally {
+    defs.unitsAutoDetect = savedAutoDetect;
+  }
 
   if (!isQuantity(value)) {
     stop('convert: 1st argument must be a quantity, e.g. convert(quantity(5,m), cm)');

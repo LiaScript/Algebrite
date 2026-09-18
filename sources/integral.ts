@@ -36,6 +36,7 @@ import { partition } from './partition';
 import { scan_meta } from './scan';
 import { simplify } from './simplify';
 import { transform } from './transform';
+import { mapQuantity } from './quantity';
 
 /*
  Table of integrals
@@ -485,6 +486,11 @@ export function Eval_integral(p1: U) {
 }
 
 export function integral(F: U, X: U): U {
+  const q = mapQuantity(F, (magnitude) => integral(magnitude, X));
+  if (q) {
+    return q;
+  }
+
   let integ: U;
   if (isadd(F)) {
     integ = integral_of_sum(F, X);

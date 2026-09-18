@@ -13,6 +13,7 @@ import { double } from './bignum';
 import { Eval } from './eval';
 import { isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
+import { requireDimensionless } from './quantity';
 
 /* arctanh =====================================================================
 
@@ -30,7 +31,7 @@ Returns the inverse hyperbolic tangent of x.
 
 */
 export function Eval_arctanh(x: U) {
-  return arctanh(Eval(cadr(x)));
+  return arctanh(requireDimensionless(Eval(cadr(x)), 'arctanh'));
 }
 
 function arctanh(x: U): U {

@@ -12,12 +12,13 @@ import { double } from './bignum';
 import { Eval } from './eval';
 import { isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
+import { requireDimensionless } from './quantity';
 
 //             exp(2 x) - 1
 //  tanh(x) = --------------
 //             exp(2 x) + 1
 export function Eval_tanh(p1: U) {
-  return tanh(Eval(cadr(p1)));
+  return tanh(requireDimensionless(Eval(cadr(p1)), 'tanh'));
 }
 
 function tanh(p1: U): U {
