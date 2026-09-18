@@ -17,7 +17,7 @@ import { subtract } from './add';
 import { double, integer, nativeInt, rational } from './bignum';
 import { cosine } from './cos';
 import { Eval } from './eval';
-import { isnegativeterm, isZeroAtomOrTensor } from './is';
+import { isnegativeterm, ispositivenumber, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
@@ -85,8 +85,8 @@ function yybesselj(X: U, N: U): U {
     return Constants.one;
   }
 
-  // besselj(0,n) = 0
-  if (isZeroAtomOrTensor(X) && !isNaN(n)) {
+  // besselj(0,n) = 0 for integer n != 0 and for n > 0
+  if (isZeroAtomOrTensor(X) && (!isNaN(n) || ispositivenumber(N))) {
     return Constants.zero;
   }
 
