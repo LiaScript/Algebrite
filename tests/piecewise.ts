@@ -854,7 +854,7 @@ run_test([
   '\\begin{cases} x^2 & {x} < {0} \\\\ x & {x} \\geq {2} \\end{cases}',
 
   'printlatex(piecewise(x,and(0<=x,x<=1),0))',
-  '\\begin{cases} x & {0} \\leq {x} \\land {x} \\leq {1} \\\\ 0 & \\text{otherwise} \\end{cases}',
+  '\\begin{cases} x & {x} \\geq {0} \\land {x} \\leq {1} \\\\ 0 & \\text{otherwise} \\end{cases}',
 
   'printlatex(piecewise(1/2,x>1,0))',
   '\\begin{cases} \\frac{1}{2} & {x} > {1} \\\\ 0 & \\text{otherwise} \\end{cases}',

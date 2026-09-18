@@ -114,36 +114,10 @@ export function Eval_piecewise(p1: U): U {
 const isRelation = (p: U) =>
   [TESTLT, TESTLE, TESTGT, TESTGE, TESTEQ].some((r) => car(p) === symbol(r));
 
-// 1, 0 or the condition with evaluated sides. The decided parts of an
-// and/or disappear. What cannot be a condition stops: 2, x+1, -x
+// 1, 0 or the condition as the evaluator leaves it: comparisons cancel,
+// and/or/not join their bounds and lose their decided parts
+// (logic_simplify.ts). What cannot be a condition stops: 2, x+1, -x
 function evalCondition(c: U): U {
-  const head = car(c);
-  if (iscons(c) && (head === symbol(AND) || head === symbol(OR))) {
-    const isAnd = head === symbol(AND);
-    const open: U[] = [];
-    for (const q of c.tail()) {
-      const v = evalCondition(q);
-      if (!isNumericAtom(v)) {
-        open.push(v);
-      } else if (isZeroAtomOrTensor(v) === isAnd) {
-        return v; // a false part of an and, a true part of an or
-      }
-    }
-    if (open.length === 0) {
-      return isAnd ? Constants.one : Constants.zero;
-    }
-    return open.length === 1 ? open[0] : makeList(head, ...open);
-  }
-  if (iscons(c) && head === symbol(NOT)) {
-    const v = evalCondition(cadr(c));
-    if (!isNumericAtom(v)) {
-      return makeList(head, v);
-    }
-    return isZeroAtomOrTensor(v) ? Constants.one : Constants.zero;
-  }
-  if (isRelation(c)) {
-    return Eval(makeList(head, Eval(cadr(c)), Eval(caddr(c))));
-  }
   const v = Eval(c);
   if (iscons(v) && !equal(v, c) && (isRelation(v) || [AND, OR, NOT].some((h) => car(v) === symbol(h)))) {
     return evalCondition(v); // a symbol bound to a condition
