@@ -1,5 +1,20 @@
 import { lcm } from './lcm';
-import { Constants, DEBUG, defs, issymbol, noexpand, U } from '../runtime/defs';
+import bigInt from 'big-integer';
+import {
+  cadr,
+  Constants,
+  DEBUG,
+  defs,
+  isadd,
+  ismultiply,
+  isrational,
+  issymbol,
+  noexpand,
+  Num,
+  U,
+} from '../runtime/defs';
+import { factorZ } from './factor_zassenhaus';
+import { factorKronecker } from './factor_multivariate';
 import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
 import { equal } from '../sources/misc';
@@ -90,11 +105,28 @@ function yyfactorpoly(p1: U, p2: U): U {
     stop('floating point numbers in polynomial');
   }
 
+  // 2*x*y+2*x*z: the number comes out first, the root search would put it
+  // into a factor 2*y+2*z
+  const content = numericContent(p1);
+  if (content) {
+    p1 = divide(p1, content);
+  }
+
   const polycoeff = coeff(p1, p2);
 
   let factpoly_expo = polycoeff.length - 1;
 
   let p7 = rationalize_coefficients(polycoeff);
+  if (content) {
+    p7 = multiply(p7, content);
+  }
+
+  // integer coefficients: the complete algorithm, and much faster than the
+  // searches below, which stay for symbolic coefficients
+  const complete = factorRemainder(p1, p2, polycoeff);
+  if (complete) {
+    return complete.reduce(multiply_noexpand, p7);
+  }
 
   // for univariate polynomials we could do factpoly_expo > 1
   let whichRootsAreWeFinding = 'real';
@@ -303,6 +335,13 @@ function yyfactorpoly(p1: U, p2: U): U {
   if (factpoly_expo > 0 && isnegativeterm(polycoeff[factpoly_expo])) {
     p1 = negate(p1);
     p7 = negate_noexpand(p7);
+  }
+
+  // several variables: the searches above miss x+y+z in x^2+2*x*y+y^2-z^2
+  const multivariate =
+    factpoly_expo > 0 ? factorKronecker(p1, p2) : undefined;
+  if (multivariate) {
+    return multivariate.reduce(multiply_noexpand, p7);
   }
 
   p1 = noexpand(yycondense, p1);
@@ -620,4 +659,45 @@ function Evalpoly(p3: U, polycoeff: U[], factpoly_expo: number): U {
     temp = add(multiply(temp, p3), polycoeff[i]);
   }
   return temp;
+}
+
+// Integer coefficients: irreducible factors from factor_zassenhaus.ts.
+// undefined: symbolic coefficients, or the search was given up.
+function factorRemainder(p: U, X: U, cs: U[]): U[] | undefined {
+  if (!cs.every(isinteger)) {
+    return;
+  }
+  const result = factorZ(cs.map((c) => (c as Num).q.a));
+  if (!result) {
+    return;
+  }
+  const out: U[] = [new Num(result.content)];
+  for (const [f, mult] of result.factors) {
+    const poly = f.reduce(
+      (sum: U, c, i) =>
+        add(sum, multiply(new Num(c), power(X, integer(i)))),
+      Constants.zero
+    );
+    for (let k = 0; k < mult; k++) {
+      out.push(poly);
+    }
+  }
+  return out;
+}
+
+// gcd of the numerators over lcm of the denominators of the coefficients of
+// a sum, undefined if that is 1 or a coefficient is not rational
+function numericContent(p: U): U | undefined {
+  if (!isadd(p)) {
+    return;
+  }
+  let num = bigInt.zero;
+  let den = bigInt.one;
+  for (const t of p.tail()) {
+    const c = ismultiply(t) ? cadr(t) : t;
+    const q = isrational(c) ? c : Constants.one;
+    num = bigInt.gcd(num, q.a);
+    den = bigInt.lcm(den, q.b);
+  }
+  return num.equals(1) && den.equals(1) ? undefined : new Num(num, den);
 }

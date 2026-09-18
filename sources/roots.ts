@@ -263,14 +263,19 @@ function roots3(POLY: U, X: U): U[] {
     ispolyexpandedform(cadr(POLY), X) &&
     isposint(caddr(POLY))
   ) {
-    const n = normalisedCoeff(cadr(POLY), X);
-    return mini_solve(n);
+    return solveFactor(normalisedCoeff(cadr(POLY), X));
   }
   if (ispolyexpandedform(POLY, X)) {
-    const n = normalisedCoeff(POLY, X);
-    return mini_solve(n);
+    return solveFactor(normalisedCoeff(POLY, X));
   }
   return [];
+}
+
+// a factor x^n+c gets the same roots as roots(x^n+c) on its own
+function solveFactor(k: U[]): U[] {
+  return isSimpleRoot(k)
+    ? getSimpleRoots(k.length, k[k.length - 1], k[0])
+    : mini_solve(k);
 }
 
 // note that for many quadratic, cubic and quartic polynomials we don't

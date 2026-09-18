@@ -289,10 +289,10 @@ run_test([
   'factor((x^2+11)*(x^2+7*x+13))',
   '(x^2+11)*(x^2+7*x+13)',
 
-  // limitation: irreducible factors of degree > 2 are not split off, here
-  // x^8+x^6+x^4+x^2+1 = (x^4+x^3+x^2+x+1)*(x^4-x^3+x^2-x+1)
+  // factors of degree > 2 are split off as well (factor_zassenhaus.ts), the
+  // old limitation left x^8+x^6+x^4+x^2+1 here
   'factor(x^10-1)',
-  '(x-1)*(x+1)*(x^8+x^6+x^4+x^2+1)',
+  '(x-1)*(x+1)*(x^4+x^3+x^2+x+1)*(x^4-x^3+x^2-x+1)',
 
   // symbolic coefficients, multivariate
   'factor(a*x^2-a)',

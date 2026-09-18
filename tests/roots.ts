@@ -590,9 +590,13 @@ run_test([
 ]);
 
 run_test([
-  // repeated root of the biquadratic resolvent y^2+2*a*y+a^2: x^2 = -a
+  // (x^2+a)^2, x^2 = -a: the same two values as roots(x^2+a), which are
+  // the two square roots of -a whatever the sign of a
   'roots(x^4+2*a*x^2+a^2)',
-  '[-(-a)^(1/2),(-a)^(1/2)]',
+  '[-i*a^(1/2),i*a^(1/2)]',
+
+  'roots(x^2+a)',
+  '[-i*a^(1/2),i*a^(1/2)]',
 
   'roots(x^4-2*a*x^2+a^2)',
   '[-a^(1/2),a^(1/2)]',

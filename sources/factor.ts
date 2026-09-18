@@ -12,7 +12,8 @@ import {
   U
 } from '../runtime/defs';
 import { stop } from '../runtime/run';
-import { symbol } from "../runtime/symbol";
+import { Find } from '../runtime/find';
+import { collectUserSymbols, symbol } from "../runtime/symbol";
 import { integer } from './bignum';
 import { Eval } from './eval';
 import { factorpoly } from './factorpoly';
@@ -25,7 +26,13 @@ import { factor_number } from './pollard';
 export function Eval_factor(p1: U) {
   const top = Eval(cadr(p1));
   const p2 = Eval(caddr(p1));
-  const variable = p2 === symbol(NIL) ? guess(top) : p2;
+  let variable = p2 === symbol(NIL) ? guess(top) : p2;
+  if (p2 === symbol(NIL) && !Find(top, variable)) {
+    // none of x, y, z, t, s: factor(a^2-b^2) takes a
+    const symbols: U[] = [];
+    collectUserSymbols(top, symbols);
+    variable = symbols[0] || variable;
+  }
   let temp = factor(top, variable);
 
   // more factoring?
