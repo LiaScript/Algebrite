@@ -346,9 +346,9 @@ import { Eval_symbolsinfo, reset_symbols, std_symbol, symbol } from './symbol';
 
 let init_flag = 0;
 
+// Called once at startup and after every error: only the first call sets
+// up the symbol table, so an error doesn't wipe the user's definitions.
 export function init() {
-  init_flag = 0;
-
   reset_after_error();
   defs.chainOfUserSymbolsNotFunctionsBeingEvaluated = [];
 

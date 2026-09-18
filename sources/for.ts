@@ -53,13 +53,16 @@ export function Eval_for(p1: U) {
   // variable so we can put it back after the loop
   const p4: U = get_binding(loopingVariable);
 
-  for (let i = j; i <= k; i++) {
-    set_binding(loopingVariable, integer(i));
-    Eval(cadr(p1));
+  try {
+    for (let i = j; i <= k; i++) {
+      set_binding(loopingVariable, integer(i));
+      Eval(cadr(p1));
+    }
+  } finally {
+    // put back the index variable to original content,
+    // also when the body stops with an error
+    set_binding(loopingVariable, p4);
   }
-
-  // put back the index variable to original content
-  set_binding(loopingVariable, p4);
 
   // return value
 

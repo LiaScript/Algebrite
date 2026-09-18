@@ -50,20 +50,23 @@ export function Eval_product(p1: U) {
 
     let temp: U = Constants.one;
 
-    for (let i = j; i <= k; i++) {
-        set_binding(indexVariable, integer(i));
-        const arg2 = Eval(body);
-        const temp2 = multiply(temp, arg2);
+    try {
+        for (let i = j; i <= k; i++) {
+            set_binding(indexVariable, integer(i));
+            const arg2 = Eval(body);
+            const temp2 = multiply(temp, arg2);
 
-        if (DEBUG) {
-      console.log(`product - factor 1: ${arg2}`);
-      console.log(`product - factor 2: ${temp}`);
-      console.log(`product - result: ${temp2}`);
+            if (DEBUG) {
+          console.log(`product - factor 1: ${arg2}`);
+          console.log(`product - factor 2: ${temp}`);
+          console.log(`product - result: ${temp2}`);
+            }
+            temp = temp2;
         }
-        temp = temp2;
+    } finally {
+        // put back the index variable to original content,
+        // also when the body stops with an error
+        set_binding(indexVariable, oldIndexVariableValue);
     }
-
-    // put back the index variable to original content
-    set_binding(indexVariable, oldIndexVariableValue);
     return temp;
 }
