@@ -348,16 +348,18 @@ function yypower(base: U, exponent: U): U {
     return result;
   }
 
+  // (a^b)^c with b even and b*c = +-1 is abs(a)^(b*c)
   let b_isEven_and_c_isItsInverse = false;
+  let isThisOne: U;
   if (iseveninteger(caddr(base))) {
-    const isThisOne = multiply(caddr(base), exponent);
+    isThisOne = multiply(caddr(base), exponent);
     if (isone(isThisOne)) {
       b_isEven_and_c_isItsInverse = true;
     }
   }
 
   if (ispower(base) && b_isEven_and_c_isItsInverse) {
-    const result = abs(cadr(base));
+    const result = power(abs(cadr(base)), isThisOne);
     if (DEBUG_POWER) {
       console.log(
         '   power: car(base) == symbol(POWER) && b_isEven_and_c_isItsInverse '
