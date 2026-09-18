@@ -292,7 +292,7 @@ function yypower(base: U, exponent: U): U {
   if (
     car(base) === symbol(ABS) &&
     iseveninteger(exponent) &&
-    !isZeroAtomOrTensor(get_binding(symbol(ASSUME_REAL_VARIABLES)))
+    isReal(cadr(base))
   ) {
     const result = power(cadr(base), exponent);
 
@@ -407,7 +407,7 @@ function yypower(base: U, exponent: U): U {
   // (a^b)^c with b even and b*c = +-1 is abs(a)^(b*c)
   let b_isEven_and_c_isItsInverse = false;
   let isThisOne: U;
-  if (iseveninteger(caddr(base))) {
+  if (iseveninteger(caddr(base)) && isReal(cadr(base))) {
     isThisOne = multiply(caddr(base), exponent);
     if (isone(isThisOne)) {
       b_isEven_and_c_isItsInverse = true;

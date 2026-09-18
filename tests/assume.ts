@@ -168,7 +168,7 @@ run_test([
 
   // bad input
   'assume(x,prime)',
-  'Stop: assume: unknown property prime, use real, positive, negative, nonzero or integer',
+  'Stop: assume: unknown property prime, use real, positive, negative, nonzero, integer or complex',
 
   'assume(3,positive)',
   'Stop: assume: 3 is not a symbol',

@@ -68,9 +68,11 @@ export interface Facts {
   positive?: boolean;
   negative?: boolean;
   zero?: boolean;
+  // assume(x, complex): x is not real by default (it may still be real)
+  complex?: boolean;
 }
 
-type Property = 'real' | 'positive' | 'negative' | 'nonzero' | 'integer';
+type Property = 'real' | 'positive' | 'negative' | 'nonzero' | 'integer' | 'complex';
 
 const PROPERTIES: Record<Property, Facts> = {
   real: { real: true },
@@ -78,6 +80,7 @@ const PROPERTIES: Record<Property, Facts> = {
   negative: { negative: true },
   nonzero: { zero: false },
   integer: { integer: true },
+  complex: { complex: true },
 };
 
 // by symbol name, so clearall (which recreates the symbols) can't leave
@@ -136,6 +139,9 @@ function close(f: Facts): Facts | null {
     if (r.integer) {
       if (!set('real', true)) return null;
     }
+    if (r.complex && r.real) {
+      return null;
+    }
     if (r.real) {
       // a real number is exactly one of positive, negative, zero
       const known = [r.positive, r.negative, r.zero];
@@ -193,11 +199,20 @@ function symbolFacts(p: Sym): Facts {
     return close({ positive: true });
   }
   const assumed = assumptions.get(p.printname);
-  if (assumed) {
-    return assumed;
-  }
-  const realByDefault = !isZeroAtomOrTensor(get_binding(symbol(ASSUME_REAL_VARIABLES)));
-  return realByDefault && isFreeVariable(p) ? { real: true } : {};
+  const realByDefault =
+    !isZeroAtomOrTensor(get_binding(symbol(ASSUME_REAL_VARIABLES))) &&
+    isFreeVariable(p) &&
+    !assumed?.complex;
+  const base: Facts = realByDefault ? { real: true } : {};
+  return assumed ? close({ ...base, ...assumed }) ?? assumed : base;
+}
+
+// every symbol in p is known to be real (for rules that treat symbols as
+// real numbers, like conj(x) = x; not for a symbol assumed complex)
+export function allSymbolsReal(p: U): boolean {
+  const vars: U[] = [];
+  collectUserSymbols(p, vars);
+  return vars.every((v) => facts(v).real === true);
 }
 
 // a variable, not a named constant or a function
@@ -383,7 +398,7 @@ export function Eval_assume(p1: U) {
   if (args.length === 2 && issymbol(args[1]) && !isRelation(args[1])) {
     const name = args[1].printname as Property;
     if (!(name in PROPERTIES)) {
-      stop(`assume: unknown property ${name}, use real, positive, negative, nonzero or integer`);
+      stop(`assume: unknown property ${name}, use real, positive, negative, nonzero, integer or complex`);
     }
     addAssumption(args[0], PROPERTIES[name]);
   } else {
@@ -439,6 +454,7 @@ function addAssumption(x: U, f: Facts) {
 // the facts as user-level property names, leaving out implied ones
 function describe(f: Facts): string {
   const names: string[] = [];
+  if (f.complex) names.push('complex');
   if (f.real && !f.integer && !f.positive && !f.negative) names.push('real');
   if (f.integer) names.push('integer');
   if (f.positive) names.push('positive');

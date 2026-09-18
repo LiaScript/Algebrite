@@ -1410,3 +1410,12 @@ nodejs_test(
     ],
     entry_point = ":tests/assume_default.ts",
 )
+
+nodejs_test(
+    name = "test_assume_complex",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/assume_complex.ts",
+)

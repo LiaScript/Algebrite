@@ -1,4 +1,5 @@
-import { cadr, Constants, iscons, ispower, istensor, U } from '../runtime/defs';
+import { allSymbolsReal } from './assume';
+import { cadr, CONJ, Constants, iscons, ispower, istensor, U } from '../runtime/defs';
 import { Find } from '../runtime/find';
 import { clockform } from './clock';
 import { Eval } from './eval';
@@ -6,6 +7,8 @@ import { isminusone } from './is';
 import { negate } from './multiply';
 import { polar } from './polar';
 import { subst } from './subst';
+import { makeList } from './list';
+import { symbol } from '../runtime/symbol';
 import { mapQuantity } from './quantity';
 
 /* conj =====================================================================
@@ -33,7 +36,7 @@ export function conj(p1: U): U {
   // Without any, the value is real: going through polar would lose the
   // sign, since arg() assumes symbols positive (conj(a-b) gave abs(a-b)).
   if (!hasPowerOfMinusOne(p1)) {
-    return p1;
+    return allSymbolsReal(p1) ? p1 : makeList(symbol(CONJ), p1);
   }
   if (!Find(p1, Constants.imaginaryunit)) {
     // example: (-1)^(1/3)
@@ -61,6 +64,10 @@ export function conjugate(p1: U): U {
     return q;
   }
 
+  // flipping the sign of i conjugates only when the symbols are real
+  if (!allSymbolsReal(p1)) {
+    return makeList(symbol(CONJ), p1);
+  }
   return Eval(
     subst(p1, Constants.imaginaryunit, negate(Constants.imaginaryunit))
   );

@@ -1,4 +1,7 @@
-import { cadr, Constants, U } from '../runtime/defs';
+import { allSymbolsReal } from './assume';
+import { makeList } from './list';
+import { symbol } from '../runtime/symbol';
+import { cadr, IMAG, Constants, U } from '../runtime/defs';
 import { subtract } from './add';
 import { integer } from './bignum';
 import { conjugate } from './conj';
@@ -23,6 +26,9 @@ export function Eval_imag(p1: U) {
 }
 
 export function imag(p: U): U {
+  if (!allSymbolsReal(p)) {
+    return makeList(symbol(IMAG), p);
+  }
   const p1 = rect(p);
   const conj = conjugate(p1);
   const arg1 = divide(subtract(p1, conj), integer(2));

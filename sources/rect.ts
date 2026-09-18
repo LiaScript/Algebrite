@@ -1,3 +1,4 @@
+import { allSymbolsReal, isReal } from './assume';
 import {
   ASSUME_REAL_VARIABLES,
   cadr,
@@ -57,7 +58,7 @@ export function rect(p1: U): U {
     if (DEBUG_RECT) {
       console.log(` rect: simple symbol: ${input}`);
     }
-    if (!isZeroAtomOrTensor(get_binding(symbol(ASSUME_REAL_VARIABLES)))) {
+    if (isReal(p1)) {
       return p1;
     }
 
@@ -76,7 +77,7 @@ export function rect(p1: U): U {
   }
 
   if (
-    !isZeroAtomOrTensor(get_binding(symbol(ASSUME_REAL_VARIABLES))) &&
+    allSymbolsReal(p1) &&
     !findPossibleExponentialForm(p1) && // no exp form?
     !findPossibleClockForm(p1, p1) && // no clock form?
     !(
@@ -95,7 +96,7 @@ export function rect(p1: U): U {
   if (
     ismultiply(p1) &&
     isimaginaryunit(cadr(p1)) &&
-    !isZeroAtomOrTensor(get_binding(symbol(ASSUME_REAL_VARIABLES)))
+    allSymbolsReal(p1)
   ) {
     return p1; // sum
   }
