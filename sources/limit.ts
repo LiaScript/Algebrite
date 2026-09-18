@@ -38,7 +38,7 @@ import {
   isadd,
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
-import { facts, isNonzero, isPositive, isReal, withSign } from './assume';
+import { facts, isNegative, isNonzero, isPositive, isReal, withSign } from './assume';
 import { stop } from '../runtime/run';
 import { symbol, usr_symbol } from '../runtime/symbol';
 import { double, integer, nativeInt, rational } from './bignum';
@@ -387,25 +387,32 @@ function combineLogs(F: U, X: U, A: U, sides: number[]): U | undefined {
   if (!isadd(F)) {
     return undefined;
   }
-  // [n, g] of a term n*log(g) with a rational n
+  // [c, g] of a term c*log(g) with c free of X
   const logPart = (t: U): [U, U] | undefined => {
-    if (car(t) === symbol(LOG)) {
-      return [Constants.one, cadr(t)];
-    }
-    const isScaled =
-      ismultiply(t) && t.tail().length === 2 && isrational(cadr(t)) && car(caddr(t)) === symbol(LOG);
-    return isScaled ? [cadr(t), cadr(caddr(t))] : undefined;
+    const factors = ismultiply(t) ? t.tail() : [t];
+    const withX = factors.filter((f) => Find(f, X));
+    return withX.length === 1 && car(withX[0]) === symbol(LOG)
+      ? [multiply_all(factors.filter((f) => f !== withX[0])), cadr(withX[0])]
+      : undefined;
   };
-  const logs = F.tail().filter((t) => Find(t, X) && logPart(t) !== undefined);
+  // the logs whose coefficient is a rational multiple q of the first one,
+  // c: 1/5*log(a)+1/5*log(b), log(a)/sqrt(3)-log(b)/sqrt(3)
+  const c = F.tail().map(logPart).find((cg) => cg !== undefined)?.[0];
+  const multiple = (t: U): U | undefined => {
+    const cg = logPart(t);
+    const q = cg && divide(cg[0], c);
+    return q && isrational(q) ? q : undefined;
+  };
+  const logs = F.tail().filter((t) => multiple(t) !== undefined);
   if (logs.length < 2) {
     return undefined;
   }
-  // 1/5*log(a)+1/5*log(b), the antiderivative of 1/(2+tan(x)): the common
-  // denominator d stays outside, the powers inside are integers
-  const d = logs.map((t) => denominator(logPart(t)[0])).reduce(lcm, Constants.one);
+  // the common denominator d stays outside, the powers inside are integers
+  const d = logs.map((t) => denominator(multiple(t))).reduce(lcm, Constants.one);
+  const outside = divide(c, d);
   try {
     const inside = multiply_all(
-      logs.map((t) => power(logPart(t)[1], multiply(logPart(t)[0], d)))
+      logs.map((t) => power(logPart(t)[1], multiply(multiple(t), d)))
     );
     const rest = F.tail().filter((t) => !logs.includes(t)).reduce(add, Constants.zero);
     const L = limit(inside, X, A, sides);
@@ -414,9 +421,13 @@ function combineLogs(F: U, X: U, A: U, sides: number[]): U | undefined {
       return undefined;
     }
     if (L === symbol(INF) || isZeroAtomOrTensor(L)) {
-      return L === symbol(INF) ? L : negate(symbol(INF));
+      // +-inf times outside: its sign must be known
+      const up = (L === symbol(INF)) === (isPositive(outside) === true);
+      return isPositive(outside) === true || isNegative(outside) === true
+        ? up ? symbol(INF) : negate(symbol(INF))
+        : undefined;
     }
-    return isPositive(L) === true ? add(divide(logarithm(L), d), R) : undefined;
+    return isPositive(L) === true ? add(multiply(outside, logarithm(L)), R) : undefined;
   } catch (e) {
     return undefined;
   }

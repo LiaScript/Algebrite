@@ -237,6 +237,14 @@ run_test([
   'near6(defint(1/(1+2*cos(x)),x,5/2,4),-2.00265237057)',
   '1',
 
+  // the exact result, not only the one of the float path
+  'defint(1/(1+2*cos(x)),x,5/2,4)',
+  'log(-3^(1/2)-tan(2))/(3^(1/2))+log(-3^(1/2)+tan(5/4))/(3^(1/2))-log(3^(1/2)-tan(2))/(3^(1/2))-log(3^(1/2)+tan(5/4))/(3^(1/2))',
+
+  // -1.74505598373: sqrt(2)-1+tan(x/2) and friends, tan(x/2) singular at pi
+  'near6(defint(1/(sin(x)+cos(x)),x,3,5),-1.74505598373)',
+  '1',
+
   // 0.646529652686: tan(x) is singular at pi/2, the integrand is 0 there
   'near6(defint(1/(1+tan(x)),x,0,2),0.646529652686)',
   '1',
