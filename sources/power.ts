@@ -142,6 +142,7 @@ function yypower(base: U, exponent: U): U {
   // b^(x+iy) = b^x (cos(y log b) + i sin(y log b))
   if (
     iscomplexnumber(exponent) &&
+    !defs.evaluatingPolar &&
     ((isdouble(base) && base.d > 0) ||
       (base === symbol(E) && iscomplexnumberdouble(exponent)))
   ) {
