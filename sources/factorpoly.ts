@@ -132,8 +132,17 @@ function yyfactorpoly(p1: U, p2: U): U {
   let whichRootsAreWeFinding = 'real';
   let remainingPoly: U = null;
   let quadratic: U;
+  // the searches need the divisors of the first and the last coefficient:
+  // beyond 2^31 they stop with "number too big to factor"
+  const tooBig = (c: U) => isinteger(c) && !isFinite(nativeInt(c));
   while (factpoly_expo > 0) {
     var foundComplexRoot: boolean, foundRealRoot: boolean;
+    if (
+      !isZeroAtomOrTensor(polycoeff[0]) &&
+      (tooBig(polycoeff[0]) || tooBig(polycoeff[factpoly_expo]))
+    ) {
+      break;
+    }
     if (isZeroAtomOrTensor(polycoeff[0])) {
       p4 = Constants.one;
       p5 = Constants.zero;
@@ -335,6 +344,16 @@ function yyfactorpoly(p1: U, p2: U): U {
   if (factpoly_expo > 0 && isnegativeterm(polycoeff[factpoly_expo])) {
     p1 = negate(p1);
     p7 = negate_noexpand(p7);
+  }
+
+  // the complete algorithm gave up on the whole polynomial (too many
+  // modular factors): with the small factors gone it may succeed
+  const again =
+    factpoly_expo >= 2
+      ? factorRemainder(p1, p2, coeff(p1, p2)) // p1 may have changed sign
+      : undefined;
+  if (again && again.length > 2) {
+    return again.reduce(multiply_noexpand, p7);
   }
 
   // several variables: the searches above miss x+y+z in x^2+2*x*y+y^2-z^2
