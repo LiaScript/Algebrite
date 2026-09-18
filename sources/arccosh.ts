@@ -11,7 +11,8 @@ import { stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
 import { double } from './bignum';
 import { Eval } from './eval';
-import { isplusone } from './is';
+import { isplusone, realconstant } from './is';
+import { negate } from './multiply';
 import { makeList } from './list';
 import { requireDimensionless } from './quantity';
 
@@ -35,8 +36,14 @@ export function Eval_arccosh(x: U) {
 }
 
 function arccosh(x: U): U {
+  // arccosh(cosh(u)) = |u| for real u; only decidable when u is a real
+  // constant, arccosh(cosh(x)) is not x for x < 0
   if (car(x) === symbol(COSH)) {
-    return cadr(x);
+    const d = realconstant(cadr(x));
+    if (isNaN(d)) {
+      return makeList(symbol(ARCCOSH), x);
+    }
+    return d < 0 ? negate(cadr(x)) : cadr(x);
   }
 
   if (isdouble(x)) {

@@ -4,7 +4,9 @@ import {
   breakpoint,
   caddr,
   cadr,
+  car,
   Constants,
+  COS,
   defs,
   E,
   isadd,
@@ -13,6 +15,7 @@ import {
   ispower,
   issymbol,
   PI,
+  SIN,
   U
 } from '../runtime/defs';
 import { get_binding, symbol } from '../runtime/symbol';
@@ -27,9 +30,11 @@ import {
   isnegativenumber,
   isoneovertwo,
   ispositivenumber,
-  isZeroAtomOrTensor
+  isZeroAtomOrTensor,
+  realconstant
 } from './is';
 import { makeList } from './list';
+import { equal } from './misc';
 import { divide, multiply, negate } from './multiply';
 import { numerator } from './numerator';
 import { real } from './real';
@@ -177,9 +182,26 @@ function yyarg(p1: U): U {
         return Constants.Pi();
       }
     } else {
-      const arg1 = arctan(divide(IM, RE));
-      if (isnegative(RE)) {
-        if (isnegative(IM)) {
+      const ratio = divide(IM, RE);
+      const S = numerator(ratio);
+      const C = denominator(ratio);
+      if (
+        car(S) === symbol(SIN) &&
+        car(C) === symbol(COS) &&
+        equal(cadr(S), cadr(C))
+      ) {
+        // z = r (cos(a) + i sin(a)): the angle is a, turned by pi if r < 0
+        const a = cadr(S);
+        if (!isbelowzero(divide(RE, C))) {
+          return a;
+        }
+        return realconstant(a) < 0
+          ? add(a, Constants.Pi())
+          : subtract(a, Constants.Pi());
+      }
+      const arg1 = arctan(ratio);
+      if (isbelowzero(RE)) {
+        if (isbelowzero(IM)) {
           return subtract(arg1, Constants.Pi()); // quadrant 1 -> 3
         } else {
           return add(arg1, Constants.Pi()); // quadrant 4 -> 2
@@ -196,4 +218,11 @@ function yyarg(p1: U): U {
   // if we don't assume all passed values are real, all
   // we con do is to leave unexpressed
   return makeList(symbol(ARG), p1);
+}
+
+// numeric sign test when possible (-cos(4/5*pi) > 0, cos(8/9*pi) < 0),
+// else the syntactic one (symbols are assumed positive)
+function isbelowzero(p: U): boolean {
+  const d = realconstant(p);
+  return isNaN(d) ? isnegative(p) : d < 0;
 }

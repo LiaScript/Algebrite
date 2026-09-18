@@ -22,10 +22,12 @@ import {
   isminusoneoversqrttwo,
   isMinusSqrtThreeOverTwo,
   isoneoversqrttwo,
-  isSqrtThreeOverTwo
+  isSqrtThreeOverTwo,
+  realconstant
 } from './is';
 import { makeList } from './list';
-import { multiply } from './multiply';
+import { multiply, negate } from './multiply';
+import { subtract } from './add';
 import { requireDimensionless } from './quantity';
 
 /* arccos =====================================================================
@@ -48,8 +50,16 @@ export function Eval_arccos(x: U) {
 }
 
 function arccos(x: U): U {
+  // arccos(cos(u)) = |u - 2 k pi|, which lies in [0, pi];
+  // only decidable when u is a real constant, arccos(cos(x)) is not x
   if (car(x) === symbol(COS)) {
-    return cadr(x);
+    const d = realconstant(cadr(x));
+    if (isNaN(d)) {
+      return makeList(symbol(ARCCOS), x);
+    }
+    const k = Math.round(d / (2 * Math.PI));
+    const v = subtract(cadr(x), multiply(integer(2 * k), Constants.Pi()));
+    return d - 2 * k * Math.PI < 0 ? negate(v) : v;
   }
 
   if (isdouble(x)) {

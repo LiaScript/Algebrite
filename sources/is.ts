@@ -739,3 +739,11 @@ export function isnpi(p: U) {
   }
   return n;
 }
+
+// float value of a real constant such as 3 or 4/5*pi, NaN when p has free
+// variables or an imaginary part. Used to pick the principal branch in
+// arcsin(sin(u)) and friends, which is only decidable for a known u.
+export function realconstant(p: U): number {
+  const f = zzfloat(p);
+  return isdouble(f) ? f.d : NaN;
+}
