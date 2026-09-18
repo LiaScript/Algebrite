@@ -173,3 +173,18 @@ run_test([
   'gcd(x^2+2*x*y+y^2,(x+y)^3)',
   'x^2+y^2+2*x*y',
 ]);
+
+// rationalize multiplies each term by the common denominator: it must be
+// built from the terms' own denominator factors, the true lcm 4*x^2+4 of
+// x^2+1 and 4*x^2+4 would not cancel 1/(x^2+1)
+run_test([
+  'rationalize(a/(2*(x^2+1))-2*a/(4*x^2+4))',
+  '0',
+
+  'simplify(a/(2*(x^2+1))-2*a/(4*x^2+4))',
+  '0',
+
+  'rationalize(1/(x+1)+1/(x^2-1))',
+  'x/(x^2-1)',
+]);
+

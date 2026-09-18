@@ -16,6 +16,7 @@ import { Eval } from './eval';
 import { gcd } from './gcd';
 import { isnegativenumber } from './is';
 import { divide, inverse, multiply } from './multiply';
+import { equal } from './misc';
 import { check_tensor_dimensions } from './tensor';
 
 export function Eval_rationalize(p1: U) {
@@ -116,6 +117,18 @@ function __rationalize_tensor(p1: U): U {
   return p1;
 }
 
+// Common denominator built from the denominators' own factors: each term
+// is multiplied by it and must cancel its denominator syntactically. A true
+// lcm can lose that, e.g. lcm(x^2+1,4*x^2+4) = 4*x^2+4 does not cancel
+// 1/(x^2+1). So only factors with the same base are merged, x^2 and x^3
+// into x^3; any other factor is multiplied in.
 function __lcm(p1: U, p2: U): U {
-  return divide(multiply(p1, p2), gcd(p1, p2));
+  const base = (f: U) => (ispower(f) ? cadr(f) : f);
+  const factors = ismultiply(p1) ? p1.tail() : [p1];
+  const i = factors.findIndex((f) => equal(base(f), base(p2)));
+  if (i < 0) {
+    return multiply(p1, p2);
+  }
+  factors[i] = divide(multiply(factors[i], p2), gcd(factors[i], p2));
+  return factors.reduce((acc: U, f: U) => multiply(acc, f), Constants.one);
 }
