@@ -1452,6 +1452,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_factor_integer",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/factor_integer.ts",
+)
+
+nodejs_test(
     name = "test_factor_complete",
     data = [
         ":tsc",
