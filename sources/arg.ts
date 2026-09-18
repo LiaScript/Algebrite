@@ -18,8 +18,10 @@ import {
   SIN,
   U
 } from '../runtime/defs';
+import { Find } from '../runtime/find';
 import { get_binding, symbol } from '../runtime/symbol';
 import { add, subtract } from './add';
+import { integer } from './bignum';
 import { arctan } from './arctan';
 import { denominator } from './denominator';
 import { Eval } from './eval';
@@ -115,8 +117,17 @@ export function Eval_arg(z: U) {
 export function arg(z: U): U {
   return (
     mapQuantity(z, arg, false) ||
-    subtract(yyarg(numerator(z)), yyarg(denominator(z)))
+    principal(subtract(yyarg(numerator(z)), yyarg(denominator(z))))
   );
+}
+
+// a constant angle is brought into the principal range (-pi, pi]
+function principal(a: U): U {
+  if (Find(a, symbol(ARG))) {
+    return a; // not constant, and floating it would re-enter arg()
+  }
+  const k = Math.ceil(realconstant(a) / (2 * Math.PI) - 0.5 - 1e-12);
+  return k ? subtract(a, multiply(integer(2 * k), Constants.Pi())) : a;
 }
 
 function yyarg(p1: U): U {
@@ -128,11 +139,9 @@ function yyarg(p1: U): U {
   }
 
   if (isnegativenumber(p1)) {
-    const pi =
-      isdouble(p1) || defs.evaluatingAsFloats
-        ? Constants.piAsDouble
-        : symbol(PI);
-    return negate(pi);
+    return isdouble(p1) || defs.evaluatingAsFloats
+      ? Constants.piAsDouble
+      : symbol(PI);
   }
 
   // you'd think that something like
