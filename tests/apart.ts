@@ -35,4 +35,11 @@ run_test([
 
   'rationalize(apart((5*x+1)/((x-1)*(x+2)),x))',
   '(5*x+1)/((x-1)*(x+2))',
+
+  // repeated irreducible quadratic next to a linear factor
+  'apart(1/((x-1)*(x^2+1)^2),x)',
+  '1/(4*(x-1))-1/(2*(x^2+1)^2)-1/(4*(x^2+1))-x/(2*(x^2+1)^2)-x/(4*(x^2+1))',
+
+  'rationalize(apart(1/((x-1)*(x^2+1)^2),x))',
+  '1/((x-1)*(x^2+1)^2)',
 ]);

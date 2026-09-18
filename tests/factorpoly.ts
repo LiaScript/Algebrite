@@ -1,6 +1,16 @@
 import { run_test } from '../test-harness';
 
 run_test([
+  // a real factor found before a repeated complex (irreducible quadratic) one
+  'factor((x^2+1)^2*(x+2),x)',
+  '(x^2+1)^2*(x+2)',
+
+  'factor(x*(x^2+1)^2,x)',
+  'x*(x^2+1)^2',
+
+  'factor((x-1)*(x^2+1)^2,x)',
+  '(x-1)*(x^2+1)^2',
+
   'bake=0',
   '',
 

@@ -256,11 +256,10 @@ function yyfactorpoly(p1: U, p2: U): U {
           * so a factor is 1+x^2 ( = (x+i)*(x-i))
           * BUT 
         */
-        for (let i = 0; i <= factpoly_expo; i++) {
-          polycoeff.pop();
-        }
-
-        polycoeff.push(...coeff(remainingPoly, p2));
+        // replace all coefficients: after a real factor was divided out,
+        // polycoeff is longer than factpoly_expo + 1, and popping only that
+        // many left a stale coefficient in front
+        polycoeff.splice(0, polycoeff.length, ...coeff(remainingPoly, p2));
 
         factpoly_expo -= 2;
       }
