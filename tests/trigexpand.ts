@@ -28,6 +28,10 @@ run_test([
   'trigexpand(sin(x))',
   'sin(x)',
 
+  // beyond the cap of 50 the argument is left alone
+  'trigexpand(sin(51*x))',
+  'sin(51*x)',
+
   'trigexpand([sin(2x),cos(2x)])',
   '[2*cos(x)*sin(x),cos(x)^2-sin(x)^2]',
 

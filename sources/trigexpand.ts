@@ -69,11 +69,12 @@ function sincos(u: U): [U, U] {
 
 // n of n*x for a small integer n (negative n are handled by sin/cos
 // themselves, which pull the sign out), otherwise NaN.
-// ponytail: n capped at 12, the expanded form grows with n; raise if needed.
+// ponytail: n capped at 50 (~0.1 s, ~800 chars), since simplify runs this
+// on every trig expression; the output grows linearly, the time faster.
 function integerFactor(u: U): number {
   if (ismultiply(u) && isinteger(cadr(u))) {
     const n = nativeInt(cadr(u));
-    return n <= 12 ? n : NaN;
+    return n <= 50 ? n : NaN;
   }
   return NaN;
 }
