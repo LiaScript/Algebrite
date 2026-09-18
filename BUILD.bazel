@@ -1176,3 +1176,12 @@ nodejs_test(
     ],
     entry_point = ":tests/jsapi.ts",
 )
+
+nodejs_test(
+    name = "test_stats",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/stats.ts",
+)

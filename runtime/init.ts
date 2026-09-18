@@ -86,6 +86,7 @@ import { Eval_limit } from '../sources/limit';
 import { makeList } from '../sources/list';
 import { Eval_log } from '../sources/log';
 import { Eval_lookup } from '../sources/lookup';
+import { Eval_mean, Eval_median, Eval_random, Eval_sd, Eval_ssd, Eval_svariance, Eval_variance } from '../sources/stats';
 import { Eval_max, Eval_min } from '../sources/minmax';
 import { Eval_mod } from '../sources/mod';
 import { Eval_multiply } from '../sources/multiply';
@@ -234,6 +235,13 @@ import {
   LOG,
   LOOKUP,
   MATRIXRANK,
+  MEAN,
+  MEDIAN,
+  VARIANCE,
+  SVARIANCE,
+  SD,
+  SSD,
+  RANDOM,
   MAX,
   MAX_FIXED_PRINTOUT_DIGITS,
   METAA,
@@ -519,6 +527,13 @@ export function defn() {
   std_symbol(LOG, Eval_log);
   std_symbol(LOOKUP, Eval_lookup);
   std_symbol(MATRIXRANK, Eval_matrixrank);
+  std_symbol(MEAN, Eval_mean);
+  std_symbol(MEDIAN, Eval_median);
+  std_symbol(VARIANCE, Eval_variance);
+  std_symbol(SVARIANCE, Eval_svariance);
+  std_symbol(SD, Eval_sd);
+  std_symbol(SSD, Eval_ssd);
+  std_symbol(RANDOM, Eval_random);
   std_symbol(MAX, Eval_max);
   std_symbol(MIN, Eval_min);
   std_symbol(MOD, Eval_mod);
