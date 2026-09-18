@@ -2,14 +2,11 @@ import {
   ARCSIN,
   cadr,
   car,
-  cdr,
   Constants,
   defs,
   isdouble,
-  ismultiply,
   isrational,
   PI,
-  POWER,
   SIN,
   U
 } from '../runtime/defs';
@@ -18,8 +15,6 @@ import { symbol } from "../runtime/symbol";
 import { double, integer, nativeInt, rational } from './bignum';
 import { Eval } from './eval';
 import {
-  equaln,
-  equalq,
   isminusoneoversqrttwo,
   isMinusSqrtThreeOverTwo,
   isoneoversqrttwo,
@@ -71,28 +66,12 @@ function arcsin(x: U): U {
   }
 
   // if x == 1/sqrt(2) then return 1/4*pi (45 degrees)
-  // second if catches the other way of saying it, sqrt(2)/2
-  if (
-    isoneoversqrttwo(x) ||
-    (ismultiply(x) &&
-      equalq(car(cdr(x)), 1, 2) &&
-      car(car(cdr(cdr(x)))) === symbol(POWER) &&
-      equaln(car(cdr(car(cdr(cdr(x))))), 2) &&
-      equalq(car(cdr(cdr(car(cdr(cdr(x)))))), 1, 2))
-  ) {
+  if (isoneoversqrttwo(x)) {
     return multiply(rational(1, 4), symbol(PI));
   }
 
   // if x == -1/sqrt(2) then return -1/4*pi (-45 degrees)
-  // second if catches the other way of saying it, -sqrt(2)/2
-  if (
-    isminusoneoversqrttwo(x) ||
-    (ismultiply(x) &&
-      equalq(car(cdr(x)), -1, 2) &&
-      car(car(cdr(cdr(x)))) === symbol(POWER) &&
-      equaln(car(cdr(car(cdr(cdr(x))))), 2) &&
-      equalq(car(cdr(cdr(car(cdr(cdr(x)))))), 1, 2))
-  ) {
+  if (isminusoneoversqrttwo(x)) {
     return defs.evaluatingAsFloats
       ? double(-Math.PI / 4.0)
       : multiply(rational(-1, 4), symbol(PI));

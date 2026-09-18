@@ -3,21 +3,19 @@ import {
   caddr,
   cadr,
   car,
-  cdr,
   Constants,
   COS,
   isadd,
   isdouble,
   ismultiply,
   ispower,
-  POWER,
   SIN,
   TAN,
   U
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
 import { symbol } from "../runtime/symbol";
-import { equal } from '../sources/misc';
+import { equal, length } from '../sources/misc';
 import { double, integer, rational } from './bignum';
 import { denominator } from './denominator';
 import { Eval } from './eval';
@@ -79,14 +77,16 @@ export function arctan(x: U): U {
   }
 
   // arctan(1/sqrt(3)) -> pi/6
-  // second if catches the other way of saying it, sqrt(3)/3
+  // second if catches the other way of saying it, sqrt(3)/3: the whole
+  // product, 1/3*3^(1/2)*y is something else
   if (
     (ispower(x) && equaln(cadr(x), 3) && equalq(caddr(x), -1, 2)) ||
     (ismultiply(x) &&
-      equalq(car(cdr(x)), 1, 3) &&
-      car(car(cdr(cdr(x)))) === symbol(POWER) &&
-      equaln(car(cdr(car(cdr(cdr(x))))), 3) &&
-      equalq(car(cdr(cdr(car(cdr(cdr(x)))))), 1, 2))
+      length(x) === 3 &&
+      equalq(cadr(x), 1, 3) &&
+      ispower(caddr(x)) &&
+      equaln(cadr(caddr(x)), 3) &&
+      equalq(caddr(caddr(x)), 1, 2))
   ) {
     return multiply(rational(1, 6), Constants.Pi());
   }
