@@ -114,6 +114,8 @@ import { Eval_round } from '../sources/round';
 import {
   Eval_matrixrank,
   Eval_nullspace,
+  Eval_eigenvalues,
+  Eval_eigenvectors,
   Eval_rref
 } from '../sources/rref';
 import { scan } from '../sources/scan';
@@ -199,6 +201,8 @@ import {
   EIGEN,
   EIGENVAL,
   EIGENVEC,
+  EIGENVALUES,
+  EIGENVECTORS,
   ERF,
   ERFC,
   EVAL,
@@ -480,6 +484,8 @@ export function defn() {
   std_symbol(EIGEN, Eval_eigen);
   std_symbol(EIGENVAL, Eval_eigenval);
   std_symbol(EIGENVEC, Eval_eigenvec);
+  std_symbol(EIGENVALUES, Eval_eigenvalues);
+  std_symbol(EIGENVECTORS, Eval_eigenvectors);
   std_symbol(EVAL, Eval_Eval);
   std_symbol(EXP, Eval_exp);
   std_symbol(EXPAND, Eval_expand);
