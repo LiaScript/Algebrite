@@ -293,4 +293,11 @@ run_test([
 
   'exp(A-i*4*pi)',
   'exp(A)',
+
+  // positive float base, complex exponent: b^(x+iy) = b^x*(cos(y*log(b))+i*sin(y*log(b)))
+  'float(2^i)',
+  '0.769239...+0.638961...*i',
+
+  '2.0^(1.0+1.0*i)',
+  '1.538478...+1.277923...*i',
 ]);
