@@ -66,6 +66,8 @@ class Defs {
   // Date.now() after which check_esc_flag stops the evaluation, 0: never
   public deadline = 0;
   public timelimit = 0;
+  // the deadline was hit during this statement, see stop()
+  public timedOut = false;
   public trigmode: 0 | 1 | 2 = 0;
 
   public out_count = 0;
@@ -763,6 +765,7 @@ export function MEQUAL(p: bigInt.BigInteger, n: number): boolean {
 
 export function reset_after_error() {
     defs.esc_flag = false;
+  defs.timedOut = false;
   draw_flag = false;
   defs.evaluatingAsFloats = false;
   defs.evaluatingPolar = false;

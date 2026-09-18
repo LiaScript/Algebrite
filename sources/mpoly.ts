@@ -10,7 +10,7 @@ import {
   Num,
   U,
 } from '../runtime/defs';
-import { stop } from '../runtime/run';
+import { check_esc_flag, stop } from '../runtime/run';
 import { add } from './add';
 import { integer } from './bignum';
 import { isinteger } from './is';
@@ -134,6 +134,7 @@ export function mpReduce(f: MPoly, G: MPoly[], ord: Order): MPoly {
   const r: MPoly = [];
   let p = f;
   while (p.length) {
+    check_esc_flag(); // nothing here goes through Eval
     const t = p[0];
     const g = G.find((g) => divides(g[0].e, t.e));
     if (g) {

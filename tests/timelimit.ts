@@ -126,11 +126,16 @@ run_test([
   'groebner([x^5+y^4+z^3-1,x^3+y^3+z^2-1,x^4+y^2*z+z^5-x*y*z],[x,y,z])',
   'Stop: time limit of 1 s exceeded, see timelimit',
 
-  '(10^6)!',
+  'mod((10^7)!,10^9+7)',
   'Stop: time limit of 1 s exceeded, see timelimit',
 
+  // the statement right after a timeout: reading -1 multiplies, and did so
+  // under the expired deadline
   'groebner([x*y-1,x-y],[x,y])',
   '[x-y,-1+y^2]',
+
+  '-x-1',
+  '-x-1',
 ]);
 
 // One big-integer power cannot be interrupted, so the size of the result is
@@ -169,11 +174,16 @@ run_test([
 
 // factorial multiplies balanced halves: 20000! took 7 s as a running product
 run_test([
-  'timelimit=3',
+  'timelimit=10',
   '',
 
   'mod(20000!,10^9+7)',
   '368774859',
+
+  // (the tests run on node 14, whose big integers multiply slowly: bigger
+  // factorials, (10^6)! in 1.2 s instead of 792 s, only show on a current V8)
+  'mod(50000!,10^9+7)',
+  '737935835',
 
   'mod(3000!,10^9+7)',
   '341406877',
