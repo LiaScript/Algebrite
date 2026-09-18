@@ -120,7 +120,7 @@ function matrixArg(p1: U, name: string): Tensor {
   return M as Tensor;
 }
 
-function matrix(rows: U[][]): Tensor {
+export function matrix(rows: U[][]): Tensor {
   const n = rows[0].length;
   const T = alloc_tensor(rows.length * n);
   T.ndim = 2;

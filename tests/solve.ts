@@ -42,8 +42,48 @@ run_test([
   'solve([x+y-1,2*x+2*y-2],[x,y])',
   'Stop: solve: system has no unique solution',
 
+  // Polynomial systems: one row [x,y,...] per solution, even for a single
+  // one. Each row was checked by substituting it into the equations.
+  // y = x, x^2 = 1
   'solve([x*y-1,x-y],[x,y])',
-  'Stop: solve: system is not linear in the given variables',
+  '[[-1,-1],[1,1]]',
+
+  // unit circle and the line through (1,0) and (0,1)
+  'solve([x^2+y^2-1,x+y-1],[x,y])',
+  '[[0,1],[1,0]]',
+
+  // x^2 = x+2
+  'solve([y-x^2,y-x-2],[x,y])',
+  '[[-1,1],[2,4]]',
+
+  // 2*x^2 = 1
+  'solve([x^2+y^2-1,x-y],[x,y])',
+  '[[-1/(2^(1/2)),-1/(2^(1/2))],[1/2^(1/2),1/2^(1/2)]]',
+
+  // (x+y)^2 = 49, (x-y)^2 = 1
+  'solve([x^2+y^2=25,x*y=12],[x,y])',
+  '[[-4,-3],[-3,-4],[3,4],[4,3]]',
+
+  // y = x^2, y^2+y-1 = 0: complex x for the negative y
+  'solve([x^2+y^2-1,x^2-y],[x,y])',
+  '[[-(-1/2-1/2*5^(1/2))^(1/2),-1/2-1/2*5^(1/2)],[-(-1/2+1/2*5^(1/2))^(1/2),-1/2+1/2*5^(1/2)],[(-1/2-1/2*5^(1/2))^(1/2),-1/2-1/2*5^(1/2)],[(-1/2+1/2*5^(1/2))^(1/2),-1/2+1/2*5^(1/2)]]',
+
+  // x = y = z, x^2 = 4
+  'solve([x-y,y-z,x*z-4],[x,y,z])',
+  '[[-2,-2,-2],[2,2,2]]',
+
+  'solve([x*y-1,x-y])',
+  '[[-1,-1],[1,1]]',
+
+  'solve([x^2-y,x^2-y+1],[x,y])',
+  'Stop: solve: system has no solution',
+
+  'solve([x^2+y^2-1,x^2+y^2-4],[x,y])',
+  'Stop: solve: system has no solution',
+
+  // x*(y-1) = 0 is the lines x = 0 and y = 1
+  'solve([x*y-x,x*y-x],[x,y])',
+  'Stop: solve: system has infinitely many solutions',
 
   'solve([x+y-1],[x,y])',
   'Stop: solve: need as many equations as variables',
@@ -100,7 +140,7 @@ run_test([
   'Stop: solve: system has no unique solution',
 
   'solve([sin(x)+y=1,x-y=0],[x,y])',
-  'Stop: solve: system is not linear in the given variables',
+  'Stop: solve: system is not polynomial in the given variables',
 
   'solve([x=1,y=2],[x,y])',
   '[1,2]',

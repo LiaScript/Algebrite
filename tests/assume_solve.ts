@@ -154,6 +154,25 @@ run_test([
   '',
 ]);
 
+// polynomial systems: rows that violate an assumption are dropped
+run_test([
+  'assume(x>0)',
+  '',
+
+  // y = x, x^2 = 1
+  'solve([x*y-1,x-y],[x,y])',
+  '[[1,1]]',
+
+  'assume(y<0)',
+  '',
+
+  'solve([x*y-1,x-y],[x,y])',
+  'Stop: solve: no solution satisfies the assumptions about x,y',
+
+  'forget()',
+  '',
+]);
+
 // numeric roots are checked numerically
 run_test([
   'assume(x>0)',

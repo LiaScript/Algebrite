@@ -174,7 +174,7 @@ export function roots(POLY: U, X: U): U {
 
 // roots() returns a lone root bare instead of as a one element list,
 // e.g. for the repeated root of the resolvent of (x^2+2)^2
-function rootsList(poly: U, x: U): U[] {
+export function rootsList(poly: U, x: U): U[] {
   const r = roots(poly, x);
   return istensor(r) ? r.tensor.elem : [r];
 }

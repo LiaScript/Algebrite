@@ -927,6 +927,7 @@ rank([[1,2],[2,4]])                   # number of axes, not the matrix rank
 | `roots(p, x)`, `nroots(p)` | Exact / numeric roots of polynomial `p` |
 | `coeff(p, x, n)` | Coefficient of `x^n` in polynomial `p` |
 | `deg(p, x)`, `leading(p, x)` | Degree of `p` in `x` / its leading coefficient |
+| `resultant(f, g, x)` | Eliminates `x` from `f=0`, `g=0`: zero exactly when they share a root in `x` |
 | `gcd(a, b, ...)`, `lcm(a, b, ...)` | Greatest common divisor / least common multiple |
 | `binomial(n, k)` / `choose(n, k)` | Binomial coefficient (the two names are equivalent) |
 | `factorial(n)` | `n!` |
@@ -940,6 +941,8 @@ roots(x^2-5*x+6,x)    # exact roots
 coeff(x^2+3*x+5,x,1)  # coefficient of x^1
 
 deg(x^3+2*x,x)        # highest power of x
+
+resultant(x^2+y^2-1,x-y,y)  # eliminates y: the circle meets y=x where 2x^2=1
 
 gcd(12,18)            # greatest common divisor
 
@@ -1008,11 +1011,11 @@ legendre(x,2)               # Legendre polynomial of degree 2
 | Function | Description |
 |---|---|
 | `solve(p, x)` | Solves the polynomial equation `p=0` for `x` |
-| `solve([p1, p2, ...], [x, y, ...])` | Solves a system of linear equations |
+| `solve([p1, p2, ...], [x, y, ...])` | Solves a system of polynomial equations |
 | `nsolve(f, x, x0)`, `nsolve(f, x, [a,b])` | One numeric real root of any equation |
 
 A single equation must be a polynomial in one variable. A system must be
-linear, with as many equations as variables. Equations are written as
+polynomial, with as many equations as variables. Equations are written as
 expressions equal to zero, or with `=` or `==`.
 
 ```Maxima
@@ -1037,6 +1040,19 @@ solve([x+y=3,x-y=1])                        # variables taken from the equations
 ```
 @Algebrite.pretty
 
+A nonlinear system is solved by eliminating one variable after the other with
+`resultant` and substituting back. It gives one row `[x, y, ...]` per
+solution, also when there is only one:
+
+```Maxima
+solve([x^2+y^2=25,x*y=12],[x,y])  # the circle meets the hyperbola in 4 points
+
+solve([y=x^2,y=x+2],[x,y])        # parabola and line
+
+solve([x^2+y^2=1,x=y],[x,y])      # irrational coordinates
+```
+@Algebrite.pretty
+
 Without the list of variables, they are taken from the equations in the order
 they first appear. With assumptions about the unknown (section 13), solutions
 that contradict them are dropped.
@@ -1058,12 +1074,15 @@ nsolve(x^3+x-1)         # variable guessed, start value 0
 ```
 @Algebrite.pretty
 
-Systems without a unique solution, and nonlinear systems, stop with a message:
+Systems without a unique solution, and systems that are not polynomial, stop
+with a message:
 
 ```Maxima
 solve([x+y-1,2*x+2*y-2],[x,y])  # the second equation is twice the first
 
-solve([x*y-1,x-y],[x,y])        # x*y is not linear
+solve([x^2+y^2=1,x^2+y^2=4],[x,y])  # two circles that never meet
+
+solve([sin(x)=y,x=y],[x,y])     # sin(x) is not a polynomial
 ```
 @Algebrite.eval
 
@@ -1578,6 +1597,7 @@ may misbehave.
 | `rank(A)` | Number of axes of a tensor, see `matrixrank` for matrices |
 | `rationalize(expr)` | Combines terms over a common denominator |
 | `real(z)` | Real part of a complex number |
+| `resultant(f, g, x)` | Eliminates `x`: zero exactly when `f` and `g` share a root in `x` |
 | `rect(z)` | Rewrites a complex number in rectangular form |
 | `root(x, n)` | `n`-th root |
 | `roots(p, x)` | Rational/exact roots of polynomial `p` |
@@ -1592,7 +1612,7 @@ may misbehave.
 | `simplify(expr)` | General purpose simplification |
 | `sin(x)` | Sine |
 | `sinh(x)` | Hyperbolic sine |
-| `solve(p, x)` | Solves a polynomial equation, or a linear system given as lists |
+| `solve(p, x)` | Solves a polynomial equation, or a system of polynomial equations given as lists |
 | `sqrt(x)` | Square root |
 | `ssd(x1, x2, ...)` | Standard deviation of a sample |
 | `stop(msg)` | Aborts evaluation with an error message |
