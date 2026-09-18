@@ -185,7 +185,7 @@ export function get_binding(p: U) {
 // the concept of user symbol is a little fuzzy
 // beucase mathematics is full of symbols that actually
 // have a special meaning, e.g. e,i,I in some cases j...
-function is_usr_symbol(p: U): boolean {
+export function is_usr_symbol(p: U): boolean {
   if (p.k !== SYM) {
     return false;
   }

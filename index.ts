@@ -281,6 +281,7 @@ const builtin_fns = [
   'nsolve',
   'laplace',
   'invlaplace',
+  'at',
   'max',
   'min',
   'mod',

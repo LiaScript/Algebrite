@@ -139,8 +139,9 @@ run_test([
   'd(f(y),x)',
   '0',
 
+  // the derivative of g with respect to its argument, at f(x)
   'd(g(f(x)),f(x))',
-  'd(g(f(x)),f(x))',
+  "g'(f(x))",
 
   'd(g(f(x)),x)',
   'd(g(f(x)),x)',

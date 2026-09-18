@@ -1347,3 +1347,12 @@ nodejs_test(
     ],
     entry_point = ":tests/leading.ts",
 )
+
+nodejs_test(
+    name = "test_at",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/at.ts",
+)

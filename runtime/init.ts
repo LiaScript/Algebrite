@@ -91,6 +91,7 @@ import { Eval_mean, Eval_median, Eval_random, Eval_sd, Eval_ssd, Eval_svariance,
 import { Eval_trigexpand } from '../sources/trigexpand';
 import { Eval_nsolve } from '../sources/nsolve';
 import { Eval_invlaplace, Eval_laplace } from '../sources/laplace';
+import { Eval_at } from '../sources/at';
 import { Eval_max, Eval_min } from '../sources/minmax';
 import { Eval_mod } from '../sources/mod';
 import { Eval_multiply } from '../sources/multiply';
@@ -254,6 +255,7 @@ import {
   NSOLVE,
   LAPLACE,
   INVLAPLACE,
+  AT,
   MAX,
   MAX_FIXED_PRINTOUT_DIGITS,
   METAA,
@@ -516,6 +518,7 @@ export function defn() {
   std_symbol(NSOLVE, Eval_nsolve);
   std_symbol(LAPLACE, Eval_laplace);
   std_symbol(INVLAPLACE, Eval_invlaplace);
+  std_symbol(AT, Eval_at);
   std_symbol(MAX, Eval_max);
   std_symbol(MIN, Eval_min);
   std_symbol(MOD, Eval_mod);

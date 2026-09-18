@@ -1,8 +1,10 @@
+import { primeName } from './at';
 import {
   ADD,
   breakpoint,
   caar,
   caddr,
+  cadddr,
   cadr,
   car,
   cdr,
@@ -706,6 +708,18 @@ function emit_function(p: U) {
 
   if (isfactorial(p)) {
     emit_factorial_function(p);
+    return;
+  }
+
+  // at(d(y(x),x),x,v) as y'(v)
+  const prime = primeName(p);
+  if (prime !== null) {
+    for (const c of prime) {
+      __emit_char(c);
+    }
+    __emit_char('(');
+    emit_expr(cadddr(p));
+    __emit_char(')');
     return;
   }
 

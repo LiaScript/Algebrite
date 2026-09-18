@@ -37,6 +37,7 @@ import {stop} from '../runtime/run';
 import {symbol, usr_symbol} from '../runtime/symbol';
 import {bignum_scan_float, bignum_scan_integer} from './bignum';
 import {equaln} from './is';
+import {primeCall} from './at';
 import {makeList} from './list';
 import {inverse, multiply, negate} from './multiply';
 import {check_tensor_dimensions} from './tensor';
@@ -96,6 +97,7 @@ const T_LTEQ = 1009;
 const T_EQ = 1010;
 const T_NEQ = 1011;
 const T_QUOTASSIGN = 1012;
+const T_PRIME = 1013; // y'(...), a derivative at a point
 
 let token: number | string = '';
 let newline_flag = 0;
@@ -340,6 +342,7 @@ function is_factor(): boolean {
     case '(':
     case T_SYMBOL:
     case T_FUNCTION:
+    case T_PRIME:
     case T_INTEGER:
     case T_DOUBLE:
     case T_STRING:
@@ -455,6 +458,12 @@ function scan_factor(): U {
     result = scan_symbol();
   } else if (token === T_FUNCTION) {
     result = scan_function_call_with_function_name();
+  } else if (token === T_PRIME) {
+    // y''(value): name and order from the token, then the parenthesized value
+    const name = token_buf.replace(/'+$/, '');
+    const order = token_buf.length - name.length;
+    get_next_token();
+    result = primeCall(name, order, scan_subexpr());
   } else if (token === '[') {
     //console.log "[ as tensor"
     //breakpoint
@@ -1042,7 +1051,14 @@ function get_token() {
     while (isalnumorunderscore(scanned[scan_str])) {
       scan_str++;
     }
-    if (scanned[scan_str] === '(') {
+    let primes = scan_str;
+    while (scanned[primes] === "'") {
+      primes++;
+    }
+    if (primes > scan_str && scanned[primes] === '(') {
+      scan_str = primes;
+      token = T_PRIME;
+    } else if (scanned[scan_str] === '(') {
       token = T_FUNCTION;
     } else {
       token = T_SYMBOL;

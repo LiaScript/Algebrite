@@ -197,12 +197,9 @@ function single(g: U, t: U, s: U): U | null {
   return null;
 }
 
-// g(0); for a derivative, at(d(y(t),t),t,0) since subst would
-// substitute into the differentiation variable as well.
+// g(0); a derivative becomes y'(0)
 function initialValue(g: U, t: U): U {
-  return Find(g, symbol(DERIVATIVE))
-    ? makeList(usr_symbol('at'), g, t, Constants.zero)
-    : Eval(subst(g, t, Constants.zero));
+  return Eval(subst(g, t, Constants.zero));
 }
 
 // ------------------------------------------------------------- invlaplace

@@ -64,7 +64,7 @@ run_test([
   's*laplace(y(t),t,s)-y(0)',
 
   'laplace(d(y(t),t,2))',
-  '-at(d(y(t),t),t,0)-y(0)*s+s^2*laplace(y(t),t,s)',
+  "-y'(0)-y(0)*s+s^2*laplace(y(t),t,s)",
 
   'invlaplace(1/s)',
   '1',
@@ -227,7 +227,7 @@ run_test([
   '-6*s/((s^2-1)^2)+8*s^3/((s^2-1)^3)',
 
   'laplace(d(y(t),t,3))',
-  '-at(d(d(y(t),t),t),t,0)-at(d(y(t),t),t,0)*s-y(0)*s^2+s^3*laplace(y(t),t,s)',
+  "-y''(0)-y'(0)*s-y(0)*s^2+s^3*laplace(y(t),t,s)",
 
   'laplace(d(y(t),t)+y(t))',
   'laplace(y(t),t,s)+s*laplace(y(t),t,s)-y(0)',
@@ -369,4 +369,26 @@ run_test([
 
   'invlaplace(F(s))',
   'invlaplace(F(s),s,t)',
+]);
+
+// Solving linear ODEs: transform, insert the initial values y(0) and y'(0),
+// solve for Y = laplace(y(t),t,s), transform back
+run_test([
+  "L=subst(1,y'(0),subst(0,y(0),laplace(d(y(t),t,2)+y(t))))",
+  '',
+
+  'invlaplace(solve(subst(Y,laplace(y(t),t,s),L),Y))',
+  'sin(t)',
+
+  'L=subst(2,y(0),laplace(d(y(t),t)+3*y(t)))',
+  '',
+
+  'invlaplace(solve(subst(Y,laplace(y(t),t,s),L),Y))',
+  '2*exp(-3*t)',
+
+  "L=subst(0,y'(0),subst(1,y(0),laplace(d(y(t),t,2)+2*d(y(t),t)+5*y(t))))",
+  '',
+
+  'invlaplace(solve(subst(Y,laplace(y(t),t,s),L),Y))',
+  'exp(-t)*cos(2*t)+1/2*exp(-t)*sin(2*t)',
 ]);

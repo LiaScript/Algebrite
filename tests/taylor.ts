@@ -1,5 +1,4 @@
-import { run } from '../runtime/run';
-import { run_test, setup_test, test } from '../test-harness';
+import { run_test } from '../test-harness';
 
 run_test([
   'taylor(1/(5+4*cos(x)),x,6,0)-(1/9+2/81*x^2+5/1458*x^4+49/131220*x^6)',
@@ -95,11 +94,15 @@ run_test([
   'Stop: taylor: expected 1 to 4 arguments, got 0',
 ]);
 
-// known bug: substituting x=a into d(f(x),x) also substitutes the
-// differentiation variable (the subst bug), so the derivatives of an unknown
-// function come out as f(0) and this gives f(0)+f(0)*x. Left for the subst fix.
-setup_test(() =>
-  test.failing('taylor(f(x),x,1)', (t) =>
-    t.is('0', run('taylor(f(x),x,1)-f(0)-at(d(f(x),x),x,0)*x'))
-  )
-);
+// derivatives of an unknown function at the expansion point (these came
+// out as f(0) before subst treated the derivative variable as bound)
+run_test([
+  'taylor(f(x),x,1)',
+  "f'(0)*x+f(0)",
+
+  'taylor(f(x),x,2)',
+  "1/2*f''(0)*x^2+f'(0)*x+f(0)",
+
+  'taylor(f(x),x,1,2)',
+  "f'(2)*x-2*f'(2)+f(2)",
+]);

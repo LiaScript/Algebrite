@@ -1,3 +1,4 @@
+import { primeName } from './at';
 import {
   ABS,
   ADD,
@@ -1469,6 +1470,12 @@ function print_factor(
       accumulator += ')';
     }
     return accumulator;
+  }
+
+  // at(d(y(x),x),x,v) as y'(v)
+  const prime = primeName(p as U);
+  if (prime !== null) {
+    return print_str(prime) + '(' + print_expr(cadddr(p)) + ')';
   }
 
   if (isstr(p)) {

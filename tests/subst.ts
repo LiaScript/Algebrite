@@ -1,5 +1,4 @@
-import { run } from '../runtime/run';
-import { run_test, setup_test, test } from '../test-harness';
+import { run_test } from '../test-harness';
 
 run_test([
   'subst((-1)^(1/2),i,-3 + 10*3^(1/2)*i/9)',
@@ -91,34 +90,20 @@ run_test([
   'y^2',
 ]);
 
-// known bugs, not fixed here: subst substitutes the variable of an
-// unevaluated derivative too, so the derivative is taken with respect
-// to a number. subst(0,t,d(y(t),t)) should be the derivative of y at 0,
-// not y(0).
-setup_test(() =>
-  test.failing('subst(0,t,d(y(t),t))', t =>
-    t.not('y(0)', run('subst(0,t,d(y(t),t))'))
-  )
-);
+// The variable of an unevaluated derivative is bound: substituting a value
+// for it gives the derivative at that value, not a derivative with respect
+// to a number (which gave y(0) and 0 here). See tests/at.ts.
+run_test([
+  'subst(0,t,d(y(t),t))',
+  "y'(0)",
 
-// same bug: d(y(1),1) is then evaluated to 0
-setup_test(() =>
-  test.failing('subst(1,t,d(y(t),t))', t =>
-    t.not('0', run('subst(1,t,d(y(t),t))'))
-  )
-);
+  'subst(1,t,d(y(t),t))',
+  "y'(1)",
 
-// same bug: f(x) is unknown, so the result must still contain f
-setup_test(() =>
-  test.failing('subst(2,x,d(f(x),x)+x)', t =>
-    t.not('2', run('subst(2,x,d(f(x),x)+x)'))
-  )
-);
+  'subst(2,x,d(f(x),x)+x)',
+  "2+f'(2)",
 
-// known bug: the index of a sum is a bound variable and must not be
-// substituted; subst turns sum(f(k),k,1,n) into sum(f(2),2,1,n)
-setup_test(() =>
-  test.failing('subst(2,k,sum(f(k),k,1,n))', t =>
-    t.is('sum(f(k),k,1,n)', run('subst(2,k,sum(f(k),k,1,n))'))
-  )
-);
+  // the index of a sum is bound too, only the bounds are substituted
+  'subst(2,k,sum(f(k),k,1,n))',
+  'sum(f(k),k,1,n)',
+]);

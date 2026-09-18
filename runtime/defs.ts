@@ -323,6 +323,7 @@ export const TRIGSIMP = 'trigsimp';
 export const NSOLVE = 'nsolve';
 export const LAPLACE = 'laplace';
 export const INVLAPLACE = 'invlaplace';
+export const AT = 'at';
 export const MAX = 'max';
 export const MIN = 'min';
 export const MOD = 'mod';
