@@ -112,4 +112,73 @@ run_test([
 
   'printlatex(quote(f(x)=test(x<3,-x-4,3<=x,x*x+7,120/x+5)))',
   'f(x)=\\left\\{ \\begin{array}{ll}{-x-4} & \\text{if } {x} < {3} \\\\ {xx+7} & \\text{if } {3} \\leq {x} \\\\ {\\frac{120}{x}+5} & \\text{otherwise} \\end{array} \\right.',
+
+  'printlatex(quote(test(x>0,x)))',
+  '\\left\\{ \\begin{array}{ll}{x} & \\text{if } {x} > {0} \\end{array} \\right.',
+
+  // a letter right after a control word needs a space:
+  // \\pix would be an unknown command
+  'printlatex(pi*x)',
+  '\\pi x',
+
+  'printlatex(pi*r^2)',
+  '\\pi r^2',
+
+  'printlatex(pi*x/2)',
+  '\\frac{\\pi x}{2}',
+
+  'printlatex(1/(pi*x))',
+  '\\frac{1}{\\pi x}',
+
+  'printlatex(pi*sin(x))',
+  '\\pi sin(x)',
+
+  'printlatex(2*pi)',
+  '2\\pi',
+
+  'printlatex(a*pi)',
+  'a\\pi',
+
+  'printlatex(sqrt(2)*pi)',
+  '\\sqrt{2}\\pi',
+
+  'printlatex(inf*x)',
+  '\\infty x',
+
+  // negative exponents, rationals, nested fractions
+  'printlatex(x^(-2))',
+  '\\frac{1}{x^2}',
+
+  'printlatex(-3/4)',
+  '-\\frac{3}{4}',
+
+  'printlatex(1/(1+1/x))',
+  '\\frac{1}{1+\\frac{1}{x}}',
+
+  'printlatex(a*b^(-1)*c^(-2))',
+  '\\frac{a}{bc^2}',
+
+  'printlatex(x^(-1/2))',
+  '\\frac{1}{\\sqrt{x}}',
+
+  'printlatex(-1/2*x)',
+  '-\\frac{x}{2}',
+
+  'printlatex(x^(2/3))',
+  '\\sqrt[3]{x^2}',
+
+  'printlatex(x^10)',
+  'x^{10}',
+
+  'printlatex(exp(-x))',
+  'e^{-x}',
+
+  'printlatex(abs(x))',
+  '\\left |x \\right |',
+
+  'printlatex(-inf)',
+  '-\\infty',
+
+  'printlatex([[1,-1/2],[x^(-1),y]])',
+  '\\begin{bmatrix} 1 & -\\frac{1}{2} \\\\ \\frac{1}{x} & y \\end{bmatrix}',
 ]);

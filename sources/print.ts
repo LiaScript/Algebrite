@@ -372,7 +372,7 @@ function print_a_over_b(p: BaseAtom): string {
         if (flag) {
           accumulator += print_multiply_sign();
         }
-        accumulator += print_factor(p2);
+        accumulator = append_factor(accumulator, print_factor(p2));
         flag = 1;
       }
       p1 = cdr(p1);
@@ -409,7 +409,7 @@ function print_a_over_b(p: BaseAtom): string {
       if (flag) {
         accumulator += print_multiply_sign();
       }
-      accumulator += print_denom(p2, d);
+      accumulator = append_factor(accumulator, print_denom(p2, d));
       flag = 1;
     }
     p1 = cdr(p1);
@@ -559,7 +559,10 @@ function print_term(p: BaseAtom): string {
         }
       }
       accumulator += print_multiply_sign();
-      accumulator += print_factor(car(p), false, true);
+      accumulator = append_factor(
+        accumulator,
+        print_factor(car(p), false, true)
+      );
 
       previousFactorWasANumber = false;
       if (isNumericAtom(car(p))) {
@@ -1860,6 +1863,19 @@ export function print_list(p: BaseAtom): string {
       accumulator += '<tensor>';
   }
   return accumulator;
+}
+
+// LaTeX juxtaposes factors, so a factor starting with a letter needs a
+// space after a control word, or \pi x would become the unknown \pix
+function append_factor(accumulator: string, factor: string): string {
+  if (
+    defs.printMode === PRINTMODE_LATEX &&
+    /\\[a-zA-Z]+$/.test(accumulator) &&
+    /^[a-zA-Z]/.test(factor)
+  ) {
+    accumulator += ' ';
+  }
+  return accumulator + factor;
 }
 
 function print_multiply_sign(): string {
