@@ -588,3 +588,122 @@ run_test([
   'y(2)',
   'y(2)',
 ]);
+
+// first-order linear systems with constant coefficients, by laplace
+// transform: the constants are the values at 0, C1 = x(0), C2 = y(0)
+run_test([
+  // a rotation
+  'dsolve([d(x(t),t)=y(t),d(y(t),t)=-x(t)],[x(t),y(t)])',
+  '[C1*cos(t)+C2*sin(t),-C1*sin(t)+C2*cos(t)]',
+
+  'dsolve([d(x(t),t)=y(t),d(y(t),t)=-x(t)],[x(t),y(t)],x(0)=1,y(0)=0)',
+  '[cos(t),-sin(t)]',
+
+  // a condition elsewhere, one constant stays
+  'dsolve([d(x(t),t)=y(t),d(y(t),t)=-x(t)],[x(t),y(t)],x(pi/2)=1)',
+  '[C1*cos(t)+sin(t),-C1*sin(t)+cos(t)]',
+
+  "dsolve([d(x(t),t)=y(t),d(y(t),t)=-x(t)],[x(t),y(t)],x(0)=0,x'(0)=2)",
+  '[2*sin(t),2*cos(t)]',
+
+  // expressions instead of equations, other names
+  'dsolve([d(u(x),x)-v(x),d(v(x),x)+u(x)],[u(x),v(x)],[u(0)=1,v(0)=0])',
+  '[cos(x),-sin(x)]',
+
+  // real eigenvalues 4 and -1
+  's=dsolve([d(x(t),t)=x(t)+2*y(t),d(y(t),t)=3*x(t)+2*y(t)],[x(t),y(t)])',
+  '',
+
+  'simplify(d(s[1],t)-s[1]-2*s[2])',
+  '0',
+
+  'simplify(d(s[2],t)-3*s[1]-2*s[2])',
+  '0',
+
+  'simplify(subst(0,t,s))',
+  '[C1,C2]',
+
+  // x = exp(4t) + exp(-t), y = 3/2 exp(4t) - exp(-t)
+  'dsolve([d(x(t),t)=x(t)+2*y(t),d(y(t),t)=3*x(t)+2*y(t)],[x(t),y(t)],x(0)=2,y(0)=1/2)',
+  '[exp(-t)+exp(4*t),-exp(-t)+3/2*exp(4*t)]',
+
+  // a double eigenvalue without a second eigenvector
+  'dsolve([d(x(t),t)=x(t)+y(t),d(y(t),t)=y(t)],[x(t),y(t)])',
+  '[C1*exp(t)+C2*t*exp(t),C2*exp(t)]',
+
+  // complex eigenvalues 1 +- 2i
+  's=dsolve([d(x(t),t)=x(t)-2*y(t),d(y(t),t)=2*x(t)+y(t)],[x(t),y(t)])',
+  '',
+
+  's',
+  '[C1*exp(t)*cos(2*t)-C2*exp(t)*sin(2*t),C1*exp(t)*sin(2*t)+C2*exp(t)*cos(2*t)]',
+
+  // with right sides
+  's=dsolve([d(x(t),t)=y(t)+1,d(y(t),t)=-x(t)+t],[x(t),y(t)],x(0)=0,y(0)=0)',
+  '',
+
+  'simplify(d(s[1],t)-s[2]-1)',
+  '0',
+
+  'simplify(d(s[2],t)+s[1]-t)',
+  '0',
+
+  'simplify(subst(0,t,s))',
+  '[0,0]',
+
+  // the derivatives coupled: x' = (x+y)/2, y' = (x-y)/2
+  's=dsolve([d(x(t),t)+d(y(t),t)=x(t),d(x(t),t)-d(y(t),t)=y(t)],[x(t),y(t)])',
+  '',
+
+  'simplify(d(s[1],t)+d(s[2],t)-s[1])',
+  '0',
+
+  'simplify(d(s[1],t)-d(s[2],t)-s[2])',
+  '0',
+
+  'simplify(subst(0,t,s))',
+  '[C1,C2]',
+
+  // three functions, a triangular matrix
+  's=dsolve([d(x(t),t)=x(t),d(y(t),t)=x(t)+2*y(t),d(z(t),t)=y(t)+3*z(t)],[x(t),y(t),z(t)])',
+  '',
+
+  'simplify(d(s[2],t)-s[1]-2*s[2])',
+  '0',
+
+  'simplify(d(s[3],t)-s[2]-3*s[3])',
+  '0',
+
+  's[1]',
+  'C1*exp(t)',
+
+  'simplify(subst(0,t,s))',
+  '[C1,C2,C3]',
+]);
+
+run_test([
+  'dsolve([d(x(t),t)=x(t)*y(t),d(y(t),t)=-x(t)],[x(t),y(t)])',
+  'Stop: dsolve: only first-order linear systems with constant coefficients are supported',
+
+  'dsolve([d(x(t),t)=t*y(t),d(y(t),t)=-x(t)],[x(t),y(t)])',
+  'Stop: dsolve: only first-order linear systems with constant coefficients are supported',
+
+  'dsolve([d(x(t),t,2)=y(t),d(y(t),t)=-x(t)],[x(t),y(t)])',
+  'Stop: dsolve: only first-order linear systems with constant coefficients are supported',
+
+  'dsolve([d(x(t),t)=y(t)],[x(t),y(t)])',
+  'Stop: dsolve: a system takes as many equations as functions like x(t), y(t) of one variable',
+
+  'dsolve([d(x(t),t)=y(u),d(y(u),u)=-x(t)],[x(t),y(u)])',
+  'Stop: dsolve: a system takes as many equations as functions like x(t), y(t) of one variable',
+
+  // more equations than functions
+  'dsolve([d(x(t),t)=x(t),d(x(t),t)=y(t),d(y(t),t)=x(t)],[x(t),y(t)])',
+  'Stop: dsolve: a system takes as many equations as functions like x(t), y(t) of one variable',
+
+  'dsolve([d(x(t),t)=y(t),d(y(t),t)=-x(t)],[x(t),y(t)],z(0)=1)',
+  "Stop: dsolve: conditions must look like y(0)=1, y'(0)=1 or d(y(x),x,2)(0)=1",
+
+  'dsolve([d(x(t),t)=y(t),d(y(t),t)=-x(t)],[x(t),y(t)],x(0)=0,x(pi)=1)',
+  'Stop: dsolve: no solution satisfies the conditions',
+]);
