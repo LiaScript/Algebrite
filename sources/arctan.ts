@@ -6,6 +6,7 @@ import {
   cdr,
   Constants,
   COS,
+  isadd,
   isdouble,
   ismultiply,
   ispower,
@@ -20,7 +21,7 @@ import { equal } from '../sources/misc';
 import { double, integer, rational } from './bignum';
 import { denominator } from './denominator';
 import { Eval } from './eval';
-import { equaln, equalq, isnegative, isZeroAtomOrTensor, realconstant } from './is';
+import { equaln, equalq, isnegativeterm, isZeroAtomOrTensor, realconstant } from './is';
 import { add, subtract } from './add';
 import { power } from './power';
 import { makeList } from './list';
@@ -60,7 +61,7 @@ export function arctan(x: U): U {
     return Constants.zero;
   }
 
-  if (isnegative(x)) {
+  if (leadsWithMinus(x)) {
     return negate(arctan(negate(x)));
   }
 
@@ -115,6 +116,18 @@ export function arctan(x: U): U {
   }
 
   return makeList(symbol(ARCTAN), x);
+}
+
+// arctan is odd, so a minus sign can come out. A sum starts with its
+// constant: -1+2*x stays as it is, the sign of the first term only counts
+// when the first term with a variable is negative too (-1-x, -a+b).
+function leadsWithMinus(x: U): boolean {
+  if (!isadd(x)) {
+    return isnegativeterm(x);
+  }
+  const terms = x.tail();
+  const variable = terms.find((t) => isNaN(realconstant(t)));
+  return isnegativeterm(terms[0]) && (!variable || isnegativeterm(variable));
 }
 
 // arctan(tan(u)) = u - k pi, which lies in [-pi/2, pi/2]; only decidable

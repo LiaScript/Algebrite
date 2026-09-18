@@ -456,11 +456,11 @@ run_test([
   '0',
 
   //294
-  'integral(1/cos(A*X),X)-log(tan(pi/4+A*X/2))/A',
+  'integral(1/cos(A*X),X)-log(abs(tan(pi/4+A*X/2)))/A',
   '0',
 
   //295
-  'integral(1/sin(A*X),X)-log(tan(A*X/2))/A',
+  'integral(1/sin(A*X),X)-log(abs(tan(A*X/2)))/A',
   '0',
 
   //296
@@ -508,7 +508,7 @@ run_test([
   '0',
 
   //327
-  'integral(sin(A*X)^2/cos(A*X),X)+sin(A*X)/A-log(tan(pi/4+A*X/2))/A',
+  'integral(sin(A*X)^2/cos(A*X),X)+sin(A*X)/A-log(abs(tan(pi/4+A*X/2)))/A',
   '0',
 
   //328
@@ -516,15 +516,15 @@ run_test([
   '0',
 
   //329
-  'integral(1/sin(A*X)/cos(A*X),X)-log(tan(A*X))/A',
+  'integral(1/sin(A*X)/cos(A*X),X)-log(abs(tan(A*X)))/A',
   '0',
 
   //330
-  'integral(1/sin(A*X)/cos(A*X)^2,X)-(1/cos(A*X)+log(tan(A*X/2)))/A',
+  'integral(1/sin(A*X)/cos(A*X)^2,X)-(1/cos(A*X)+log(abs(tan(A*X/2))))/A',
   '0',
 
   //332
-  'integral(1/sin(A*X)^2/cos(A*X),X)-(log(tan(pi/4+A*X/2))-1/sin(A*X))/A',
+  'integral(1/sin(A*X)^2/cos(A*X),X)-(log(abs(tan(pi/4+A*X/2)))-1/sin(A*X))/A',
   '0',
 
   //333
@@ -834,7 +834,7 @@ run_test([
 
   // 3/2*log(x^2-4*x+8)+7/2*arctan((x-2)/2)
   'integral((3*x+1)/(x^2-4*x+8),x)',
-  '-7/2*arctan(-1/2*x+1)+3/2*log(x^2-4*x+8)',
+  '7/2*arctan(1/2*x-1)+3/2*log(x^2-4*x+8)',
 
   'simplify(d(integral(1/(x^2+a*x+b),x),x)-1/(x^2+a*x+b))',
   '0',

@@ -8,16 +8,19 @@ import { run_test } from '../test-harness';
 // the integrand numerically (python mpmath, 30 digits) at three points of
 // its domain, one of them where a log argument is negative, so that a
 // missing abs shows up as an imaginary part. The defint values come from
-// mpmath.quad. Inside the tests, ok(F,p) repeats that check: derivative
-// equal to F at x = p and a real value of the antiderivative there.
+// mpmath.quad. Inside the tests, ok3(F,p,q,r) repeats that check: derivative
+// equal to F at x = p, q, r and a real value of the antiderivative there. It is
+// abs(float(...)), not float(abs(...)): the exact abs of a constant with
+// nested radicals can take forever (numerator and rationalize of each part).
 const helpers = [
-  'chk(F,p)=float(abs(eval(d(integral(F,x),x)-F,x,p)))<10^(-9)',
+  'chk(F,p)=abs(float(eval(d(integral(F,x),x)-F,x,p)))<10^(-9)',
   '',
-  're(F,p)=abs(imag(float(eval(integral(F,x),x,p))))<10^(-12)',
+  // the same for an antiderivative G found once, plus a real value at p
+  'okat(G,F,p)=and(abs(float(eval(d(G,x)-F,x,p)))<10^(-9),abs(imag(float(eval(G,x,p))))<10^(-12))',
   '',
-  'ok(F,p)=and(chk(F,p),re(F,p))',
+  'all3(G,F,p,q,r)=and(okat(G,F,p),okat(G,F,q),okat(G,F,r))',
   '',
-  'ok3(F,p,q,r)=and(ok(F,p),ok(F,q),ok(F,r))',
+  'ok3(F,p,q,r)=all3(integral(F,x),F,p,q,r)',
   '',
   'near(u,v)=abs(float(u)-v)<10^(-9)',
   '',
@@ -71,9 +74,9 @@ run_test([
   'ok3(x*sqrt(3-2*x-x^2),-2,0,1/2)',
   '1',
 
-  // float coefficients
-  'ok3(1/sqrt(x^2+2.0*x+5.0),-3,0,2)',
-  '1',
+  // inside float() the integral is found exactly and converted afterwards
+  'float(defint(1/sqrt(x^2+2*x+5),x,0,2))',
+  '0.713551...',
 
   'near(defint(1/sqrt(x^2+2*x+5),x,0,2),0.713551392227506)',
   '1',
@@ -155,31 +158,31 @@ run_test([
   'G=integral(1/sqrt(x^2+b*x+c),x)',
   '',
 
-  'float(abs(eval(subst(3,b,subst(7,c,d(G,x)-1/sqrt(x^2+b*x+c))),x,1/2)))<10^(-9)',
+  'abs(float(eval(subst(3,b,subst(7,c,d(G,x)-1/sqrt(x^2+b*x+c))),x,1/2)))<10^(-9)',
   '1',
 
-  'float(abs(eval(subst(3,b,subst(-7,c,d(G,x)-1/sqrt(x^2+b*x+c))),x,4)))<10^(-9)',
+  'abs(float(eval(subst(3,b,subst(-7,c,d(G,x)-1/sqrt(x^2+b*x+c))),x,4)))<10^(-9)',
   '1',
 
   'assume(a>0)',
   '',
 
   'integral(1/sqrt(a*x^2+1),x)',
-  'log((a*x^2+1)^(1/2)+a^(1/2)*x)/(a^(1/2))',
+  'log(abs((a*x^2+1)^(1/2)+a^(1/2)*x))/(a^(1/2))',
 
   'G=integral(1/sqrt(a*x^2+b*x+c),x)',
   '',
 
-  'float(abs(eval(subst(2,a,subst(3,b,subst(7,c,d(G,x)-1/sqrt(a*x^2+b*x+c)))),x,1/2)))<10^(-9)',
+  'abs(float(eval(subst(2,a,subst(3,b,subst(7,c,d(G,x)-1/sqrt(a*x^2+b*x+c)))),x,1/2)))<10^(-9)',
   '1',
 
-  'float(abs(eval(subst(2,a,subst(3,b,subst(7,c,d(G,x)-1/sqrt(a*x^2+b*x+c)))),x,-3)))<10^(-9)',
+  'abs(float(eval(subst(2,a,subst(3,b,subst(7,c,d(G,x)-1/sqrt(a*x^2+b*x+c)))),x,-3)))<10^(-9)',
   '1',
 
   'G=integral(x/sqrt(a*x^2+b*x+c),x)',
   '',
 
-  'float(abs(eval(subst(2,a,subst(3,b,subst(7,c,d(G,x)-x/sqrt(a*x^2+b*x+c)))),x,1/2)))<10^(-9)',
+  'abs(float(eval(subst(2,a,subst(3,b,subst(7,c,d(G,x)-x/sqrt(a*x^2+b*x+c)))),x,1/2)))<10^(-9)',
   '1',
 
   'forget()',
@@ -194,10 +197,10 @@ run_test([
   'G=integral(1/sqrt(a*x^2+b*x+c),x)',
   '',
 
-  'float(abs(eval(subst(-2,a,subst(3,b,subst(7,c,d(G,x)-1/sqrt(a*x^2+b*x+c)))),x,1/2)))<10^(-9)',
+  'abs(float(eval(subst(-2,a,subst(3,b,subst(7,c,d(G,x)-1/sqrt(a*x^2+b*x+c)))),x,1/2)))<10^(-9)',
   '1',
 
-  'float(abs(imag(eval(subst(-2,a,subst(3,b,subst(7,c,G))),x,1/2))))<10^(-12)',
+  'abs(imag(float(eval(subst(-2,a,subst(3,b,subst(7,c,G))),x,1/2))))<10^(-12)',
   '1',
 
   'forget()',
@@ -205,6 +208,36 @@ run_test([
 
   'integral(1/sqrt(a*x^2+b*x+c),x)',
   'Stop: integral: sorry, could not find a solution',
+
+  // arctan or log by the sign of 4*a*c-b^2, which is not known
+  'integral(1/(a*x^2+b*x+c),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'integral(1/(a*x^2+b*x+c)^2,x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  // 4*2*(a^2/2+1)-(2*a)^2 = 8 whatever a is: arctan
+  'G=integral(1/(2*x^2+2*a*x+a^2/2+1),x)',
+  '',
+
+  'abs(float(eval(subst(3,a,d(G,x)-1/(2*x^2+2*a*x+a^2/2+1)),x,1/2)))<10^(-9)',
+  '1',
+
+  'abs(float(eval(subst(-3,a,d(G,x)-1/(2*x^2+2*a*x+a^2/2+1)),x,1/2)))<10^(-9)',
+  '1',
+
+  // a, c positive: the sign of 4*a*c-b^2 is still open
+  'assume(a>0)',
+  '',
+
+  'assume(c>0)',
+  '',
+
+  'integral(1/(a*x^2+b*x+c),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'forget()',
+  '',
 ]);
 
 // 2. rational functions of sin, cos, tan
@@ -213,14 +246,14 @@ run_test([
 
   // t = tan(x/2): 2/(1+2*t-t^2), roots 1+sqrt(2) and 1-sqrt(2)
   'integral(1/(sin(x)+cos(x)),x)',
-  'log(abs(-1+2^(1/2)+tan(1/2*x)))/(2^(1/2))-log(abs(-1-2^(1/2)+tan(1/2*x)))/(2^(1/2))',
+  'log(abs(1-2^(1/2)-tan(1/2*x)))/(2^(1/2))-log(abs(1+2^(1/2)-tan(1/2*x)))/(2^(1/2))',
 
   'ok3(1/(sin(x)+cos(x)),-1,0,14/5)',
   '1',
 
   // 1/(a+b*cos(x)) with |a| < |b|: 1/(4-t^2)
   'integral(1/(3+5*cos(x)),x)',
-  '1/4*log(abs(2+tan(1/2*x)))-1/4*log(abs(-2+tan(1/2*x)))',
+  '-1/4*log(abs(2-tan(1/2*x)))+1/4*log(abs(2+tan(1/2*x)))',
 
   'ok3(1/(3+5*cos(x)),0,5/2,-5/2)',
   '1',
@@ -232,7 +265,7 @@ run_test([
   '1',
 
   'integral(1/(1+2*cos(x)),x)',
-  'log(abs(3^(1/2)+tan(1/2*x)))/(3^(1/2))-log(abs(-3^(1/2)+tan(1/2*x)))/(3^(1/2))',
+  '-log(abs(3^(1/2)-tan(1/2*x)))/(3^(1/2))+log(abs(3^(1/2)+tan(1/2*x)))/(3^(1/2))',
 
   'ok3(1/(1+2*cos(x)),0,5/2,-5/2)',
   '1',
@@ -263,14 +296,14 @@ run_test([
 
   // -1/((2*t+1)*(t-2))
   'integral(1/(3*sin(x)+4*cos(x)),x)',
-  '1/5*log(abs(1+2*tan(1/2*x)))-1/5*log(abs(-2+tan(1/2*x)))',
+  '1/5*log(abs(1+2*tan(1/2*x)))-1/5*log(abs(2-tan(1/2*x)))',
 
   'ok3(1/(3*sin(x)+4*cos(x)),0,-2,3)',
   '1',
 
   // (1+t^2)/2
   'integral(1/(1+cos(x))^2,x)',
-  '1/2*tan(1/2*x)+1/6*tan(1/2*x)^3',
+  '1/6*tan(1/2*x)^3+1/2*tan(1/2*x)',
 
   // 1-cos(x) in disguise
   'ok3(sin(x)^2/(1+cos(x)),0,1,2)',
@@ -283,6 +316,25 @@ run_test([
   '1',
 
   'ok3(cos(x)/(2-cos(x)),0,1,-2)',
+  '1',
+
+  'ok3(1/(2+cos(x))^2,0,1,-2)',
+  '1',
+
+  'ok3((sin(x)+2*cos(x))/(3*sin(x)+cos(x)),0,1,2)',
+  '1',
+
+  // a symbol as coefficient: the discriminant 4+4*a^2 is positive anyway
+  'G=integral(1/(sin(x)+a*cos(x)),x)',
+  '',
+
+  'abs(float(eval(subst(2,a,d(G,x)-1/(sin(x)+a*cos(x))),x,1/2)))<10^(-9)',
+  '1',
+
+  'abs(float(eval(subst(-2,a,d(G,x)-1/(sin(x)+a*cos(x))),x,2)))<10^(-9)',
+  '1',
+
+  'abs(imag(float(eval(subst(2,a,G),x,3))))<10^(-12)',
   '1',
 
   'near(defint(1/(sin(x)+cos(x)),x,0,1),0.776150000059282)',
@@ -300,22 +352,24 @@ run_test([
   ...helpers,
 
   'integral(1/cos(x)^4,x)',
-  'tan(x)+1/3*tan(x)^3',
+  '1/3*tan(x)^3+tan(x)',
 
   'integral(1/sin(x)^4,x)',
-  '-1/tan(x)-1/(3*tan(x)^3)',
+  '-1/(3*tan(x)^3)-1/tan(x)',
 
+  // u^3/(1+u^2): tan(x)^2/2-log(1+tan(x)^2)/2, which simplify writes with
+  // cos; the number -1/2 it leaves behind is a constant of integration
   'integral(tan(x)^3,x)',
-  '-1/2*log(1+tan(x)^2)+1/2*tan(x)^2',
+  'log(abs(cos(x)))+1/(2*cos(x)^2)',
 
   'integral(tan(x)^4,x)',
-  'x-tan(x)+1/3*tan(x)^3',
+  'x+1/3*tan(x)^3-tan(x)',
 
   'integral(1/(1+sin(x)^2),x)',
   'arctan(2^(1/2)*tan(x))/(2^(1/2))',
 
   'integral(1/(1+tan(x)),x)',
-  '1/2*x+1/2*log(abs(1+tan(x)))-1/4*log(1+tan(x)^2)',
+  '1/2*x+1/2*log(abs(1+tan(x)))+1/2*log(abs(cos(x)))',
 
   'ok3(1/(1+tan(x)),0,1,2)',
   '1',
@@ -333,6 +387,21 @@ run_test([
   '1',
 
   'ok3(1/cos(x)^6,0,1,2)',
+  '1',
+
+  'ok3(tan(x)^5,0,1,2)',
+  '1',
+
+  'integral(tan(x)^6,x)',
+  '-x-1/3*tan(x)^3+1/5*tan(x)^5+tan(x)',
+
+  'integral(1/(sin(x)^2*cos(x)^4),x)',
+  '-1/tan(x)+1/3*tan(x)^3+2*tan(x)',
+
+  'ok3(sin(x)/(sin(x)+cos(x)),0,1,2)',
+  '1',
+
+  'ok3(sin(x)^4/(1+cos(x)^2),0,1,2)',
   '1',
 
   'ok3(tan(2*x)^3,0,1/4,1)',
@@ -384,10 +453,10 @@ run_test([
   '1/3*log(abs(x+1))-1/6*log(x^2-x+1)+arctan(2*x/(3^(1/2))-1/(3^(1/2)))/(3^(1/2))',
 
   'integral(1/(x^3-1),x)',
-  '1/3*log(abs(x-1))-1/6*log(x^2+x+1)-arctan(2*x/(3^(1/2))+1/3^(1/2))/(3^(1/2))',
+  '1/3*log(abs(-x+1))-1/6*log(x^2+x+1)-1/3*3^(1/2)*arctan(2*x/(3^(1/2))+1/3^(1/2))',
 
   'integral(1/(x^3+8),x)',
-  '1/12*log(abs(x+2))-1/24*log(x^2-2*x+4)+arctan(x/(3^(1/2))-1/(3^(1/2)))/(4*3^(1/2))',
+  '1/12*log(abs(x+2))-1/24*log(x^2-2*x+4)+1/12*3^(1/2)*arctan(x/(3^(1/2))-1/(3^(1/2)))',
 
   'ok3(1/(x^3+1),-3,0,2)',
   '1',
@@ -415,6 +484,40 @@ run_test([
 
   'near(defint(1/(x^3-1),x,2,3),0.0753893510232044)',
   '1',
+
+  // symbols: the real cube root needs the sign of a*b
+  'assume(a>0)',
+  '',
+
+  'assume(b>0)',
+  '',
+
+  'G=integral(1/(a+b*x^3),x)',
+  '',
+
+  'abs(float(eval(subst(2,a,subst(3,b,d(G,x)-1/(a+b*x^3))),x,-2)))<10^(-9)',
+  '1',
+
+  'abs(imag(float(eval(subst(2,a,subst(3,b,G)),x,-2))))<10^(-12)',
+  '1',
+
+  'forget(a)',
+  '',
+
+  'assume(a<0)',
+  '',
+
+  'G=integral(1/(a+b*x^3),x)',
+  '',
+
+  'abs(float(eval(subst(-2,a,subst(3,b,d(G,x)-1/(a+b*x^3))),x,-2)))<10^(-9)',
+  '1',
+
+  'abs(imag(float(eval(subst(-2,a,subst(3,b,G)),x,-2))))<10^(-12)',
+  '1',
+
+  'forget()',
+  '',
 
   // arctan is odd: the minus sign comes out when every leading sign is one
   'arctan(-x)',
@@ -556,6 +659,23 @@ run_test([
 
   // two different arguments
   'integral(1/(sin(x)+cos(2*x)+3),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  // a perfect square under the root is 1/abs(x+1)
+  'integral(1/sqrt(x^2+2*x+1),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  // no table form after the shift
+  'integral(1/(x*sqrt(x^2+2*x+5)),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'integral(exp(x)/sqrt(x^2+2*x+5),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'integral(exp(x)/(1+sin(x)),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'integral(sqrt(sin(x)),x)',
   'Stop: integral: sorry, could not find a solution',
 
   // a cubic under the root is elliptic
