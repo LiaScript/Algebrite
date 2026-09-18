@@ -38,11 +38,14 @@ import { Find } from '../runtime/find';
 import { symbol } from "../runtime/symbol";
 import { equal, length } from '../sources/misc';
 import { absValFloat } from './abs';
+import { constantSign, hasSymbol } from './assume';
 import { integer, nativeInt } from './bignum';
 import { Eval_predicate } from './eval';
 import { zzfloat } from './float';
 import { guess } from './guess';
+import { isLogical } from './logic_simplify';
 import { multiply } from './multiply';
+import { simplify } from './simplify';
 
 const DEBUG_IS = false;
 
@@ -112,6 +115,21 @@ export function isZeroLikeOrNonZeroLikeOrUndetermined(
   // a "true"
   if (isNumericAtomOrTensor(evalledArgument)) {
     return true;
+  }
+
+  // an undecided comparison, and/or/not: floats do not decide it either,
+  // and simplify, gcd and factor stop or loop on its float coefficients
+  if (isLogical(evalledArgument)) {
+    return null;
+  }
+
+  // a real constant: nonzero with a certified sign, zero with a proof
+  // (simplify), never by its double: 2*sin(1)*cos(1)-sin(2) is 1e-17 there
+  if (iscons(evalledArgument) && !hasSymbol(evalledArgument)) {
+    const sign = constantSign(evalledArgument);
+    if (sign !== undefined) {
+      return sign !== 0 ? true : isZeroAtomOrTensor(simplify(evalledArgument)) ? false : null;
+    }
   }
 
   // if we are here we are in the case of value that

@@ -137,19 +137,13 @@ run_test([
 ]);
 
 run_test([
-  // the number comes out of 2*y+2*z. bake, the display step for polynomials
-  // in x, multiplies it back in, so it shows with bake=0 only
-  'bake=0',
-  '',
-
+  // the number comes out of 2*y+2*z. The display step for polynomials in x
+  // (bake) used to multiply it back in: (2*y+2*z)*x
   'factor(2*x*y+2*x*z)',
   '2*x*(y+z)',
 
   'factor(3*x*y^2+3*x*z)',
   '3*x*(z+y^2)',
-
-  'bake=1',
-  '',
 ]);
 
 // irreducible polynomials stay as they are
@@ -223,13 +217,13 @@ run_test([
   'x*(y-1)*(y+1)',
 
   'factor(8*x*y^2*z+16*y*z)',
-  '8*y*z*(x*y+2)',
+  '8*y*z*(2+x*y)',
 
   'factor(-108*b^3*z-27*b^3-864*b^2*z-216*b^2-2304*b*z-576*b-2048*z-512)',
-  '-(3*b+8)^3*(4*z+1)',
+  '-(4*z+1)*(8+3*b)^3',
 
   'factor(10*w^2*x*z+15*w*x^2*z^2+10*w*x*z^2+15*x^2*z^3)',
-  '5*x*z*(w+z)*(2*w+3*x*z)',
+  '5*x*z*(z+w)*(2*w+3*x*z)',
 
   'factor((x+1)*(x+2)*(y+3)*(y+4))',
   '(x+1)*(x+2)*(y+3)*(y+4)',

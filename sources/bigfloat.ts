@@ -68,8 +68,17 @@ class Fixed {
   readonly S: Big;
   private piCache?: Big;
 
-  constructor(readonly P: number) {
+  // maxDigits bounds the size of exp, integer powers and series terms:
+  // certifiedSign runs unasked, exp(exp(100)) or erf(1000) must fail
+  // there instead of filling the memory
+  constructor(readonly P: number, private readonly maxDigits = Infinity) {
     this.S = bigInt(10).pow(P);
+  }
+
+  private checkSize(digits: number) {
+    if (!(digits <= this.maxDigits)) {
+      throw new Error('out of reach');
+    }
   }
 
   fromRatio(a: Big, b: Big): Big {
@@ -110,6 +119,7 @@ class Fixed {
     if (n < 0) {
       return this.div(this.S, this.powInt(a, -n));
     }
+    this.checkSize(n * Math.log10(Math.abs(this.toNumber(a)) || 1));
     let result = this.S;
     for (let base = a; n > 0; n = Math.floor(n / 2)) {
       if (n % 2 === 1) {
@@ -167,6 +177,7 @@ class Fixed {
 
   // exp(x) = exp(x/2^k)^(2^k), the inner one from its series
   exp(x: Big): Big {
+    this.checkSize(Math.abs(this.toNumber(x)) * Math.LOG10E);
     const k = Math.max(0, Math.ceil(Math.log2(Math.abs(this.toNumber(x)) + 1)) + 8);
     const r = x.divide(bigInt(2).pow(k));
     let term = this.S;
@@ -253,6 +264,7 @@ class Fixed {
   // for large x is caught by the precision check of bigFloat
   erf(x: Big): Big {
     const x2 = this.mul(x, x);
+    this.checkSize(this.toNumber(x2) * Math.LOG10E); // the largest term
     let term = x;
     let sum = x;
     for (let k = 1; !term.isZero(); k++) {
@@ -388,6 +400,9 @@ class Fixed {
     d: (k: number) => number,
     alternating: boolean
   ): Big {
+    // the largest term: about exp(x), with step = x^2 in the alternating ones
+    const size = Math.abs(this.toNumber(step));
+    this.checkSize((alternating ? Math.sqrt(size) : size) * Math.LOG10E);
     let term = first;
     let sum = first.divide(d(0));
     for (let k = 1; !term.isZero(); k++) {
@@ -655,4 +670,33 @@ export function bigFloat(p: U, n: number): U {
     }
     P *= 2;
   }
+}
+
+// The sign of an exact real constant, for decisions (abs, sgn, the order of
+// two bounds): two evaluations 25 digits apart must agree to 12 significant
+// digits, at 30, then 60, then 120 digits. 1 or -1 when they do; 0 when p
+// can be evaluated but not told from zero that way (an exact zero in
+// disguise, sin(10^300)); undefined when there is no real evaluation here
+// (unsupported function, a complex intermediate value: roots and logs of
+// negative numbers throw).
+// ponytail: agreement of two runs, no interval arithmetic. Wrong only if both
+// runs are garbage and still agree to 12 digits.
+export function certifiedSign(p: U): number | undefined {
+  let result: number | undefined;
+  for (const P of [30, 60, 120]) {
+    let low: Big;
+    let high: Big;
+    try {
+      low = evaluate(p, new Fixed(P, 1000));
+      high = evaluate(p, new Fixed(P + GUARD, 1000));
+    } catch (e) {
+      continue; // may be the precision: 1-sin(10^40)^2 under a root
+    }
+    result = 0;
+    const gap = low.multiply(bigInt(10).pow(GUARD)).subtract(high).abs();
+    if (!high.isZero() && gap.multiply(1e12).lt(high.abs())) {
+      return high.isNegative() ? -1 : 1;
+    }
+  }
+  return result;
 }

@@ -25,10 +25,11 @@ type FPoly = number[];
 const ZERO = bigInt.zero;
 const ONE = bigInt.one;
 
-// ponytail: recombination is exponential in the number of modular factors;
-// above this many the polynomial is returned unfactored (van Hoeij's lattice
-// method would lift the limit)
-const MAX_MODULAR_FACTORS = 22;
+// ponytail: recombination is exponential when a factor needs many modular
+// factors (an irreducible polynomial that splits modulo every prime); after
+// this many products have been tried the polynomial is returned unfactored
+// (van Hoeij's lattice method would lift the limit)
+const MAX_TRIALS = 100000;
 
 const PRIMES = [
   3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73,
@@ -100,7 +101,13 @@ export function zDivExact(a: ZPoly, b: ZPoly): ZPoly | null {
   return r.every((c) => c.isZero()) ? q : null;
 }
 
-const zContent = (a: ZPoly): Z => a.reduce((g, c) => bigInt.gcd(g, c), ZERO);
+// the gcd of two numbers with thousands of digits takes its time, and
+// nothing inside the library call can be interrupted
+const zContent = (a: ZPoly): Z =>
+  a.reduce((g, c) => {
+    check_esc_flag();
+    return g.equals(1) ? g : bigInt.gcd(g, c);
+  }, ZERO);
 
 // content removed, leading coefficient positive
 function zPrimitive(a: ZPoly): ZPoly {
@@ -119,6 +126,7 @@ function zPseudoRem(a: ZPoly, b: ZPoly): ZPoly {
   let r = a.slice();
   const lb = zLc(b);
   while (r.length >= b.length) {
+    check_esc_flag();
     const lr = zLc(r);
     const shift = r.length - b.length;
     r = r.map((c, i) =>
@@ -148,6 +156,15 @@ function zGcd(a: ZPoly, b: ZPoly): ZPoly {
 function squareFree(f: ZPoly): [ZPoly, number][] {
   const out: [ZPoly, number][] = [];
   const df = zDeriv(f);
+  // Square-free modulo one prime that keeps the degree means square-free:
+  // the usual case, and it saves the gcd over Z, whose coefficients grow
+  // (12 s at degree 128).
+  for (const p of PRIMES) {
+    const fp = fFromZ(f, p);
+    if (fp.length === f.length && fGcd(fp, fFromZ(df, p), p).length === 1) {
+      return [[f, 1]];
+    }
+  }
   const c = zGcd(f, df);
   let w = zDivExact(f, c);
   let y = zDivExact(df, c);
@@ -435,13 +452,17 @@ function* subsets(n: number, k: number): Generator<number[]> {
   }
 }
 
-function recombine(F: ZPoly, lifted: ZPoly[], m: Z): ZPoly[] {
+function recombine(F: ZPoly, lifted: ZPoly[], m: Z): ZPoly[] | undefined {
   const out: ZPoly[] = [];
   let rest = lifted;
   let k = 1;
+  let trials = 0;
   search: while (2 * k <= rest.length) {
     for (const idx of subsets(rest.length, k)) {
       check_esc_flag();
+      if (++trials > MAX_TRIALS) {
+        return undefined;
+      }
       // cheap test first: the constant term has to divide F(0)
       const c0 = symmetric(
         [idx.reduce((c, i) => c.multiply(rest[i][0] || ZERO).mod(m), ONE)],
@@ -501,7 +522,7 @@ function factorSquareFree(f: ZPoly): ZPoly[] | undefined {
       break;
     }
   }
-  if (!best || best.count > MAX_MODULAR_FACTORS) {
+  if (!best) {
     return undefined;
   }
 
@@ -524,9 +545,44 @@ function factorSquareFree(f: ZPoly): ZPoly[] | undefined {
 
   const lifted = henselLift(F, modular, p, steps);
   // back from y = lc*x
-  return recombine(F, lifted, m).map((G) =>
+  return recombine(F, lifted, m)?.map((G) =>
     zPrimitive(G.map((c, i) => c.multiply(lc.pow(i))))
   );
+}
+
+// f(x) = g(x^p): the irreducible factors of f are those of the h(x^p), h an
+// irreducible factor of g. x^120-1 has more than 40 factors modulo every
+// prime, which recombination cannot handle; y^2-1 has two, and so on down.
+function factorSparse(f: ZPoly): ZPoly[] | undefined {
+  const gcd2 = (a: number, b: number): number => (b ? gcd2(b, a % b) : a);
+  const k = f.reduce((g, c, i) => (c.isZero() ? g : gcd2(g, i)), 0);
+  if (k < 2) {
+    return factorSquareFree(f);
+  }
+  let p = 2;
+  while (k % p) {
+    p++;
+  }
+  const inner = factorSparse(f.filter((_, i) => i % p === 0));
+  if (!inner) {
+    return undefined;
+  }
+  const out: ZPoly[] = [];
+  for (const h of inner) {
+    const inflated: ZPoly = [];
+    h.forEach((c, i) => {
+      inflated[i * p] = c;
+    });
+    for (let i = 0; i < inflated.length; i++) {
+      inflated[i] = inflated[i] || ZERO;
+    }
+    const parts = factorSquareFree(inflated);
+    if (!parts) {
+      return undefined;
+    }
+    out.push(...parts);
+  }
+  return out;
 }
 
 // smaller degree first, then the bigger coefficient from the top
@@ -564,7 +620,7 @@ export function factorZ(
     return { content, factors };
   }
   for (const [g, mult] of squareFree(f)) {
-    const irreducible = factorSquareFree(g);
+    const irreducible = factorSparse(g);
     if (!irreducible) {
       return undefined;
     }
