@@ -128,7 +128,7 @@ run_test([
 run_test([
   // break point at 1: a_0 = (pi^2+1)/pi
   'fouriercoeff(abs(x-1),x,0)',
-  '[1/pi+pi,0]',
+  '[pi+1/pi,0]',
 
   'abs(float(fouriercoeff(abs(x-1),x,1))-[-0.980586903339,-1.17231683917]) < 10^(-9)',
   '1',
@@ -194,7 +194,7 @@ run_test([
 
   // a_k = 2(-1)^k sinh(pi)/(pi(1+k^2)) at k = 3: checked against the numeric index
   'simplify(subst(3,k,fouriercoeff(exp(x),x,k))-fouriercoeff(exp(x),x,3))',
-  '[0,0]',
+  '0',
 
   'fouriercoeff(x,x,k,1)',
   '[0,-2*(-1)^k/(k*pi)]',
@@ -225,7 +225,7 @@ run_test([
   '-4*cos(x)+cos(2*x)-4/9*cos(3*x)+1/3*pi^2',
 
   'fourierseries(abs(x),x,3)',
-  '-4*cos(x)/pi-4*cos(3*x)/(9*pi)+1/2*pi',
+  '1/2*pi-4*cos(x)/pi-4*cos(3*x)/(9*pi)',
 
   'fourierseries(sgn(x),x,4)',
   '4*sin(x)/pi+4*sin(3*x)/(3*pi)',
@@ -254,10 +254,10 @@ run_test([
   '3/4*cos(x)+1/4*cos(3*x)',
 
   'fourierseries(cos(x/2),x,2)',
-  '4*cos(x)/(3*pi)-4*cos(2*x)/(15*pi)+2/pi',
+  '2/pi+4*cos(x)/(3*pi)-4*cos(2*x)/(15*pi)',
 
   'fourierseries(abs(sin(x)),x,4)',
-  '-4*cos(2*x)/(3*pi)-4*cos(4*x)/(15*pi)+2/pi',
+  '2/pi-4*cos(2*x)/(3*pi)-4*cos(4*x)/(15*pi)',
 
   // a_0/2 = sinh(pi)/pi = 3.67607791037; at x = 0.5 the sum to n = 2 is
   // 3.676 - 3.676 cos(.5) + 3.676 sin(.5) + 1.4704 cos(1) - 2.9409 sin(1) = 0.5322487
@@ -269,21 +269,21 @@ run_test([
   '2*sin(t)-sin(2*t)',
 
   'fourierseries(t*y,t,2)',
-  '2*y*sin(t)-y*sin(2*t)',
+  '(2*sin(t)-sin(2*t))*y',
 ]);
 
 // ------------------------------------------------------------ other periods
 run_test([
   // half period L = 1: b_k = 2(-1)^(k+1)/(k pi)
   'fourierseries(x,x,2,1)',
-  '2*sin(pi*x)/pi-sin(2*pi*x)/pi',
+  '-sin(2*pi*x)/pi+2*sin(pi*x)/pi',
 
   // L = 2: a_0/2 = 4/3, a_k = 16(-1)^k/(k^2 pi^2)
   'fourierseries(x^2,x,2,2)',
   '4/3-16*cos(1/2*pi*x)/(pi^2)+4*cos(pi*x)/(pi^2)',
 
   'fourierseries(abs(x),x,3,1)',
-  '1/2-4*cos(pi*x)/(pi^2)-4*cos(3*pi*x)/(9*pi^2)',
+  '1/2-4*cos(3*pi*x)/(9*pi^2)-4*cos(pi*x)/(pi^2)',
 
   // L = pi given explicitly
   'fourierseries(x,x,2,pi)',
@@ -294,7 +294,7 @@ run_test([
   '1/2-sin(2*pi*x)/pi-sin(4*pi*x)/(2*pi)',
 
   'fourierseries(x,x,2,[0,2*pi])',
-  '-2*sin(x)-sin(2*x)+pi',
+  'pi-2*sin(x)-sin(2*x)',
 
   // x^2 on [0,2 pi]: a_0/2 = 4 pi^2/3, a_k = 4/k^2, b_k = -4 pi/k
   'fourierseries(x^2,x,2,[0,2*pi])',
@@ -312,7 +312,7 @@ run_test([
 
   // symbolic half period
   'fourierseries(x,x,2,L)',
-  '2*L*sin(pi*x/L)/pi-L*sin(2*pi*x/L)/pi',
+  '-L*sin(2*pi*x/L)/pi+2*L*sin(pi*x/L)/pi',
 
   // abs needs to know that 0 lies inside of [-L,L]
   'fouriercoeff(abs(x),x,1,L)',
@@ -345,10 +345,10 @@ run_test([
   'fourierseries(x,x,n)',
 
   'fourierseries(x,x,-1)',
-  'Stop: fourierseries: the number of terms must be a nonnegative integer',
+  'Stop: fourierseries: the number of terms must be an integer from 0 to 200',
 
   'fourierseries(x,x,3/2)',
-  'Stop: fourierseries: the number of terms must be a nonnegative integer',
+  'Stop: fourierseries: the number of terms must be an integer from 0 to 200',
 
   'fourierseries(x,x,2,[1,1])',
   'Stop: fourierseries: the period must not be zero',
@@ -405,7 +405,7 @@ run_test([
   'pi^(1/2)*exp(-1/4*w^2)',
 
   'fourier(exp(-2*x^2),x,w)',
-  '2^(1/2)*pi^(1/2)*exp(-1/8*w^2)/2',
+  'pi^(1/2)*exp(-1/8*w^2)/(2^(1/2))',
 
   'fourier(exp(-t^2/2),t,u)',
   '2^(1/2)*pi^(1/2)*exp(-1/2*u^2)',
@@ -415,13 +415,13 @@ run_test([
 
   // two sided exponential: 2a/(a^2+w^2)
   'fourier(exp(-abs(x)),x,w)',
-  '2/(w^2+1)',
+  '2/(1+w^2)',
 
   'fourier(exp(-3*abs(x)),x,w)',
-  '6/(w^2+9)',
+  '6/(9+w^2)',
 
   'fourier(exp(-abs(2*x)),x,w)',
-  '4/(w^2+4)',
+  '4/(4+w^2)',
 
   // Lorentzian: pi/a exp(-a abs(w))
   'fourier(1/(x^2+1),x,w)',
@@ -435,7 +435,7 @@ run_test([
 
   // completed square (x+1)^2+4: shifted by -1
   'fourier(1/(x^2+2*x+5),x,w)',
-  '1/2*pi*exp(i*w-2*abs(w))',
+  '1/2*pi*exp(-2*abs(w)+i*w)',
 
   // causal decay: 1/(a+i w)
   'fourier(heaviside(x)*exp(-x),x,w)',
@@ -447,15 +447,15 @@ run_test([
   'fourier(heaviside(x)*x*exp(-x),x,w)',
   '1/((1+i*w)^2)',
 
-  // anticausal
+  // anticausal: 1/(1-i w), which the evaluator prints with a real denominator
   'fourier(heaviside(-x)*exp(x),x,w)',
-  '1/(1-i*w)',
+  '1/(1+w^2)+i*w/(1+w^2)',
 
   'fourier(sgn(x),x,w)',
   '-2*i/w',
 
   'fourier(heaviside(x),x,w)',
-  '-i/w+pi*dirac(w)',
+  'pi*dirac(w)-i/w',
 
   // principal value: 1/x <-> -i pi sgn(w)
   'fourier(1/x,x,w)',
@@ -496,14 +496,14 @@ run_test([
   '3+2*pi^(1/2)*exp(-1/4*w^2)',
 
   'fourier(a*exp(-abs(x))+b,x,w)',
-  '2*a/(w^2+1)+2*b*pi*dirac(w)',
+  '2*a/(1+w^2)+2*b*pi*dirac(w)',
 
   // x^n f(x) -> i^n d^n F/dw^n
   'fourier(x*exp(-x^2),x,w)',
   '-1/2*i*pi^(1/2)*w*exp(-1/4*w^2)',
 
   'fourier(x^2*exp(-x^2),x,w)',
-  '1/2*pi^(1/2)*exp(-1/4*w^2)-1/4*pi^(1/2)*w^2*exp(-1/4*w^2)',
+  '-1/4*pi^(1/2)*w^2*exp(-1/4*w^2)+1/2*pi^(1/2)*exp(-1/4*w^2)',
 
   'fourier(x/(x^2+1),x,w)',
   '-i*pi*exp(-abs(w))*sgn(w)',
@@ -522,33 +522,33 @@ run_test([
   'pi^(1/2)*exp(-1/4*w^2-i*w)',
 
   'fourier(exp(-abs(x-2)),x,w)',
-  '2*exp(-2*i*w)/(w^2+1)',
+  '2*exp(-2*i*w)/(1+w^2)',
 
   'fourier(heaviside(x-1)*exp(-x),x,w)-exp(-1-i*w)/(1+i*w)',
   '0',
 
   // modulation exp(i c x) f(x) -> F(w-c)
   'fourier(exp(3*i*x)*exp(-x^2),x,w)',
-  'pi^(1/2)*exp(-1/4*w^2+3/2*w-9/4)',
+  'pi^(1/2)*exp(-9/4+3/2*w-1/4*w^2)',
 
   'fourier(exp(2*i*x),x,w)',
-  '2*pi*dirac(w-2)',
+  '2*pi*dirac(2-w)',
 
   'fourier(exp(2*i*x)*exp(-abs(x)),x,w)',
-  '2/(w^2-4*w+5)',
+  '2/(5-4*w+w^2)',
 
   'fourier(cos(2*x),x,w)',
-  'pi*dirac(w-2)+pi*dirac(w+2)',
+  'pi*dirac(2+w)+pi*dirac(2-w)',
 
   'fourier(sin(2*x),x,w)',
-  '-i*pi*dirac(w-2)+i*pi*dirac(w+2)',
+  'i*pi*dirac(2+w)-i*pi*dirac(2-w)',
 
   'fourier(cos(c*x),x,w)',
-  'pi*dirac(c-w)+pi*dirac(c+w)',
+  'pi*dirac(c+w)+pi*dirac(c-w)',
 
-  // 1/((w-3)^2+1) + 1/((w+3)^2+1)
+  // 1/((w-3)^2+1) + 1/((w+3)^2+1) = (2 w^2+20)/((w^2+10)^2-36 w^2)
   'fourier(cos(3*x)*exp(-abs(x)),x,w)',
-  '1/(w^2-6*w+10)+1/(w^2+6*w+10)',
+  '2*(10+w^2)/(100-16*w^2+w^4)',
 
   'fourier(heaviside(x)*exp(-x)*sin(2*x),x,w)-2/((1+i*w)^2+4)',
   '0',
@@ -571,7 +571,7 @@ run_test([
   'fourier(exp(-a*abs(x)),x,w)',
 
   'fourier(1/(x^2+a^2),x,w)',
-  'fourier(1/(a^2+x^2),x,w)',
+  'fourier(1/(x^2+a^2),x,w)',
 
   'fourier(heaviside(x)*exp(-a*x),x,w)',
   'fourier(1/2*exp(-a*x)+1/2*exp(-a*x)*sgn(x),x,w)',
@@ -611,7 +611,7 @@ run_test([
   '',
 
   'fourier(exp(b*x^2),x,w)',
-  'pi^(1/2)*exp(w^2/(4*b))/((-b)^(1/2))',
+  'exp(w^2/(4*b))*(-pi/b)^(1/2)',
 
   'forget(b)',
   '',
@@ -660,7 +660,7 @@ run_test([
   'dirac(x)',
 
   'invfourier(fourier(dirac(x-2),x,w),w,x)',
-  'dirac(x-2)',
+  'dirac(-x+2)',
 
   'invfourier(2*pi*dirac(w),w,x)',
   '1',
@@ -723,7 +723,7 @@ run_test([
   'exp(-a*abs(x))',
 
   'invfourier(fourier(1/(x^2+a^2),x,w),w,x)',
-  '1/(a^2+x^2)',
+  '1/(x^2+a^2)',
 
   'invfourier(fourier(heaviside(x)*exp(-a*x),x,w),w,x)-heaviside(x)*exp(-a*x)',
   '0',
@@ -734,6 +734,101 @@ run_test([
   // other variable names
   'invfourier(fourier(exp(-t^2),t,s),s,t)',
   'exp(-t^2)',
+]);
+
+// ------------------------------------- rational functions, more edge cases
+run_test([
+  // real poles, principal value: -pi sin(a abs(w))/a for 1/(x^2-a^2)
+  'fourier(1/(x^2-1),x,w)',
+  '-pi*sgn(w)*sin(w)',
+
+  // 1/x^2 = -d/dx 1/x -> -i w (-i pi sgn(w)) = -pi abs(w)
+  'fourier(1/x^2,x,w)',
+  '-pi*w*sgn(w)',
+
+  // poles off the real axis: one sided in w.
+  // -2 pi i exp(-w) heaviside(w), and 2 pi w exp(w) heaviside(-w)
+  'fourier(1/(x+i),x,w)',
+  '-i*pi*exp(-abs(w))-i*pi*exp(-abs(w))*sgn(w)',
+
+  'fourier(1/(x-i)^2,x,w)-2*pi*w*exp(w)*heaviside(-w)',
+  '0',
+
+  // partial fractions: ((pi exp(-abs(w)) - pi/2 exp(-2 abs(w))) - i pi sgn(w) (exp(-abs(w)) - exp(-2 abs(w))))/3
+  'F=fourier((x+1)/((x^2+1)*(x^2+4)),x,w)',
+  '',
+  'abs(float(subst(1.3,w,F))-(0.2465050717-0.2076155171*i)) < 10^(-6)',
+  '1',
+  'abs(float(subst(-0.7,w,F))-(0.3909050457+0.2617871773*i)) < 10^(-6)',
+  '1',
+
+  'invfourier(fourier(cos(3*x)*exp(-abs(x)),x,w),w,x)',
+  'exp(-abs(x))*cos(3*x)',
+
+  // a quadratic with complex coefficients: both poles above the real axis
+  'simplify(invfourier(2/((1+i*w)^2+4),w,x)-heaviside(x)*exp(-x)*sin(2*x))',
+  '0',
+
+  'fourier(exp(-abs(x))*sgn(x),x,w)',
+  '-2*i*w/(1+w^2)',
+
+  'fourier(x*exp(-abs(x)),x,w)',
+  '-4*i*w/(1+2*w^2+w^4)',
+
+  // a symbolic kink
+  'fourier(exp(-abs(x-c)),x,w)',
+  '2*exp(-i*c*w)/(1+w^2)',
+
+  'invfourier(exp(-abs(w)),w,x)',
+  '1/(pi*(x^2+1))',
+
+  'invfourier(1/(w^2+1),w,x)',
+  '1/2*exp(-abs(x))',
+
+  // sin(x)/x is the transform of a rectangle, so it transforms into one
+  'fourier(sin(x)/x,x,w)',
+  '-1/2*pi*sgn(-1+w)+1/2*pi*sgn(1+w)',
+
+  'fourier(5*dirac(x)+x*dirac(x-1),x,w)',
+  '5+exp(-i*w)',
+
+  // mixed sum: the two halves of the heaviside term only transform together
+  'fourier(exp(-x^2)+heaviside(x)*exp(-x),x,w)',
+  '1/(1+i*w)+pi^(1/2)*exp(-1/4*w^2)',
+
+  // not integrable, no distribution rule
+  'fourier(abs(x),x,w)',
+  'fourier(abs(x),x,w)',
+
+  'fourier(f(x-1),x,w)',
+  'fourier(f(x-1),x,w)',
+
+  // the kinks of abs(sin(x)) never end, two symbolic kinks cannot be ordered
+  'fourier(abs(sin(x))*exp(-abs(x)),x,w)',
+  'fourier(exp(-abs(x))*abs(sin(x)),x,w)',
+
+  'fourier(sgn(x)*sgn(x-c),x,w)',
+  'fourier(sgn(x)*sgn(x-c),x,w)',
+
+  'float(fourier(tan(x)+dirac(x),x,w))',
+  '1.0+fourier(tan(x),x,w)',
+
+  // float input and float()
+  'abs(float(fouriercoeff(0.5*x,x,1))-[0,1]) < 10^(-9)',
+  '1',
+
+  'float(fouriercoeff(x,x,2))',
+  '[0.0,-1.0]',
+
+  'float(fourier(exp(-abs(x)),x,w))',
+  '2.0/(1.0+w^2.0)',
+
+  // x does not occur: a constant in t
+  'fouriercoeff(x,t,1)',
+  '[0,0]',
+
+  'fourierseries(x,t,2)',
+  'x',
 ]);
 
 // ------------------------------- numerically against mpmath quad, two w each
@@ -864,6 +959,14 @@ run_test([
   'abs(float(subst(-0.7,w,F))-(0.07749906477+0.2912437881*i)) < 10^(-6)',
   '1',
 
+  // two kinks: both tails through laplace, defint in between
+  'F=fourier(exp(-abs(x))*exp(-abs(x-1)),x,w)',
+  '',
+  'abs(float(subst(1.3,w,F))-(0.3555817987-0.2703148476*i)) < 10^(-6)',
+  '1',
+  'abs(float(subst(-0.7,w,F))-(0.590813424+0.2156637349*i)) < 10^(-6)',
+  '1',
+
   'F=fourier(exp(-x^2+x),x,w)',
   '',
   'abs(float(subst(1.3,w,F))-(1.187457087-0.9027101011*i)) < 10^(-6)',
@@ -888,7 +991,7 @@ run_test([
 
   // (-1)^k without an assumption stays
   '1/(-1)^k',
-  '1/((-1)^k)',
+  '1/(-1)^k',
 
   '(-1)^(-3)',
   '-1',

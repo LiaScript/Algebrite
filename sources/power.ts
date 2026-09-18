@@ -58,6 +58,7 @@ import {
   isminusone,
   isminusoneovertwo,
   isnegativenumber,
+  isnegativeterm,
   isone,
   isoneovertwo,
   ispositivenumber,
@@ -284,6 +285,15 @@ function yypower(base: U, exponent: U): U {
     }
     if (isInteger(divide(subtract(exponent, Constants.one), integer(2)))) {
       return Constants.negOne;
+    }
+    // (-1)^(-k) = (-1)^k for an integer k: every integer term of the
+    // exponent gets a positive sign, 1/(-1)^k = (-1)^k, (-1)^(1-k) = (-1)^(1+k)
+    const terms = isadd(exponent) ? exponent.tail() : [exponent];
+    if (terms.some(isnegativeterm) && terms.every((t) => isInteger(t))) {
+      return power(
+        base,
+        terms.reduce((acc: U, t) => add(acc, isnegativeterm(t) ? negate(t) : t), Constants.zero)
+      );
     }
   }
 

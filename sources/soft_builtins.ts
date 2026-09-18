@@ -1,4 +1,5 @@
 import { U } from '../runtime/defs';
+import { Eval_fourier, Eval_fouriercoeff, Eval_fourierseries, Eval_invfourier } from './fourier';
 import { Eval_gamma } from './gamma';
 import {
   Eval_cholesky,
@@ -46,6 +47,10 @@ export function softBuiltin(name: string): ((p1: U) => U) | undefined {
       chebyshevt: evalChebyshev('chebyshevt'),
       chebyshevu: evalChebyshev('chebyshevu'),
       cfrac: Eval_cfrac,
+      fourier: Eval_fourier,
+      invfourier: Eval_invfourier,
+      fouriercoeff: Eval_fouriercoeff,
+      fourierseries: Eval_fourierseries,
       fibonacci: Eval_fibonacci,
       harmonic: Eval_harmonic,
       totient: Eval_totient,
