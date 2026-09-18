@@ -19,7 +19,7 @@ import {
 import { alloc_tensor } from '../runtime/alloc';
 import { stop } from '../runtime/run';
 import { Find } from '../runtime/find';
-import { collectUserSymbols, symbol } from '../runtime/symbol';
+import { collectUserSymbols, is_usr_symbol, symbol } from '../runtime/symbol';
 import { add, subtract } from './add';
 import { derivative } from './derivative';
 import { det } from './det';
@@ -109,7 +109,15 @@ function solve(p1: U): U {
   }
   // solve(eq, x, n): n names the integer of a periodic solution family
   const family = cadddr(p1) === symbol(NIL) ? undefined : Eval(cadddr(p1));
-  const sols = tidySolutions(solveWithFamily(POLY1, X1, family));
+  if (family !== undefined) {
+    if (!is_usr_symbol(family)) {
+      stop('solve: 3rd argument must be a symbol');
+    }
+    if (Find(POLY1, family)) {
+      stop(`solve: the parameter ${family} occurs in the equation`);
+    }
+  }
+  const sols = tidySolutions(solveWithFamily(POLY1, X1, family), family);
   if (sols.length === 0) {
     stop('solve: no solution');
   }

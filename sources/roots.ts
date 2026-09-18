@@ -1,11 +1,15 @@
 import { alloc_tensor } from '../runtime/alloc';
 import {
+  ARCCOS,
   caddr,
   cadr,
   car,
   Constants,
+  COS,
   DEBUG,
+  Double,
   defs,
+  isdouble,
   ismultiply,
   ispower,
   istensor,
@@ -16,18 +20,21 @@ import {
   TESTEQ,
   U
 } from '../runtime/defs';
+import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
 import { cmp_expr, sort } from '../sources/misc';
 import { absValFloat } from './abs';
-import { violatesAssumptions } from './assume';
+import { isNegative, isReal, violatesAssumptions } from './assume';
 import { add, add_all, subtract } from './add';
 import { integer, rational } from './bignum';
 import { coeff } from './coeff';
+import { cosine } from './cos';
 import { Eval } from './eval';
-import { evalExactly } from './float';
+import { evalExactly, zzfloat } from './float';
 import { factorpoly } from './factorpoly';
 import { guess } from './guess';
+import { makeList } from './list';
 import { iscomplexnumber, isnegativeterm, ispolyexpandedform, isposint, isZeroAtomOrTensor } from './is';
 import { divide, multiply, negate } from './multiply';
 import { power } from './power';
@@ -168,6 +175,13 @@ export function roots(POLY: U, X: U): U {
     return results[0];
   }
   sort(results);
+  // the trigonometric roots of a cubic read best by ascending value; any
+  // other list keeps the term order it always had
+  const values = results.map((r) => zzfloat(r));
+  if (results.some((r) => Find(r, symbol(COS))) && values.every(isdouble)) {
+    const value = new Map(results.map((r, i) => [r, (values[i] as Double).d]));
+    results.sort((a, b) => value.get(a) - value.get(b));
+  }
   const tensor = alloc_tensor(n);
   tensor.tensor.ndim = 1;
   tensor.tensor.dim[0] = n;
@@ -347,7 +361,51 @@ function _solveDegree2(A: U, B: U, C: U): U[] {
   return [result1, result2];
   }
 
+// Casus irreducibilis: three distinct real roots, for which Cardano's
+// formula needs cube roots of complex numbers. With x = t - b/3 the monic
+// cubic is t^3+p*t+q, and for 4*p^3+27*q^2 < 0 (so p < 0)
+//   t = 2*sqrt(-p/3)*cos(theta + 2*pi*k/3), theta = arccos(3*q/(2*p)*sqrt(-3/p))/3
+// theta lies in [0, pi/3], so k = 1, -1, 0 gives ascending values.
+// undefined unless the coefficients are known to be real and the
+// discriminant is known to be negative.
+function trigonometricCubic(A: U, B: U, C: U, D: U): U[] | undefined {
+  const [b, c, d] = [B, C, D].map((k) => divide(k, A));
+  if (![b, c, d].every((k) => isReal(k) === true)) {
+    return undefined;
+  }
+  const p = subtract(c, divide(power(b, integer(2)), integer(3)));
+  const q = add_all([
+    multiply(rational(2, 27), power(b, integer(3))),
+    multiply(rational(-1, 3), multiply(b, c)),
+    d,
+  ]);
+  const discriminant = add(
+    multiply(integer(4), power(p, integer(3))),
+    multiply(integer(27), power(q, integer(2)))
+  );
+  if (isNegative(discriminant) !== true) {
+    return undefined;
+  }
+  // sqrt(-3*p) keeps the radicals in the numerators:
+  // 2*sqrt(-p/3) = 2/3*sqrt(-3*p), 3*q/(2*p)*sqrt(-3/p) = -3*q*sqrt(-3*p)/(2*p^2)
+  const root = power(multiply(integer(-3), p), rational(1, 2));
+  const radius = multiply(rational(2, 3), root);
+  const cosine3theta = divide(
+    multiply(multiply(integer(-3), q), root),
+    multiply(integer(2), power(p, integer(2)))
+  );
+  const theta = divide(Eval(makeList(symbol(ARCCOS), cosine3theta)), integer(3));
+  const turn = multiply(rational(2, 3), Constants.Pi());
+  return [add(theta, turn), subtract(theta, turn), theta].map((angle) =>
+    subtract(multiply(radius, cosine(angle)), divide(b, integer(3)))
+  );
+}
+
 function _solveDegree3(A: U, B: U, C: U, D: U): U[] {
+  const trigonometric = trigonometricCubic(A, B, C, D);
+  if (trigonometric !== undefined) {
+    return trigonometric;
+  }
     // C - only related calculations
   const R_c3 = multiply(multiply(C, C), C);
 

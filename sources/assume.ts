@@ -40,6 +40,7 @@ import { stop } from '../runtime/run';
 import { collectUserSymbols, get_binding, symbol } from '../runtime/symbol';
 import { coeff } from './coeff';
 import { Eval } from './eval';
+import { zzfloat } from './float';
 import { isinteger, ispolyexpandedform, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { build_tensor } from './scan';
@@ -92,9 +93,14 @@ export function clearAssumptions() {
 }
 
 // Runs f with the bound variable x temporarily assumed positive or
-// negative (x -> inf in a limit is large and positive); what the user
-// assumed about x is restored afterwards.
-export function withSign<T>(x: U, sign: 'positive' | 'negative', f: () => T): T {
+// negative (x -> inf in a limit is large and positive), or an integer (the
+// n of a periodic solution family); what the user assumed about x is
+// restored afterwards.
+export function withSign<T>(
+  x: U,
+  sign: 'positive' | 'negative' | 'integer',
+  f: () => T
+): T {
   if (!issymbol(x)) {
     return f();
   }
@@ -497,7 +503,25 @@ export function Eval_assumptions() {
 // made explicitly about x. The default realness of symbols doesn't count:
 // solve(x^2+1,x) keeps its complex roots unless x is assumed real.
 export function violatesAssumptions(value: U, x: U): boolean {
-  return violatedBy(facts(value), x);
+  return violatedBy(facts(value), x) || violatedBy(numericSign(value, x), x);
+}
+
+// What the float value tells about a constant the rules above can't decide,
+// such as 1-2^(1/2) or 2*cos(8/9*pi): its sign, and that it is no integer.
+// Only computed when there are assumptions about x; a value within 1e-9 of
+// zero, or within 1e-6 of an integer, stays undecided in that respect.
+function numericSign(value: U, x: U): Facts {
+  if (!issymbol(x) || !assumptions.has(x.printname)) {
+    return {};
+  }
+  const f = zzfloat(value);
+  if (!isdouble(f)) {
+    return {};
+  }
+  const sign: Facts =
+    Math.abs(f.d) > 1e-9 ? { positive: f.d > 0, negative: f.d < 0, zero: false } : {};
+  const fraction: Facts = Math.abs(f.d - Math.round(f.d)) > 1e-6 ? { integer: false } : {};
+  return { real: true, ...sign, ...fraction };
 }
 
 // the same for an approximate number re + i*im (nroots, nsolve): parts
