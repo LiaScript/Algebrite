@@ -957,7 +957,8 @@ function print_SUM_codegen(p: BaseAtom): string {
 }
 
 function print_TEST_latex(p: BaseAtom): string {
-  let accumulator = '\\left\\{ \\begin{array}{ll}';
+  // one row per case: value & condition
+  const rows: string[] = [];
 
   p = cdr(p);
   while (iscons(p)) {
@@ -965,25 +966,23 @@ function print_TEST_latex(p: BaseAtom): string {
     // last argument becomes the default case
     // i.e. the one without a test.
     if (cdr(p) === symbol(NIL)) {
-      accumulator += '{';
-      accumulator += print_expr(car(p));
-      accumulator += '} & otherwise ';
-      accumulator += ' \\\\\\\\';
+      rows.push('{' + print_expr(car(p)) + '} & \\text{otherwise}');
       break;
     }
 
-    accumulator += '{';
-    accumulator += print_expr(cadr(p));
-    accumulator += '} & if & ';
-    accumulator += print_expr(car(p));
-    accumulator += ' \\\\\\\\';
+    rows.push(
+      '{' + print_expr(cadr(p)) + '} & \\text{if } ' + print_expr(car(p))
+    );
 
     // test unsuccessful, continue to the
     // next pair of test,value
     p = cddr(p);
   }
-  accumulator = accumulator.substring(0, accumulator.length - 4);
-  return (accumulator += '\\end{array} \\right.');
+  return (
+    '\\left\\{ \\begin{array}{ll}' +
+    rows.join(' \\\\ ') +
+    ' \\end{array} \\right.'
+  );
 }
 
 function print_TEST_codegen(p: BaseAtom): string {

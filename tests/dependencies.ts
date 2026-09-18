@@ -834,7 +834,7 @@ test('55', t => {
   );
 
   t.is(
-    '$$f(x) = \\left\\{ \\begin{array}{ll}{-x-4} & if & {x} < {1} \\\\\\\\{xx+7} & if & {3} \\leq {x} \\\\\\\\{\\frac{120}{x}+5} & otherwise  \\end{array} \\right.$$',
+    '$$f(x) = \\left\\{ \\begin{array}{ll}{-x-4} & \\text{if } {x} < {1} \\\\ {xx+7} & \\text{if } {3} \\leq {x} \\\\ {\\frac{120}{x}+5} & \\text{otherwise} \\end{array} \\right.$$',
     res.latexResult
   );
 
