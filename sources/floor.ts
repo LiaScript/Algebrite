@@ -21,7 +21,7 @@ export function Eval_floor(p1: U) {
   return mapQuantity(arg, yfloor) || yfloor(arg);
 }
 
-function yfloor(p1: U): U {
+export function yfloor(p1: U): U {
   return yyfloor(p1);
 }
 

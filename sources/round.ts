@@ -1,15 +1,15 @@
 import {
   cadr,
-  Double,
   isdouble,
   isNumericAtom,
   ROUND,
   U
 } from '../runtime/defs';
 import { symbol } from "../runtime/symbol";
-import { double, integer } from './bignum';
+import { add } from './add';
+import { double, rational } from './bignum';
 import { Eval } from './eval';
-import { yyfloat } from './float';
+import { yfloor } from './floor';
 import { isinteger } from './is';
 import { makeList } from './list';
 import { mapQuantity } from './quantity';
@@ -32,6 +32,6 @@ function yround(p1: U): U {
     return p1;
   }
 
-  p1 = yyfloat(p1) as Double;
-  return integer(Math.round(p1.d));
+  // exact, like Math.round: floor(x + 1/2)
+  return yfloor(add(p1, rational(1, 2)));
 }
