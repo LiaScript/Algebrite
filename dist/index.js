@@ -176,6 +176,7 @@ const builtin_fns = [
     'for',
     'Gamma',
     'gcd',
+    'groebner',
     'hermite',
     'hilbert',
     'imag',

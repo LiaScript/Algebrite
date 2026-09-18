@@ -68,6 +68,7 @@ const stats_1 = require("../sources/stats");
 const trigexpand_1 = require("../sources/trigexpand");
 const nsolve_1 = require("../sources/nsolve");
 const dsolve_1 = require("../sources/dsolve");
+const groebner_1 = require("../sources/groebner");
 const laplace_1 = require("../sources/laplace");
 const at_1 = require("../sources/at");
 const assume_1 = require("../sources/assume");
@@ -243,6 +244,7 @@ function defn() {
     symbol_1.std_symbol(defs_1.FUNCTION, define_1.Eval_function_reference);
     symbol_1.std_symbol(defs_1.GAMMA, gamma_1.Eval_gamma);
     symbol_1.std_symbol(defs_1.GCD, gcd_1.Eval_gcd);
+    symbol_1.std_symbol(defs_1.GROEBNER, groebner_1.Eval_groebner);
     symbol_1.std_symbol(defs_1.HERMITE, eval_1.Eval_hermite);
     symbol_1.std_symbol(defs_1.HILBERT, eval_1.Eval_hilbert);
     symbol_1.std_symbol(defs_1.IMAG, imag_1.Eval_imag);
