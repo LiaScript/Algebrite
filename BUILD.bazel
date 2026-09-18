@@ -1326,6 +1326,15 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_dsolve_extended",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/dsolve_extended.ts",
+)
+
+nodejs_test(
     name = "test_groebner",
     data = [
         ":tsc",
