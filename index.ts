@@ -273,6 +273,8 @@ const builtin_fns = [
   'sd',
   'ssd',
   'random',
+  'trigexpand',
+  'trigsimp',
   'max',
   'min',
   'mod',

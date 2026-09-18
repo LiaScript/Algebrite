@@ -87,6 +87,7 @@ import { makeList } from '../sources/list';
 import { Eval_log } from '../sources/log';
 import { Eval_lookup } from '../sources/lookup';
 import { Eval_mean, Eval_median, Eval_random, Eval_sd, Eval_ssd, Eval_svariance, Eval_variance } from '../sources/stats';
+import { Eval_trigexpand } from '../sources/trigexpand';
 import { Eval_max, Eval_min } from '../sources/minmax';
 import { Eval_mod } from '../sources/mod';
 import { Eval_multiply } from '../sources/multiply';
@@ -114,7 +115,7 @@ import {
 import { scan } from '../sources/scan';
 import { Eval_sgn } from '../sources/sgn';
 import { Eval_shape } from '../sources/shape';
-import { Eval_simplify } from '../sources/simplify';
+import { Eval_simplify, Eval_trigsimp } from '../sources/simplify';
 import { Eval_sin } from '../sources/sin';
 import { Eval_sinh } from '../sources/sinh';
 import { Eval_solve } from '../sources/solve';
@@ -242,6 +243,8 @@ import {
   SD,
   SSD,
   RANDOM,
+  TRIGEXPAND,
+  TRIGSIMP,
   MAX,
   MAX_FIXED_PRINTOUT_DIGITS,
   METAA,
@@ -534,6 +537,8 @@ export function defn() {
   std_symbol(SD, Eval_sd);
   std_symbol(SSD, Eval_ssd);
   std_symbol(RANDOM, Eval_random);
+  std_symbol(TRIGEXPAND, Eval_trigexpand);
+  std_symbol(TRIGSIMP, Eval_trigsimp);
   std_symbol(MAX, Eval_max);
   std_symbol(MIN, Eval_min);
   std_symbol(MOD, Eval_mod);

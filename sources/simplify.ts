@@ -72,6 +72,7 @@ import { roots } from './roots';
 import { simfac } from './simfac';
 import { check_tensor_dimensions } from './tensor';
 import { transform } from './transform';
+import { trigexpand } from './trigexpand';
 import { transpose } from './transpose';
 import { denominator } from "./denominator";
 import { areunivarpolysfactoredorexpandedform, gcd } from "./gcd";
@@ -224,6 +225,7 @@ export function simplify(p1: U): U {
   p1 = f3(p1);
   p1 = f4(p1);
   p1 = f5(p1);
+  p1 = f11(p1);
   p1 = f9(p1);
   p1 = simplify_polarRect(p1);
   if (do_simplify_nested_radicals) {
@@ -350,6 +352,21 @@ function f4(p1: U): U {
 // simplifies trig forms
 export function simplify_trig(p1: U): U {
   return f5(p1);
+}
+
+// try expanding sums and multiples in trig arguments, e.g.
+// sin(2x)/cos(x) -> 2 sin(x); only kept when strictly shorter
+function f11(p1: U): U {
+  if (!Find(p1, symbol(SIN)) && !Find(p1, symbol(COS))) {
+    return p1;
+  }
+  const p2 = f5(trigexpand(p1));
+  return count(p2) < count(p1) ? p2 : p1;
+}
+
+// trigsimp(x): simplify with the trig rewrites applied last
+export function Eval_trigsimp(p1: U) {
+  return simplify_trig(simplify(Eval(cadr(p1))));
 }
 
 function f5(p1: U): U {
