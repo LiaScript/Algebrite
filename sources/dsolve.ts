@@ -32,7 +32,7 @@ import {
 } from '../runtime/defs';
 import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
-import { symbol, usr_symbol } from '../runtime/symbol';
+import { collectUserSymbols, symbol, usr_symbol } from '../runtime/symbol';
 import { add, subtract } from './add';
 import { at, primeOrder } from './at';
 import { integer, rational } from './bignum';
@@ -83,8 +83,14 @@ dsolve([x' = ..., y' = ...], [x(t), y(t)]) solves a first-order linear
 system with constant coefficients and returns [x(t), y(t)]; C1, C2, ...
 are the values at 0.
 
-ponytail: no singular solutions (h(y) = 0 of a separable y' = g(x) h(y)),
-variation of parameters for order 2 only, no Riccati, no y'' = f(y, y'),
+The constant solutions y = y0, h(y0) = 0 of a separable y' = g(x) h(y)
+(and y = 0 of a Bernoulli equation) are only given when a condition
+y(x0) = y0 asks for one; the general solution does not list them.
+
+The constants avoid the names C1, C2, ... that the equation or the
+conditions use themselves.
+
+ponytail: variation of parameters for order 2 only, no Riccati, no y'' = f(y, y'),
 no shifted Euler-Cauchy (a x + b)^k, conditions are solved one at a time
 for one constant each.
 
@@ -94,6 +100,9 @@ for one constant each.
 type Condition = { index: number; order: number; at: U; value: U };
 
 export function Eval_dsolve(p1: U): U {
+  const used: U[] = [];
+  collectUserSymbols(p1, used);
+  takenConstants = used.map((v) => /^C(\d+)$/.exec(v.toString())).map((m) => (m ? +m[1] : 0));
   const Y = Eval(caddr(p1));
   const Ys = istensor(Y) ? Y.tensor.elem : [Y];
   if (!Ys.every((F) => iscons(F) && issymbol(cadr(F)) && cddr(F) === symbol(NIL))) {
@@ -145,7 +154,15 @@ function condition(e: U, Ys: U[]): Condition {
   return { index, order, at: x0, value: Eval(caddr(e)) };
 }
 
-const constant = (i: number) => usr_symbol('C' + i);
+// the i-th of the names C1, C2, ... that the input does not use itself
+let takenConstants: number[] = [];
+const constant = (i: number) => {
+  let k = 0;
+  for (let free = 0; free < i; ) {
+    free += takenConstants.includes(++k) ? 0 : 1;
+  }
+  return usr_symbol('C' + k);
+};
 const terms = (p: U): U[] => (isadd(p) ? p.tail() : [p]);
 const factors = (p: U): U[] => (ismultiply(p) ? p.tail() : [p]);
 const isZero = (p: U) => isZeroAtomOrTensor(simplify(p));
@@ -278,8 +295,26 @@ function separableRelation(f: U, y: U, x: U, conds: Condition[]): { H: U; C: U }
       break;
     }
   }
+  // simplify does not cancel (y^2+1)/(1/2*y^2+1/2): g from a value of y,
+  // checked by f = g h
+  for (const y0 of g !== null && Find(g, y) ? [1, 2, 3] : []) {
+    const at = (p: U) => Eval(subst(p, y, integer(y0)));
+    try {
+      const g0 = simplify(divide(at(f), at(h)));
+      if (isZero(subtract(f, multiply(g0, h)))) {
+        g = g0;
+        break;
+      }
+    } catch (e) {
+      // no value at this y0
+    }
+  }
   if (g === null || Find(g, y)) {
     return null;
+  }
+  // the constant solution y = y0 for h(y0) = 0, where 1/h has no integral
+  if (conds.length === 1 && conds[0].order === 0 && vanishes(h, y, conds[0].value)) {
+    return { H: y, C: conds[0].value };
   }
   const G = tryIntegral(divide(Constants.one, h), y) ?? tryIntegral(simplify(divide(Constants.one, h)), y);
   const F = tryIntegral(g, x);
@@ -300,7 +335,9 @@ function separableRelation(f: U, y: U, x: U, conds: Condition[]): { H: U; C: U }
   }
   let C = conds.length === 0 ? constant(1) : initialConstant(H, y, x, conds);
   if (!t0 && atan && freeOf(ka, x, y)) {
-    H = subtract(cadr(atan), Eval(makeCall(TAN, divide(add(F, C), ka))));
+    // an arbitrary constant stays one when divided by ka
+    const angle = conds.length === 0 ? add(divide(F, ka), C) : divide(add(F, C), ka);
+    H = subtract(cadr(atan), Eval(makeCall(TAN, angle)));
     C = Constants.zero;
   }
   return { H, C };
@@ -343,6 +380,10 @@ function bernoulli(f: U, y: U, x: U, conds: Condition[]): U[] | null {
   }
   if (k === null) {
     return null;
+  }
+  // y = 0 is the solution for k > 1, where v = y^(1-k) has no value
+  if (isPositive(subtract(k, Constants.one)) && conds.length === 1 && conds[0].order === 0 && isZero(conds[0].value)) {
+    return [Constants.zero];
   }
   const m = subtract(Constants.one, k); // v = y^m
   const vconds = conds.map((c) => {
@@ -554,6 +595,15 @@ function multiplicity(P: U, r: U, root: U): number {
 // ------------------------------------------------------------- helpers
 
 const isLog = (p: U) => car(p) === symbol(LOG);
+
+// p = 0 at y = y0; a p without value there does not vanish
+function vanishes(p: U, y: U, y0: U): boolean {
+  try {
+    return isZero(Eval(subst(p, y, y0)));
+  } catch (e) {
+    return false;
+  }
+}
 
 // integral() stops when it finds none
 function tryIntegral(f: U, x: U): U | null {
