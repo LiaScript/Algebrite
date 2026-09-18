@@ -1,5 +1,6 @@
 import {
   ABS,
+  ARCTAN,
   caddddr,
   cadddr,
   caddr,
@@ -7,6 +8,10 @@ import {
   car,
   CEILING,
   Constants,
+  E,
+  ERF,
+  ERFC,
+  COSH,
   FLOOR,
   INF,
   iscons,
@@ -14,10 +19,14 @@ import {
   isNumericAtom,
   LOG,
   NIL,
+  POWER,
   SGN,
+  SINH,
   TAN,
+  TANH,
   U
 } from '../runtime/defs';
+import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
 import { symbol } from '../runtime/symbol';
 import { double, integer } from './bignum';
@@ -26,10 +35,10 @@ import { Eval } from './eval';
 import { derivative } from './derivative';
 import { denominator } from './denominator';
 import { zzfloat } from './float';
-import { isnegativenumber, isZeroAtomOrTensor } from './is';
+import { isnegativenumber, isplusone, isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
-import { equal } from './misc';
-import { divide, negate } from './multiply';
+import { checkArgCount, equal } from './misc';
+import { divide, multiply, negate } from './multiply';
 import { numerator } from './numerator';
 import { rationalize } from './rationalize';
 import { simplify } from './simplify';
@@ -72,6 +81,7 @@ function hasPole(p: U): boolean {
 // and the result may be inf or -inf. There is no direction argument, so
 // user-facing one-sided limits and multivariable limits are out of scope.
 export function Eval_limit(p1: U) {
+  checkArgCount(p1, 3, 4);
   const F = Eval(cadr(p1));
   const X = Eval(caddr(p1));
   const A = Eval(cadddr(p1));
@@ -106,9 +116,126 @@ export function limit(F: U, X: U, A: U, sides: number[] = [-1, 1]): U {
 // Numerator and denominator are rationalized separately so the powers of t
 // cancel; rationalizing the whole quotient leaves nested fractions behind.
 function limitAtInfinity(F: U, X: U, sign: U): U {
+  const direct = atInfinity(F, X, sign);
+  if (direct !== undefined) {
+    return direct;
+  }
+  const lhopital = lhopitalAtInfinity(F, X, sign);
+  if (lhopital !== undefined) {
+    return lhopital;
+  }
   const at = (p: U) => rationalize(Eval(subst(p, X, divide(sign, X))));
   const G = divide(at(numerator(F)), at(denominator(F)));
   return limitAt(G, X, Constants.zero, [1]);
+}
+
+const isInfinite = (p: U) =>
+  p === symbol(INF) || equal(p, negate(symbol(INF)));
+
+// F at x = +-inf: substituted, with the functions that have a value at
+// +-inf replaced by it. Returns undefined for an indeterminate form or when
+// something of inf is left over (sin(inf) has no value).
+function atInfinity(F: U, X: U, sign: U): U | undefined {
+  try {
+    // not evaluated as a whole first: that would turn (1+1/inf)^inf into 1
+    const v = resolveInf(subst(F, X, multiply(sign, symbol(INF))));
+    if (!Find(v, symbol(INF)) || isInfinite(v)) {
+      return v;
+    }
+    // inf times a nonzero constant, e.g. inf*pi
+    const f = zzfloat(v);
+    if (isInfinite(f)) {
+      return f;
+    }
+    if (isdouble(f) && Math.abs(f.d) === Infinity) {
+      return f.d > 0 ? symbol(INF) : negate(symbol(INF));
+    }
+  } catch (e) {
+    // indeterminate form, e.g. inf-inf or 0*inf
+  }
+  return undefined;
+}
+
+// Bottom-up: exp(-inf) = 0, 2^inf = inf, arctan(inf) = pi/2, erf(-inf) = -1,
+// log(inf) = inf, ... Indeterminate forms stop (caught by the caller):
+// arithmetic ones in Eval, the powers 1^inf, inf^0 and 0^0 here, since
+// Eval would give 1 for them.
+function resolveInf(p: U): U {
+  if (!iscons(p)) {
+    return p;
+  }
+  const head = car(p);
+  const args = p.tail().map(resolveInf);
+  // something of inf without a value (sin(inf)) could be anything, even
+  // infinite: 0*sin(inf) or abs(inf)/inf must not evaluate to 0
+  if (args.some((a) => Find(a, symbol(INF)) && !isInfinite(a))) {
+    stop('limit: no value at inf');
+  }
+  const inf = symbol(INF);
+  const [arg, exponent] = args;
+  if (head === symbol(POWER)) {
+    if (
+      (isInfinite(exponent) && isplusone(arg)) ||
+      (isZeroAtomOrTensor(exponent) &&
+        (isInfinite(arg) || isZeroAtomOrTensor(arg)))
+    ) {
+      stop('limit: indeterminate power');
+    }
+    if (isInfinite(exponent)) {
+      const base = arg === symbol(E) ? double(Math.E) : zzfloat(arg);
+      if (isdouble(base) && base.d > 0) {
+        return (base.d > 1) === (exponent === inf) ? inf : Constants.zero;
+      }
+    }
+  }
+  // before Eval, which would turn arctan(-inf) into -arctan(inf)
+  if (args.length === 1 && isInfinite(arg)) {
+    const s = arg === inf ? Constants.one : Constants.negOne;
+    switch (head) {
+      case symbol(ARCTAN):
+        return multiply(s, divide(Constants.Pi(), integer(2)));
+      case symbol(TANH):
+      case symbol(ERF):
+      case symbol(SGN):
+        return s;
+      case symbol(ERFC):
+        return arg === inf ? Constants.zero : integer(2);
+      case symbol(SINH):
+        return arg;
+      case symbol(COSH):
+      case symbol(ABS):
+        return inf;
+      case symbol(LOG):
+        if (arg === inf) {
+          return inf;
+        }
+    }
+  }
+  return Eval(makeList(head, ...args));
+}
+
+// L'Hopital directly in x for inf/inf and 0/0 at infinity (x*exp(-x) is
+// x/exp(x)); undefined when it does not come to a result.
+function lhopitalAtInfinity(F: U, X: U, sign: U): U | undefined {
+  let N = numerator(F);
+  let D = denominator(F);
+  for (let i = 0; i < MAX_LHOPITAL_ITERATIONS; i++) {
+    const n = atInfinity(N, X, sign);
+    const d = atInfinity(D, X, sign);
+    if (n === undefined || d === undefined) {
+      return undefined;
+    }
+    const bothZero = isZeroAtomOrTensor(n) && isZeroAtomOrTensor(d);
+    if (!bothZero && !(isInfinite(n) && isInfinite(d))) {
+      return isZeroAtomOrTensor(d) ? undefined : divide(n, d);
+    }
+    // the quotient of the derivatives is normalized before it is taken
+    // apart again: 2*x/(x^2+1) / (1/x) is 2*x^2/(x^2+1)
+    const G = divide(derivative(N, X), derivative(D, X));
+    N = numerator(G);
+    D = denominator(G);
+  }
+  return undefined;
 }
 
 // An infinite limit: the sign of F just beside A, on each requested side.

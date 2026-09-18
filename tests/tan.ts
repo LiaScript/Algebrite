@@ -166,4 +166,66 @@ run_test([
 
   'tan(1/12*pi)',
   'tan(1/12*pi)',
+
+  // exact values at special angles
+  'tan(0)',
+  '0',
+
+  'tan(pi/6)',
+  '1/3*3^(1/2)',
+
+  'tan(pi/4)',
+  '1',
+
+  'tan(pi/3)',
+  '3^(1/2)',
+
+  'tan(2*pi/3)',
+  '-3^(1/2)',
+
+  'tan(3*pi/4)',
+  '-1',
+
+  'tan(5*pi/6)',
+  '-1/3*3^(1/2)',
+
+  'tan(pi)',
+  '0',
+
+  'tan(5*pi/4)',
+  '1',
+
+  // negative angles
+  'tan(-pi/4)',
+  '-1',
+
+  'tan(-pi/3)',
+  '-3^(1/2)',
+
+  'tan(-x)',
+  '-tan(x)',
+
+  // floats
+  'tan(0.0)',
+  '0.0',
+
+  'tan(1.0)',
+  '1.557408...',
+
+  'tan(-1.0)',
+  '-1.557408...',
+
+  'float(tan(pi/5))',
+  '0.726543...',
+
+  // compositions
+  'tan(arctan(1/2))',
+  '1/2',
+
+  // calculus and identities
+  'd(tan(x),x)',
+  '1/(cos(x)^2)',
+
+  'simplify(tan(x)-sin(x)/cos(x))',
+  '0',
 ]);

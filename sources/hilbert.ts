@@ -22,7 +22,7 @@ import {symbol} from "../runtime/symbol";
 //define AELEM(i, j) A->u.tensor->elem[i * n + j]
 export function hilbert(N: U): U {
   const n = nativeInt(N);
-  if (n < 2) {
+  if (!(n >= 1)) {
     return makeList(symbol(HILBERT), N);
   }
   const A: U = zero_matrix(n, n);

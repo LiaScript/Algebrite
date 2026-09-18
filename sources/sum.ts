@@ -5,6 +5,7 @@ import {
   cadr,
   Constants,
   isadd,
+  isNumericAtom,
   issymbol,
   U
 } from '../runtime/defs';
@@ -20,6 +21,7 @@ import { divide, multiply } from './multiply';
 import { power } from './power';
 import { simplify } from './simplify';
 import { subst } from './subst';
+import { checkArgCount } from './misc';
 
 // 'sum' function
 
@@ -30,6 +32,7 @@ import { subst } from './subst';
 
 // leaves the sum at the top of the stack
 export function Eval_sum(p1: U) {
+  checkArgCount(p1, 4);
   // 1st arg
   const body = cadr(p1);
 
@@ -51,13 +54,16 @@ export function Eval_sum(p1: U) {
   const p4 = get_binding(indexVariable);
 
   let temp: U = Constants.zero;
-  for (let i = j; i <= k; i++) {
-    set_binding(indexVariable, integer(i));
-    temp = add(temp, Eval(body));
+  try {
+    for (let i = j; i <= k; i++) {
+      set_binding(indexVariable, integer(i));
+      temp = add(temp, Eval(body));
+    }
+  } finally {
+    // put back the index variable to original content,
+    // also when the body stops with an error
+    set_binding(indexVariable, p4);
   }
-
-  // put back the index variable to original content
-  set_binding(indexVariable, p4);
   return temp;
 }
 
@@ -73,6 +79,11 @@ function symbolicSum(p1: U, body: U, x: U): U {
     const f = Eval(body);
     const a = Eval(cadddr(p1));
     const b = Eval(caddddr(p1));
+    // numeric bounds that are not integers: the closed forms below assume
+    // integer steps from a to b, sum(k,k,1/2,3) is not F(3) - F(-1/2)
+    if ([a, b].some((p) => isNumericAtom(p) && isNaN(nativeInt(p)))) {
+      return p1;
+    }
     const terms = isadd(f) ? f.tail() : [f];
     const isPoly = (t: U) => !Find(t, x) || ispolyexpandedform(t, x);
 

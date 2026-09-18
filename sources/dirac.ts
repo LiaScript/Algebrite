@@ -4,7 +4,6 @@ import {
   DIRAC,
   isadd,
   isdouble,
-  ispower,
   isrational,
   MZERO,
   U
@@ -15,6 +14,7 @@ import { isnegativeterm } from './is';
 import { makeList } from './list';
 import { mmul } from './mmul';
 import { negate } from './multiply';
+import { checkArgCount } from './misc';
 
 //-----------------------------------------------------------------------------
 //
@@ -25,6 +25,7 @@ import { negate } from './multiply';
 //  dirac(b-a)=dirac(a-b)
 //-----------------------------------------------------------------------------
 export function Eval_dirac(p1: U) {
+  checkArgCount(p1, 1);
   return dirac(Eval(cadr(p1)));
 }
 
@@ -32,23 +33,21 @@ export function dirac(p1: U): U {
   return ydirac(p1);
 }
 
+// dirac(0) has no value, it stays unevaluated. dirac(x^n) is not
+// dirac(x) (the scaling rule would divide by the vanishing n*x^(n-1)).
 function ydirac(p1: U): U {
   if (isdouble(p1)) {
     if (p1.d === 0) {
-      return Constants.one;
+      return makeList(symbol(DIRAC), p1);
     }
     return Constants.zero;
   }
 
   if (isrational(p1)) {
     if (MZERO(mmul(p1.q.a, p1.q.b))) {
-      return Constants.one;
+      return makeList(symbol(DIRAC), p1);
     }
     return Constants.zero;
-  }
-
-  if (ispower(p1)) {
-    return makeList(symbol(DIRAC), cadr(p1));
   }
 
   if (isnegativeterm(p1)) {

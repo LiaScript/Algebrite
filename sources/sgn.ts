@@ -37,7 +37,7 @@ export function sgn(X: U): U {
       return Constants.one;
     }
     if (X.d === 0) {
-      return Constants.one;
+      return Constants.zero;
     }
     return Constants.negOne;
   }

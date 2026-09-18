@@ -51,8 +51,8 @@ export function det(p1: Tensor): U {
 
 // determinant of n * n matrix elements on the stack
 export function determinant(elements: readonly U[], n: number): U {
-  // empty matrix, the cofactor of a 1x1 matrix: the permutation loop
-  // below would not terminate
+  // the empty (0x0) determinant is 1, e.g. the cofactor of a 1x1 matrix;
+  // the permutation loop below would never terminate for n = 0
   if (n === 0) {
     return Constants.one;
   }

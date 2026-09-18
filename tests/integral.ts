@@ -739,4 +739,160 @@ run_test([
 
   "integral(((((x)^(2))^(1/(3))))+(sqrt((x)^(3))),x)",
   "Stop: integral: sorry, could not find a solution",
+
+  // constants, default variable, powers
+  'integral(0,x)',
+  '0',
+
+  'integral(5,x)',
+  '5*x',
+
+  'integral(x)',
+  '1/2*x^2',
+
+  'integral(x^5)',
+  '1/6*x^6',
+
+  'integral(x^(-2))',
+  '-1/x',
+
+  'integral(x^(1/2))',
+  '2/3*x^(3/2)',
+
+  'integral(x^n,x)',
+  'x^(1+n)/(1+n)',
+
+  'integral(x^(-1),x)',
+  'log(x)',
+
+  'integral(1.5*x,x)',
+  '0.75*x^2.0',
+
+  // x^3.5/3.5
+  'integral(x^2.5,x)',
+  '0.285714...*x^3.5',
+
+  // repeated and multiple integrals
+  'integral(x,x,2)',
+  '1/6*x^3',
+
+  'integral(x^2,x,x)',
+  '1/12*x^4',
+
+  'integral(x*y,x,y)',
+  '1/4*x^2*y^2',
+
+  // rational functions: the table, then partial fractions term by term
+  'integral(1/(x^2+a^2),x)',
+  'arctan(x/abs(a))/abs(a)',
+
+  // = 1/(x+2)
+  'integral((x+1)/(x^2+3*x+2),x)',
+  'log(x+2)',
+
+  // 1/x - x/(x^2+1)
+  'integral(1/(x^3+x),x)',
+  'log(x)-1/2*log(x^2+1)',
+
+  // x - x/(x^2+1)
+  'integral(x^3/(x^2+1),x)',
+  '-1/2*log(x^2+1)+1/2*x^2',
+
+  // x^2 - 1 + 1/(x^2+1)
+  'integral(x^4/(x^2+1),x)',
+  '-x+arctan(x)+1/3*x^3',
+
+  'integral(1/(x^4-1),x)',
+  '-1/2*arctan(x)+1/4*log(x-1)-1/4*log(x+1)',
+
+  'integral(1/(x*(x+1)*(x+2)),x)',
+  '1/2*log(x)-log(x+1)+1/2*log(x+2)',
+
+  // repeated factors
+  'integral(1/(x^2+2*x+1),x)',
+  '-1/(x+1)',
+
+  'integral(x/(x^2+2*x+1),x)',
+  'log(x+1)+1/(x+1)',
+
+  // d/dx(log(1+1/x)-1/x) = 1/(x^2*(x+1))
+  'integral(1/(x^2*(x+1)),x)',
+  'log(1+1/x)-1/x',
+
+  'integral(1/((x-a)*(x-b)),x)',
+  'log(x-a)/(a-b)+log(x-b)/(-a+b)',
+
+  // irreducible quadratics with a linear term: completing the square
+  'integral(1/(x^2+2*x+5),x)',
+  '1/2*arctan(1/2*x+1/2)',
+
+  'integral(x/(x^2+x+1),x)',
+  '1/2*log(x^2+x+1)-arctan(2*x/(3^(1/2))+1/3^(1/2))/(3^(1/2))',
+
+  'integral((x+2)/(x^2+x+1),x)',
+  '1/2*log(x^2+x+1)+3^(1/2)*arctan(2*x/(3^(1/2))+1/3^(1/2))',
+
+  // 3/2*log(x^2-4*x+8)+7/2*arctan((x-2)/2)
+  'integral((3*x+1)/(x^2-4*x+8),x)',
+  '-7/2*arctan(-1/2*x+1)+3/2*log(x^2-4*x+8)',
+
+  'simplify(d(integral(1/(x^2+a*x+b),x),x)-1/(x^2+a*x+b))',
+  '0',
+
+  'simplify(d(integral(x/(x^2+a*x+b),x),x)-x/(x^2+a*x+b))',
+  '0',
+
+  // other families
+  'integral(2*x*exp(x^2),x)',
+  'exp(x^2)',
+
+  'integral(exp(-x)*x^2,x)',
+  '-2*exp(-x)-2*x*exp(-x)-x^2*exp(-x)',
+
+  'integral(arctan(x),x)',
+  '-1/2*log(x^2+1)+x*arctan(x)',
+
+  'integral(sec(x)^2,x)',
+  'tan(x)',
+
+  'integral(1/sqrt(1-x^2),x)',
+  'arcsin(x)',
+
+  // (1+x)^(3/2)*(2/5*x-4/15)
+  'integral(x*sqrt(1+x),x)',
+  '-4/15*(x^3+3*x^2+3*x+1)^(1/2)+2/5*x*(x^3+3*x^2+3*x+1)^(1/2)',
+
+  // sqrt(pi)/2*erfi(x)
+  'integral(exp(x^2),x)',
+  '-1/2*i*pi^(1/2)*erf(i*x)',
+
+  // no elementary antiderivative: stop rather than return garbage
+  'integral(exp(x)/x,x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'integral(sin(x)/x,x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'integral(sin(x^2),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'integral(x^x,x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'integral(1/log(x),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'integral(sqrt(1+x^3),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  // unknown functions and functions without table entries
+  'integral(f(x),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  'integral(abs(x),x)',
+  'Stop: integral: sorry, could not find a solution',
+
+  // wrong number of arguments
+  'integral()',
+  'Stop: integral: expected at least 1 argument, got 0',
 ]);

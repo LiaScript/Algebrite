@@ -4,7 +4,9 @@ import {
   breakpoint,
   caddr,
   cadr,
+  car,
   Constants,
+  COS,
   defs,
   E,
   isadd,
@@ -12,11 +14,15 @@ import {
   ismultiply,
   ispower,
   issymbol,
+  istensor,
   PI,
+  SIN,
   U
 } from '../runtime/defs';
+import { Find } from '../runtime/find';
 import { get_binding, symbol } from '../runtime/symbol';
 import { add, subtract } from './add';
+import { integer } from './bignum';
 import { arctan } from './arctan';
 import { denominator } from './denominator';
 import { Eval } from './eval';
@@ -27,14 +33,17 @@ import {
   isnegativenumber,
   isoneovertwo,
   ispositivenumber,
-  isZeroAtomOrTensor
+  isZeroAtomOrTensor,
+  realconstant
 } from './is';
 import { makeList } from './list';
+import { equal } from './misc';
 import { divide, multiply, negate } from './multiply';
 import { numerator } from './numerator';
 import { real } from './real';
 import { rect } from './rect';
 import { mapQuantity } from './quantity';
+import { copy_tensor } from './tensor';
 
 /* arg =====================================================================
 
@@ -108,10 +117,24 @@ export function Eval_arg(z: U) {
 }
 
 export function arg(z: U): U {
+  if (istensor(z)) {
+    const t = copy_tensor(z);
+    t.tensor.elem = t.tensor.elem.map(arg);
+    return t;
+  }
   return (
     mapQuantity(z, arg, false) ||
-    subtract(yyarg(numerator(z)), yyarg(denominator(z)))
+    principal(subtract(yyarg(numerator(z)), yyarg(denominator(z))))
   );
+}
+
+// a constant angle is brought into the principal range (-pi, pi]
+function principal(a: U): U {
+  if (Find(a, symbol(ARG))) {
+    return a; // not constant, and floating it would re-enter arg()
+  }
+  const k = Math.ceil(realconstant(a) / (2 * Math.PI) - 0.5 - 1e-12);
+  return k ? subtract(a, multiply(integer(2 * k), Constants.Pi())) : a;
 }
 
 function yyarg(p1: U): U {
@@ -123,11 +146,9 @@ function yyarg(p1: U): U {
   }
 
   if (isnegativenumber(p1)) {
-    const pi =
-      isdouble(p1) || defs.evaluatingAsFloats
-        ? Constants.piAsDouble
-        : symbol(PI);
-    return negate(pi);
+    return isdouble(p1) || defs.evaluatingAsFloats
+      ? Constants.piAsDouble
+      : symbol(PI);
   }
 
   // you'd think that something like
@@ -161,8 +182,9 @@ function yyarg(p1: U): U {
   }
 
   if (ismultiply(p1)) {
-    // product of factors
-    return p1.tail().map(arg).reduce(add, Constants.zero);
+    // product of factors (of a numerator, so no denominators to split
+    // off: arg() would loop on numerator(1.0+1.0*i) = 1.0*(1.0+1.0*i))
+    return p1.tail().map(yyarg).reduce(add, Constants.zero);
   }
 
   if (isadd(p1)) {
@@ -177,9 +199,26 @@ function yyarg(p1: U): U {
         return Constants.Pi();
       }
     } else {
-      const arg1 = arctan(divide(IM, RE));
-      if (isnegative(RE)) {
-        if (isnegative(IM)) {
+      const ratio = divide(IM, RE);
+      const S = numerator(ratio);
+      const C = denominator(ratio);
+      if (
+        car(S) === symbol(SIN) &&
+        car(C) === symbol(COS) &&
+        equal(cadr(S), cadr(C))
+      ) {
+        // z = r (cos(a) + i sin(a)): the angle is a, turned by pi if r < 0
+        const a = cadr(S);
+        if (!isbelowzero(divide(RE, C))) {
+          return a;
+        }
+        return realconstant(a) < 0
+          ? add(a, Constants.Pi())
+          : subtract(a, Constants.Pi());
+      }
+      const arg1 = arctan(ratio);
+      if (isbelowzero(RE)) {
+        if (isbelowzero(IM)) {
           return subtract(arg1, Constants.Pi()); // quadrant 1 -> 3
         } else {
           return add(arg1, Constants.Pi()); // quadrant 4 -> 2
@@ -196,4 +235,11 @@ function yyarg(p1: U): U {
   // if we don't assume all passed values are real, all
   // we con do is to leave unexpressed
   return makeList(symbol(ARG), p1);
+}
+
+// numeric sign test when possible (-cos(4/5*pi) > 0, cos(8/9*pi) < 0),
+// else the syntactic one (symbols are assumed positive)
+function isbelowzero(p: U): boolean {
+  const d = realconstant(p);
+  return isNaN(d) ? isnegative(p) : d < 0;
 }

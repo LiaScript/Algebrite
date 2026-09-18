@@ -104,7 +104,15 @@ export function Eval_draw(p1: U) {
     }
   };
 
-  const evaluated = Eval(body);
+  // the variable is free in the plotted expression, even if it has a value
+  const savedVariable = get_binding(variable);
+  set_binding(variable, variable);
+  let evaluated: U;
+  try {
+    evaluated = Eval(body);
+  } finally {
+    set_binding(variable, savedVariable);
+  }
   const parts = istensor(evaluated) ? evaluated.elem : undefined;
   const f = (v: number) => (parts ? parts.map((p) => at(p, v)) : at(body, v));
 

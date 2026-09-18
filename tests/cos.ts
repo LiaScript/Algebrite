@@ -225,4 +225,100 @@ run_test([
 
   'cos(x+8/2*pi)',
   'cos(x)',
+
+  // exact values at special angles
+  'cos(0)',
+  '1',
+
+  'cos(pi/6)',
+  '1/2*3^(1/2)',
+
+  'cos(pi/4)',
+  '1/2*2^(1/2)',
+
+  'cos(pi/3)',
+  '1/2',
+
+  'cos(pi/2)',
+  '0',
+
+  'cos(2*pi/3)',
+  '-1/2',
+
+  'cos(3*pi/4)',
+  '-1/2*2^(1/2)',
+
+  'cos(5*pi/6)',
+  '-1/2*3^(1/2)',
+
+  'cos(pi)',
+  '-1',
+
+  'cos(4*pi/3)',
+  '-1/2',
+
+  'cos(3*pi/2)',
+  '0',
+
+  'cos(2*pi)',
+  '1',
+
+  // negative angles and angles beyond 2 pi
+  'cos(-pi/3)',
+  '1/2',
+
+  'cos(-2*pi/3)',
+  '-1/2',
+
+  'cos(7*pi/3)',
+  '1/2',
+
+  'cos(-9*pi/4)',
+  '1/2*2^(1/2)',
+
+  // symmetries
+  'cos(x+pi)',
+  '-cos(x)',
+
+  'cos(pi-x)',
+  '-cos(x)',
+
+  'cos(x+pi/2)',
+  '-sin(x)',
+
+  'cos(x-pi/2)',
+  'sin(x)',
+
+  // floats
+  'cos(0.0)',
+  '1.0',
+
+  'cos(1.0)',
+  '0.540302...',
+
+  'cos(-1.0)',
+  '0.540302...',
+
+  'cos(pi/5)',
+  'cos(1/5*pi)',
+
+  'float(cos(pi/5))',
+  '0.809017...',
+
+  // compositions
+  'cos(arccos(x))',
+  'x',
+
+  'cos(arccos(1/2))',
+  '1/2',
+
+  'cos(arctan(x))',
+  '1/((x^2+1)^(1/2))',
+
+  // calculus
+  'd(cos(x),x)',
+  '-sin(x)',
+
+  'integral(cos(x),x)',
+  'sin(x)',
 ]);

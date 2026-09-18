@@ -149,7 +149,7 @@ export function transpose(p1: U, p2: U, p3: U): U {
   let l = nativeInt(p2);
   let m = nativeInt(p3);
 
-  if (l < 1 || l > ndim || m < 1 || m > ndim) {
+  if (!(l >= 1 && l <= ndim && m >= 1 && m <= ndim)) {
     stop('transpose: index out of range');
   }
 

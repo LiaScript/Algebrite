@@ -7,7 +7,8 @@ import {
   LAGUERRE,
   NIL,
   SECRETX,
-  U
+  U,
+  istensor
 } from '../runtime/defs';
 import { symbol } from "../runtime/symbol";
 import { add, subtract } from './add';
@@ -16,6 +17,7 @@ import { Eval } from './eval';
 import { makeList } from './list';
 import { divide, multiply } from './multiply';
 import { subst } from './subst';
+import { checkArgCount } from './misc';
 
 /*
  Laguerre function
@@ -43,6 +45,7 @@ In the "for" loop i = n-1 so the recurrence relation becomes
   (i+1)*L(x,n,k) = (2*i+1-x+k)*L(x,n-1,k) - (i+k)*L(x,n-2,k)
 */
 export function Eval_laguerre(p1: U) {
+  checkArgCount(p1, 2, 3);
   const X = Eval(cadr(p1));
   const N = Eval(caddr(p1));
   const p2 = Eval(cadddr(p1));
@@ -53,7 +56,8 @@ export function Eval_laguerre(p1: U) {
 
 function laguerre(X: U, N: U, K: U): U {
   let n = nativeInt(N);
-  if (n < 0 || isNaN(n)) {
+  // tensors: x^2 would be a dot product, so they are not mapped over
+  if (n < 0 || isNaN(n) || istensor(X)) {
     return makeList(symbol(LAGUERRE), X, N, K);
   }
 

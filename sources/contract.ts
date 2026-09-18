@@ -63,10 +63,7 @@ function contract(p1: U, p2: U, p3: U): U {
   const { ndim } = p1.tensor;
 
   if (
-    l < 1 ||
-    l > ndim ||
-    m < 1 ||
-    m > ndim ||
+    !(l >= 1 && l <= ndim && m >= 1 && m <= ndim) ||
     l === m ||
     p1.tensor.dim[l - 1] !== p1.tensor.dim[m - 1]
   ) {
@@ -131,7 +128,7 @@ function contract(p1: U, p2: U, p3: U): U {
     }
   }
 
-  if (nelem === 1) {
+  if (ndim === 2) {
     return b[0];
   }
 

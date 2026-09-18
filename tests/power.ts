@@ -97,6 +97,12 @@ run_test([
   'sqrt(x^2)',
   'abs(x)',
 
+  '(x^2)^(-1/2)',
+  '1/(abs(x))',
+
+  '(x^4)^(-1/4)',
+  '1/(abs(x))',
+
   // always true, whether x is real or not
   'sqrt(x^2)^2',
   'x^2',

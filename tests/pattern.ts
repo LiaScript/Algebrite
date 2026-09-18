@@ -339,3 +339,99 @@ run_test([
   'pattern(f(a_,b_), f(a_,b_))',
   'Stop: recursive pattern',
 ]);
+
+// conditions, silentpattern, patternsinfo, clearpatterns
+run_test([
+  // the example from the documentation
+  'pattern(sin(x_)^2+cos(x_)^2,1)',
+  'sin(x_)^2+cos(x_)^2->1',
+
+  'simplify(sin(a)^2+cos(a)^2)',
+  '1',
+
+  'simplify(3*sin(t+1)^2+3*cos(t+1)^2)',
+  '3',
+
+  'patternsinfo',
+  '"(sin(x_)^2+cos(x_)^2)(1)\n"',
+
+  'clearpatterns',
+  '',
+
+  'patternsinfo',
+  '',
+
+  // patterns only apply in simplify
+  'silentpattern(g(a_),h(a_))',
+  '',
+
+  'g(3)',
+  'g(3)',
+
+  'simplify(g(3))',
+  'h(3)',
+
+  'simplify(1+g(x)+g(y))',
+  '1+h(x)+h(y)',
+
+  'clearpatterns()',
+  '',
+
+  'simplify(g(3))',
+  'g(3)',
+
+  // a condition must hold for sure: it is not applied when the
+  // condition is false or can't be decided
+  'pattern(ff(a_),a_^2,a_>0)',
+  'ff(a_)->a_^2',
+
+  'simplify(ff(3))',
+  '9',
+
+  'simplify(ff(1/2))',
+  '1/4',
+
+  'simplify(ff(-3))',
+  'ff(-3)',
+
+  'simplify(ff(0))',
+  'ff(0)',
+
+  'simplify(ff(y))',
+  'ff(y)',
+
+  'simplify(ff(pi))',
+  'pi^2',
+
+  // several conditions must all hold
+  'pattern(gg(a_),1/a_,number(a_),not(a_==0))',
+  'gg(a_)->1/a_',
+
+  'simplify(gg(4))',
+  '1/4',
+
+  'simplify(gg(0))',
+  'gg(0)',
+
+  'simplify(gg(y))',
+  'gg(y)',
+
+  'clearpatterns',
+  '',
+
+  // a false condition in a rule with two wildcards
+  'pattern(hh(a_,b_),a_-b_,a_>=b_)',
+  'hh(a_,b_)->a_-b_',
+
+  'simplify(hh(5,3))',
+  '2',
+
+  'simplify(hh(3,3))',
+  '0',
+
+  'simplify(hh(3,5))',
+  'hh(3,5)',
+
+  'clearpatterns',
+  '',
+]);

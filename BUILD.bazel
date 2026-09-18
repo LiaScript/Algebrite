@@ -1214,6 +1214,78 @@ nodejs_test(
 )
 
 nodejs_test(
+    name = "test_cross",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/cross.ts",
+)
+
+nodejs_test(
+    name = "test_conj",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/conj.ts",
+)
+
+nodejs_test(
+    name = "test_functions",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/functions.ts",
+)
+
+nodejs_test(
+    name = "test_logic",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/logic.ts",
+)
+
+nodejs_test(
+    name = "test_quote",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/quote.ts",
+)
+
+nodejs_test(
+    name = "test_print",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/print.ts",
+)
+
+nodejs_test(
+    name = "test_misc",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/misc.ts",
+)
+
+nodejs_test(
+    name = "test_draw",
+    data = [
+        ":tsc",
+        "@npm//big-integer",
+    ],
+    entry_point = ":tests/draw.ts",
+)
+
+nodejs_test(
     name = "test_prime",
     data = [
         ":tsc",

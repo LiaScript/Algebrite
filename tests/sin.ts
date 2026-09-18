@@ -216,4 +216,115 @@ run_test([
 
   'sin(x+8/2*pi)',
   'sin(x)',
+
+  // exact values at special angles
+  'sin(0)',
+  '0',
+
+  'sin(pi/6)',
+  '1/2',
+
+  'sin(pi/4)',
+  '1/2*2^(1/2)',
+
+  'sin(pi/3)',
+  '1/2*3^(1/2)',
+
+  'sin(pi/2)',
+  '1',
+
+  'sin(2*pi/3)',
+  '1/2*3^(1/2)',
+
+  'sin(3*pi/4)',
+  '1/2*2^(1/2)',
+
+  'sin(5*pi/6)',
+  '1/2',
+
+  'sin(pi)',
+  '0',
+
+  'sin(7*pi/6)',
+  '-1/2',
+
+  'sin(3*pi/2)',
+  '-1',
+
+  'sin(2*pi)',
+  '0',
+
+  // negative angles and angles beyond 2 pi
+  'sin(-pi/6)',
+  '-1/2',
+
+  'sin(-pi/4)',
+  '-1/2*2^(1/2)',
+
+  'sin(-pi/2)',
+  '-1',
+
+  'sin(13*pi/6)',
+  '1/2',
+
+  'sin(9*pi/4)',
+  '1/2*2^(1/2)',
+
+  'sin(5*pi/2)',
+  '1',
+
+  'sin(-7*pi/3)',
+  '-1/2*3^(1/2)',
+
+  'sin(100*pi)',
+  '0',
+
+  'sin(101*pi/2)',
+  '1',
+
+  // symmetries
+  'sin(x+pi)',
+  '-sin(x)',
+
+  'sin(pi-x)',
+  'sin(x)',
+
+  'sin(x+2*pi)',
+  'sin(x)',
+
+  // floats
+  'sin(0.0)',
+  '0.0',
+
+  'sin(1.0)',
+  '0.841471...',
+
+  'sin(-1.0)',
+  '-0.841471...',
+
+  'sin(pi/5)',
+  'sin(1/5*pi)',
+
+  'float(sin(pi/5))',
+  '0.587785...',
+
+  // compositions
+  'sin(arcsin(1/2))',
+  '1/2',
+
+  'sin(arctan(x))',
+  'x/((x^2+1)^(1/2))',
+
+  // calculus and identities
+  'd(sin(x),x)',
+  'cos(x)',
+
+  'integral(sin(x),x)',
+  '-cos(x)',
+
+  'simplify(sin(x)^2+cos(x)^2)',
+  '1',
+
+  'simplify(1-cos(x)^2)',
+  'sin(x)^2',
 ]);

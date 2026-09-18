@@ -10,6 +10,7 @@ import { isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
 import { divide, multiply } from './multiply';
 import { subst } from './subst';
+import { checkArgCount } from './misc';
 
 /*
 Taylor expansion of a function
@@ -21,6 +22,7 @@ Taylor expansion of a function
   taylor()
 */
 export function Eval_taylor(p1: U) {
+  checkArgCount(p1, 1, 4);
   // 1st arg
   p1 = cdr(p1);
   const F = Eval(car(p1));

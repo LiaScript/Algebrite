@@ -85,7 +85,7 @@ run_test([
   '-1',
 
   'arg(-3m)',
-  '-pi',
+  'pi',
 
   'real(-3m)',
   '-3*m',
@@ -93,10 +93,8 @@ run_test([
   'imag(-3m)',
   '0',
 
-  // conj of a plain negative number prints oddly in Algebrite itself
-  // (conj(-3) is "3/(-1)"), so compare instead of matching that text
-  'conj(-3m) == -3m',
-  '1',
+  'conj(-3m)',
+  '-3*m',
 
   'conj((2+3*i)*m)',
   '(2-3*i)*m',

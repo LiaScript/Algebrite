@@ -181,4 +181,176 @@ run_test([
 
   'f=quote(f)',
   '',
+
+  // constants and other variables
+  'd(5,x)',
+  '0',
+
+  'd(pi,x)',
+  '0',
+
+  'd(y,x)',
+  '0',
+
+  'd(x*y,y)',
+  'x',
+
+  'd(a*x^2+b*x+c,x)',
+  '2*a*x+b',
+
+  // power rule
+  'd(x^n,x)',
+  'n*x^(-1+n)',
+
+  'd(sqrt(x),x)',
+  '1/(2*x^(1/2))',
+
+  'd(x^(1/3),x)',
+  '1/(3*x^(2/3))',
+
+  'd(1/x,x)',
+  '-1/(x^2)',
+
+  'd(2^x,x)',
+  '2^x*log(2)',
+
+  'd(1.5*x^2,x)',
+  '3.0*x',
+
+  // product and quotient rule
+  'd(x*exp(x),x)',
+  'exp(x)+x*exp(x)',
+
+  'd(sin(x)*cos(x),x)',
+  'cos(x)^2-sin(x)^2',
+
+  // = 1/(x+1)^2
+  'd(x/(1+x),x)',
+  '1/(x+1)-x/((x+1)^2)',
+
+  'd(f(x)*g(x),x)',
+  'd(f(x),x)*g(x)+d(g(x),x)*f(x)',
+
+  // chain rule
+  'd(sin(3*x+1),x)',
+  '3*cos(3*x+1)',
+
+  'd(exp(-x^2),x)',
+  '-2*x*exp(-x^2)',
+
+  'd(sqrt(x^2+y^2),x)',
+  'x/((x^2+y^2)^(1/2))',
+
+  'd(log(x^2+y^2),y)',
+  '2*y/(x^2+y^2)',
+
+  'd(exp(x*y),y)',
+  'x*exp(x*y)',
+
+  'd(x^2*y+sin(x*y),x)',
+  '2*x*y+y*cos(x*y)',
+
+  'd(x^sin(x),x)',
+  'x^(-1+sin(x))*sin(x)+x^(sin(x))*cos(x)*log(x)',
+
+  // = 1/x
+  'd(log(abs(x)),x)',
+  'sgn(x)/abs(x)',
+
+  // reciprocal trig functions
+  'd(sec(x),x)',
+  'sin(x)/(cos(x)^2)',
+
+  'd(csc(x),x)',
+  '-cos(x)/(sin(x)^2)',
+
+  // = -1/sin(x)^2
+  'd(cot(x),x)',
+  '-1-cos(x)^2/(sin(x)^2)',
+
+  // higher derivatives
+  'd(x^3,x,3)',
+  '6',
+
+  'd(x^3,x,4)',
+  '0',
+
+  'd(x^2,x,0)',
+  'x^2',
+
+  'd(exp(2*x),x,5)',
+  '32*exp(2*x)',
+
+  'd(sin(x),x,4)',
+  'sin(x)',
+
+  'd(tan(x),x,2)',
+  '2*sin(x)/(cos(x)^3)',
+
+  'd(arctan(x),x,2)',
+  '-2*x/((x^2+1)^2)',
+
+  'd(1/(x^2+1),x,2)',
+  '-2/((x^2+1)^2)+8*x^2/((x^2+1)^3)',
+
+  'd(exp(x)*sin(x),x,2)',
+  '2*exp(x)*cos(x)',
+
+  'd(abs(x),x,2)',
+  '2*dirac(x)',
+
+  'd(f(x),x,2)',
+  'd(d(f(x),x),x)',
+
+  // a symbolic 3rd argument is another variable
+  'd(x^3,x,x)',
+  '6*x',
+
+  'd(x^2,y,x)',
+  '0',
+
+  // mixed partials commute
+  'd(x^2*y^3,x,y)',
+  '6*x*y^2',
+
+  'd(x^2*y^3,y,x)',
+  '6*x*y^2',
+
+  'd(x^2*y,x,2,y)',
+  '2',
+
+  // a negative order integrates
+  'd(x,x,-1)',
+  '1/2*x^2',
+
+  'd(x,x,1/2)',
+  'Stop: nth derivative: check n',
+
+  // with respect to a subexpression
+  'd(sin(x),sin(x))',
+  '1',
+
+  'd(x^2,x^2)',
+  '1',
+
+  // tensors: componentwise, and gradients
+  'd([x^2,sin(x)],x)',
+  '[2*x,cos(x)]',
+
+  'd([[x,y],[x*y,1]],x)',
+  '[[1,0],[y,0]]',
+
+  'd(x^2+y^2,[x,y])',
+  '[2*x,2*y]',
+
+  // special functions
+  'd(besselj(x,n),x)',
+  'besselj(x,-1+n)-n*besselj(x,n)/x',
+
+  'd(Gamma(x),x)',
+  'd(Gamma(x),x)',
+
+  // wrong number of arguments
+  'd()',
+  'Stop: d: expected at least 1 argument, got 0',
 ]);

@@ -4,6 +4,7 @@ import { double } from './bignum';
 import { Eval } from './eval';
 import { isZeroAtomOrTensor } from './is';
 import { makeList } from './list';
+import { checkArgCount } from './misc';
 
 //-----------------------------------------------------------------------------
 //
@@ -15,6 +16,7 @@ import { makeList } from './list';
 //
 //-----------------------------------------------------------------------------
 export function Eval_erfc(p1: U) {
+  checkArgCount(p1, 1);
   return yerfc(Eval(cadr(p1)));
 }
 

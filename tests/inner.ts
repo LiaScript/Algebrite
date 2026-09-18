@@ -212,4 +212,72 @@ run_test([
 
   'c·d·inv(a)·inv(c·d·inv(a))',
   'I',
+
+  // ---------------------------------------
+  // numeric products and edge cases
+  // ---------------------------------------
+
+  'dot([1,2,3],[4,5,6])',
+  '32',
+
+  'dot([[1,2],[3,4]],[[5,6],[7,8]])',
+  '[[19,22],[43,50]]',
+
+  // not commutative
+  'dot([[5,6],[7,8]],[[1,2],[3,4]])',
+  '[[23,34],[31,46]]',
+
+  // 2x3 times 3x2
+  'inner([[1,2,3],[4,5,6]],[[1,2],[3,4],[5,6]])',
+  '[[22,28],[49,64]]',
+
+  'inner([[1,2],[3,4]],unit(2))',
+  '[[1,2],[3,4]]',
+
+  'inner([[5]],[[6]])',
+  '[[30]]',
+
+  'dot(3,4)',
+  '12',
+
+  // bilinear, no complex conjugation: 1*1+i*i
+  'inner([1,i],[1,i])',
+  '0',
+
+  'inner([1.5,2],[2,0.5])',
+  '4.0',
+
+  // rank-3 tensor: sums over the last index of the first
+  // and the first index of the second argument
+  'T=[[[1,2],[3,4]],[[5,6],[7,8]]]',
+  '',
+
+  'inner(T,[1,1])',
+  '[[3,7],[11,15]]',
+
+  'inner([1,1],T)',
+  '[[6,8],[10,12]]',
+
+  'shape(inner(T,T))',
+  '[2,2,2,2]',
+
+  // R[1,1,1,1] = 1*1+2*5, R[2,1,2,1] = 5*3+6*7, R[2,2,2,2] = 7*4+8*8
+  'inner(T,T)',
+  '[[[[11,14],[17,20]],[[23,30],[37,44]]],[[[35,46],[57,68]],[[47,62],[77,92]]]]',
+
+  'T=quote(T)',
+  '',
+
+  // dimension mismatches must stop
+  'inner([1,2],[1,2,3])',
+  'Stop: inner: tensor dimension check',
+
+  'inner([[1,2],[3,4]],[1,2,3])',
+  'Stop: inner: tensor dimension check',
+
+  'inner([[1,2,3],[4,5,6]],[[1,2],[3,4]])',
+  'Stop: inner: tensor dimension check',
+
+  'dot([1,2],[1,2,3])',
+  'Stop: inner: tensor dimension check',
 ]);

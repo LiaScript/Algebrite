@@ -41,7 +41,7 @@ import {
 import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
 import { symbol } from "../runtime/symbol";
-import { equal, exponential, length, lessp } from '../sources/misc';
+import { checkArgCount, equal, exponential, length, lessp } from '../sources/misc';
 import { add, add_all, subtract } from './add';
 import { besselj } from './besselj';
 import { bessely } from './bessely';
@@ -73,6 +73,7 @@ import { mapQuantity } from './quantity';
 //define N p5
 
 export function Eval_derivative(p1: U): U {
+  checkArgCount(p1, 1, Infinity);
   // evaluate 1st arg to get function F
   p1 = cdr(p1);
   let F = Eval(car(p1));

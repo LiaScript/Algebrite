@@ -31,11 +31,11 @@ export function Eval_cofactor(p1: U) {
   const n = p2.tensor.dim[0];
 
   const i = evaluate_integer(caddr(p1));
-  if (i < 1 || i > n) {
+  if (!(i >= 1 && i <= n)) {
     stop('cofactor: 2nd arg: row index expected');
   }
   const j = evaluate_integer(cadddr(p1));
-  if (j < 1 || j > n) {
+  if (!(j >= 1 && j <= n)) {
     stop('cofactor: 3rd arg: column index expected');
   }
   return cofactor(p2, n, i - 1, j - 1);

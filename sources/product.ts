@@ -13,6 +13,7 @@ import { get_binding, set_binding } from '../runtime/symbol';
 import { integer, nativeInt } from './bignum';
 import { Eval, evaluate_integer } from './eval';
 import { multiply } from './multiply';
+import { checkArgCount } from './misc';
 
 // 'product' function
 
@@ -23,13 +24,14 @@ import { multiply } from './multiply';
 
 // leaves the product at the top of the stack
 export function Eval_product(p1: U) {
+    checkArgCount(p1, 4);
     // 1st arg
     const body = cadr(p1);
 
     // 2nd arg (index)
     const indexVariable = caddr(p1);
     if (!issymbol(indexVariable)) {
-        stop('sum: 2nd arg?');
+        stop('product: 2nd arg?');
     }
 
     // 3rd arg (lower limit)
@@ -50,20 +52,23 @@ export function Eval_product(p1: U) {
 
     let temp: U = Constants.one;
 
-    for (let i = j; i <= k; i++) {
-        set_binding(indexVariable, integer(i));
-        const arg2 = Eval(body);
-        const temp2 = multiply(temp, arg2);
+    try {
+        for (let i = j; i <= k; i++) {
+            set_binding(indexVariable, integer(i));
+            const arg2 = Eval(body);
+            const temp2 = multiply(temp, arg2);
 
-        if (DEBUG) {
-      console.log(`product - factor 1: ${arg2}`);
-      console.log(`product - factor 2: ${temp}`);
-      console.log(`product - result: ${temp2}`);
+            if (DEBUG) {
+          console.log(`product - factor 1: ${arg2}`);
+          console.log(`product - factor 2: ${temp}`);
+          console.log(`product - result: ${temp2}`);
+            }
+            temp = temp2;
         }
-        temp = temp2;
+    } finally {
+        // put back the index variable to original content,
+        // also when the body stops with an error
+        set_binding(indexVariable, oldIndexVariableValue);
     }
-
-    // put back the index variable to original content
-    set_binding(indexVariable, oldIndexVariableValue);
     return temp;
 }

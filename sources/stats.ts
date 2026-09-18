@@ -2,6 +2,7 @@ import { car, Cons, istensor, U } from '../runtime/defs';
 import { stop } from '../runtime/run';
 import { add, subtract } from './add';
 import { double, integer, nativeInt, rational } from './bignum';
+import { conj } from './conj';
 import { Eval } from './eval';
 import { makeList } from './list';
 import { divide, multiply } from './multiply';
@@ -22,7 +23,8 @@ function mean(data: U[]): U {
   return divide(data.reduce(add), integer(data.length));
 }
 
-// Sum of squared deviations divided by n - ddof (0: population, 1: sample).
+// Sum of squared deviations |d|^2 = d conj(d), divided by n - ddof
+// (0: population, 1: sample).
 function variance(data: U[], ddof: number): U {
   if (data.length <= ddof) {
     stop('variance: not enough data');
@@ -31,7 +33,7 @@ function variance(data: U[], ddof: number): U {
   const ss = data
     .map((x) => {
       const d = subtract(x, m);
-      return multiply(d, d);
+      return multiply(d, conj(d));
     })
     .reduce(add);
   return divide(ss, integer(data.length - ddof));
@@ -86,9 +88,9 @@ export function Eval_random(p1: Cons): U {
   if (args.length === 0) {
     return double(Math.random());
   }
-  const a = nativeInt(args[0]);
-  const b = nativeInt(args[1]);
-  if (args.length !== 2 || isNaN(a) || isNaN(b) || a > b) {
+  const a = args.length === 2 ? nativeInt(args[0]) : NaN;
+  const b = args.length === 2 ? nativeInt(args[1]) : NaN;
+  if (isNaN(a) || isNaN(b) || a > b) {
     stop('random: use random() or random(a,b) with integers a <= b');
   }
   return integer(a + Math.floor(Math.random() * (b - a + 1)));

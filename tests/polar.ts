@@ -63,4 +63,38 @@ run_test([
   // up with a real
   'polar((-1)^(1/6) - (-1)^(5/6))',
   '3^(1/2)',
+
+  'polar(0)',
+  '0',
+
+  'polar(3)',
+  '3',
+
+  'polar(-2)',
+  '-2',
+
+  'polar(3+4*i)',
+  '5*exp(i*arctan(4/3))',
+
+  'polar(3*exp(i*pi/3))',
+  '3*exp(1/3*i*pi)',
+
+  'polar(1.0+1.0*i)',
+  '1.414214...*exp(0.785398...*i)',
+
+  'polar([1+i,-1])',
+  '[2^(1/2)*exp(1/4*i*pi),-1]',
+
+  // round trips
+  'rect(polar(-1-i))',
+  '-1-i',
+
+  'rect(polar(i))',
+  'i',
+
+  'rect(polar(-2))',
+  '-2',
+
+  'rect(polar(1-sqrt(3)*i))',
+  '1-i*3^(1/2)',
 ]);

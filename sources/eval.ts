@@ -46,7 +46,7 @@ import { hilbert } from './hilbert';
 import { inv, invg } from './inv';
 import { isfloating, isinteger, isintegerorintegerfloat, isZeroLikeOrNonZeroLikeOrUndetermined } from './is';
 import { makeList } from './list';
-import { exponential } from './misc';
+import { checkArgCount, exponential } from './misc';
 import { power } from './power';
 import { makeQuantity, requireDimensionless } from './quantity';
 import { subst } from './subst';
@@ -265,7 +265,7 @@ export function Eval_dim(p1: U) {
   const n = iscons(cddr(p1)) ? evaluate_integer(caddr(p1)) : 1;
   if (!istensor(p2)) {
     return Constants.one; // dim of scalar is 1
-  } else if (n < 1 || n > p2.tensor.ndim) {
+  } else if (!(n >= 1 && n <= p2.tensor.ndim)) {
     return p1;
   } else {
     return integer(p2.tensor.dim[n - 1]);
@@ -292,7 +292,7 @@ Evaluates each argument from left to right. Returns the result of the last argum
 
 */
 export function Eval_do(p1: U) {
-  let result = car(p1);
+  let result: U = symbol(NIL);
   p1 = cdr(p1);
 
   while (iscons(p1)) {
@@ -345,6 +345,7 @@ export function Eval_factorpoly(p1: U): U {
 }
 
 export function Eval_hermite(p1: U) {
+  checkArgCount(p1, 2);
   const arg2 = Eval(caddr(p1));
   const arg1 = Eval(cadr(p1));
   return hermite(arg1, arg2);
@@ -505,7 +506,6 @@ export function Eval_setq(p1: U): U {
 //-----------------------------------------------------------------------------
 function setq_indexed(p1: U): U {
   const p4 = cadadr(p1);
-  console.log(`p4: ${p4}`);
   if (!issymbol(p4)) {
     // this is likely to happen when one tries to
     // do assignments like these
