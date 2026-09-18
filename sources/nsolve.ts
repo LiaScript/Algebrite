@@ -39,9 +39,12 @@ export function Eval_nsolve(p1: U) {
     const b = toNumber(start.elem[1]);
     const fa = fn(a);
     const fb = fn(b);
+    if (fa === 0 || fb === 0) {
+      return double(fa === 0 ? a : b);
+    }
     return double(
       Math.sign(fa) * Math.sign(fb) < 0
-        ? bisection(fn, a, b, fa)
+        ? bisection(fn, a, b, fa, fb)
         : secant(fn, a, b)
     );
   }
@@ -64,7 +67,11 @@ const converged = (dx: number, x: number) =>
 
 function newton(f: Fn, df: Fn, x: number): number {
   for (let i = 0; i < MAX_ITER; i++) {
-    const dx = f(x) / df(x);
+    const fx = f(x);
+    if (fx === 0) {
+      return x;
+    }
+    const dx = fx / df(x);
     if (!isFinite(dx)) {
       break;
     }
@@ -92,7 +99,8 @@ function secant(f: Fn, a: number, b: number): number {
   return stop('nsolve: no convergence, try another interval');
 }
 
-function bisection(f: Fn, a: number, b: number, fa: number): number {
+function bisection(f: Fn, a: number, b: number, fa: number, fb: number): number {
+  const bound = Math.max(Math.abs(fa), Math.abs(fb));
   for (let i = 0; i < 200 && !converged(b - a, a); i++) {
     const m = (a + b) / 2;
     const fm = f(m);
@@ -105,7 +113,13 @@ function bisection(f: Fn, a: number, b: number, fa: number): number {
       b = m;
     }
   }
-  return (a + b) / 2;
+  const m = (a + b) / 2;
+  // near a root |f| shrinks; growing past both endpoints means the sign
+  // change comes from a pole, e.g. tan(x) on [1,2]
+  if (!(Math.abs(f(m)) <= bound)) {
+    stop('nsolve: sign change without a root, the function has a pole');
+  }
+  return m;
 }
 
 type Fn = (v: number) => number;
