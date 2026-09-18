@@ -449,8 +449,10 @@ export function gcd_numbers(p1: Num, p2: Num): Num {
   //  if (!isinteger(p1) || !isinteger(p2))
   //    stop("integer args expected for gcd")
 
+  // largest r with p1/r and p2/r integers: gcd of the numerators over the
+  // lcm of the denominators, gcd(1/2,1/3) = 1/6
   const a = mgcd(p1.q.a, p2.q.a);
-  const b = mgcd(p1.q.b, p2.q.b);
+  const b = p1.q.b.multiply(p2.q.b).divide(mgcd(p1.q.b, p2.q.b));
 
   return new Num(setSignTo(a, 1), b);
 }
