@@ -216,15 +216,15 @@ function yypower(base: U, exponent: U): U {
     if (exponent.q.a < exponent.q.b) {
       tmp = makeList(symbol(POWER), base, exponent);
     } else {
+      // (-1)^(a/b) = (-1)^floor(a/b) * (-1)^((a mod b)/b)
       tmp = makeList(
-        symbol(MULTIPLY),
+        symbol(POWER),
         base,
-        makeList(
-          symbol(POWER),
-          base,
-          rational(exponent.q.a.mod(exponent.q.b), exponent.q.b)
-        )
+        rational(exponent.q.a.mod(exponent.q.b), exponent.q.b)
       );
+      if (exponent.q.a.divide(exponent.q.b).isOdd()) {
+        tmp = makeList(symbol(MULTIPLY), base, tmp);
+      }
       if (DEBUG_POWER) {
         console.log(` trick applied : ${tmp}`);
       }
