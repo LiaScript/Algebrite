@@ -16,6 +16,7 @@ const cos_1 = require("./cos");
 const dpow_1 = require("./dpow");
 const eval_1 = require("./eval");
 const factorial_1 = require("./factorial");
+const float_1 = require("./float");
 const imag_1 = require("./imag");
 const is_1 = require("./is");
 const list_1 = require("./list");
@@ -74,6 +75,10 @@ function yypower(base, exponent) {
             console.log(`   power of ${inputBase} ^ ${inputExp}: ${one}`);
         }
         return one;
+    }
+    //  0 ^ a    ->  0  for a known to be positive (0^0 is 1, 0^(-1) a pole)
+    if (is_1.isZeroAtom(base) && !defs_1.isNumericAtom(exponent) && assume_1.isPositive(exponent)) {
+        return base;
     }
     // e^some_float
     if (base === symbol_1.symbol(defs_1.E) && defs_1.isdouble(exponent)) {
@@ -164,6 +169,11 @@ function yypower(base, exponent) {
         }
         return result;
     }
+    // a number to a complex number: i^i = exp(-pi/2)
+    const complexPower = powerOfComplexExponent(base, exponent);
+    if (complexPower !== undefined) {
+        return complexPower;
+    }
     // both base and exponent are rational numbers?
     if (defs_1.isrational(base) && defs_1.isrational(exponent)) {
         if (DEBUG_POWER) {
@@ -201,6 +211,12 @@ function yypower(base, exponent) {
         }
         if (assume_1.isInteger(multiply_1.divide(add_1.subtract(exponent, defs_1.Constants.one), bignum_1.integer(2)))) {
             return defs_1.Constants.negOne;
+        }
+        // (-1)^(-k) = (-1)^k for an integer k: every integer term of the
+        // exponent gets a positive sign, 1/(-1)^k = (-1)^k, (-1)^(1-k) = (-1)^(1+k)
+        const terms = defs_1.isadd(exponent) ? exponent.tail() : [exponent];
+        if (terms.some(is_1.isnegativeterm) && terms.every((t) => assume_1.isInteger(t))) {
+            return power(base, terms.reduce((acc, t) => add_1.add(acc, is_1.isnegativeterm(t) ? multiply_1.negate(t) : t), defs_1.Constants.zero));
         }
     }
     // if we only assume variables to be real, then |a|^2 = a^2
@@ -420,6 +436,48 @@ function yypower(base, exponent) {
         console.log(`   power of ${inputBase} ^ ${inputExp}: ${result}`);
     }
     return result;
+}
+// z^w = exp(w*log(z)), principal branch, for a number z and a complex
+// number w = u+i*v with v != 0. Exact for z = -1, i, -i, where log(z) is
+// i*pi, i*pi/2, -i*pi/2: i^i = exp(-pi/2). Any other base (2^i, (1+i)^i)
+// stays as it is and gets its value in float mode.
+function powerOfComplexExponent(base, exponent) {
+    const i = defs_1.Constants.imaginaryunit;
+    // stricter than isimaginarynumber, which takes a*b^(-1/2) as well
+    const isImaginary = (p) => misc_1.equal(p, i) ||
+        (defs_1.ismultiply(p) && misc_1.length(p) === 3 && defs_1.isNumericAtom(defs_1.cadr(p)) && misc_1.equal(defs_1.caddr(p), i));
+    const isComplex = (p) => isImaginary(p) ||
+        (defs_1.isadd(p) && misc_1.length(p) === 3 && defs_1.isNumericAtom(defs_1.cadr(p)) && isImaginary(defs_1.caddr(p)));
+    if (!isComplex(exponent) || !(defs_1.isNumericAtom(base) || isComplex(base))) {
+        return undefined;
+    }
+    const hasDouble = (p) => defs_1.isdouble(p) || (defs_1.iscons(p) && p.tail().some(hasDouble));
+    if (defs_1.defs.evaluatingAsFloats || hasDouble(base) || hasDouble(exponent)) {
+        const [a, b, u, v] = [real_1.real(base), imag_1.imag(base), real_1.real(exponent), imag_1.imag(exponent)].map((p) => {
+            const d = float_1.zzfloat(p);
+            return defs_1.isdouble(d) ? d.d : NaN;
+        });
+        const logr = Math.log(Math.hypot(a, b));
+        const theta = Math.atan2(b, a);
+        const mag = Math.exp(u * logr - v * theta);
+        const angle = v * logr + u * theta;
+        if (!Number.isFinite(mag) || Number.isNaN(angle)) {
+            return undefined;
+        }
+        return add_1.add(bignum_1.double(mag * Math.cos(angle)), multiply_1.multiply(bignum_1.double(mag * Math.sin(angle)), i));
+    }
+    const halfTurns = misc_1.equal(base, defs_1.Constants.negOne)
+        ? bignum_1.integer(2)
+        : misc_1.equal(base, i)
+            ? defs_1.Constants.one
+            : misc_1.equal(base, multiply_1.negate(i))
+                ? defs_1.Constants.negOne
+                : undefined;
+    if (halfTurns === undefined) {
+        return undefined;
+    }
+    // log(z) = i*pi/2 * halfTurns
+    return misc_1.exponential(multiply_1.multiply(exponent, multiply_1.multiply(multiply_1.multiply(i, defs_1.Constants.Pi()), multiply_1.divide(halfTurns, bignum_1.integer(2)))));
 }
 //-----------------------------------------------------------------------------
 //

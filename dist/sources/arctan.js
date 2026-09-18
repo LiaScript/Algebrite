@@ -44,7 +44,7 @@ function arctan(x) {
     if (is_1.isZeroAtomOrTensor(x)) {
         return defs_1.Constants.zero;
     }
-    if (is_1.isnegative(x)) {
+    if (leadsWithMinus(x)) {
         return multiply_1.negate(arctan(multiply_1.negate(x)));
     }
     // arctan(sin(a) / cos(a)) ?
@@ -58,13 +58,15 @@ function arctan(x) {
         }
     }
     // arctan(1/sqrt(3)) -> pi/6
-    // second if catches the other way of saying it, sqrt(3)/3
+    // second if catches the other way of saying it, sqrt(3)/3: the whole
+    // product, 1/3*3^(1/2)*y is something else
     if ((defs_1.ispower(x) && is_1.equaln(defs_1.cadr(x), 3) && is_1.equalq(defs_1.caddr(x), -1, 2)) ||
         (defs_1.ismultiply(x) &&
-            is_1.equalq(defs_1.car(defs_1.cdr(x)), 1, 3) &&
-            defs_1.car(defs_1.car(defs_1.cdr(defs_1.cdr(x)))) === symbol_1.symbol(defs_1.POWER) &&
-            is_1.equaln(defs_1.car(defs_1.cdr(defs_1.car(defs_1.cdr(defs_1.cdr(x))))), 3) &&
-            is_1.equalq(defs_1.car(defs_1.cdr(defs_1.cdr(defs_1.car(defs_1.cdr(defs_1.cdr(x)))))), 1, 2))) {
+            misc_1.length(x) === 3 &&
+            is_1.equalq(defs_1.cadr(x), 1, 3) &&
+            defs_1.ispower(defs_1.caddr(x)) &&
+            is_1.equaln(defs_1.cadr(defs_1.caddr(x)), 3) &&
+            is_1.equalq(defs_1.caddr(defs_1.caddr(x)), 1, 2))) {
         return multiply_1.multiply(bignum_1.rational(1, 6), defs_1.Constants.Pi());
     }
     // arctan(1) -> pi/4
@@ -91,6 +93,17 @@ function arctan(x) {
     return list_1.makeList(symbol_1.symbol(defs_1.ARCTAN), x);
 }
 exports.arctan = arctan;
+// arctan is odd, so a minus sign can come out. A sum starts with its
+// constant: -1+2*x stays as it is, the sign of the first term only counts
+// when the first term with a variable is negative too (-1-x, -a+b).
+function leadsWithMinus(x) {
+    if (!defs_1.isadd(x)) {
+        return is_1.isnegativeterm(x);
+    }
+    const terms = x.tail();
+    const variable = terms.find((t) => isNaN(is_1.realconstant(t)));
+    return is_1.isnegativeterm(terms[0]) && (!variable || is_1.isnegativeterm(variable));
+}
 // arctan(tan(u)) = u - k pi, which lies in [-pi/2, pi/2]; only decidable
 // when u is a real constant (arctan(tan(x)) is not x), else null
 function arctanOfTan(u) {

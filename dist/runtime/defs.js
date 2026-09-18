@@ -58,6 +58,11 @@ class Defs {
         this.unitsAutoDetect = false;
         this.evaluatingPolar = false;
         this.esc_flag = false;
+        // Date.now() after which check_esc_flag stops the evaluation, 0: never
+        this.deadline = 0;
+        this.timelimit = 0;
+        // the deadline was hit during this statement, see stop()
+        this.timedOut = false;
         this.trigmode = 0;
         this.out_count = 0;
         this.test_flag = false;
@@ -698,6 +703,7 @@ function MEQUAL(p, n) {
 exports.MEQUAL = MEQUAL;
 function reset_after_error() {
     exports.defs.esc_flag = false;
+    exports.defs.timedOut = false;
     draw_flag = false;
     exports.defs.evaluatingAsFloats = false;
     exports.defs.evaluatingPolar = false;

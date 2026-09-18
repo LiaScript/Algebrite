@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.approxViolatesAssumptions = exports.violatesAssumptions = exports.Eval_assumptions = exports.Eval_forget = exports.Eval_assume = exports.Eval_isinteger = exports.Eval_isnonzero = exports.Eval_isnegative = exports.Eval_ispositive = exports.Eval_isreal = exports.isInteger = exports.isNonzero = exports.isNegative = exports.isPositive = exports.isReal = exports.allSymbolsReal = exports.facts = exports.withSign = exports.clearAssumptions = void 0;
+exports.approxViolatesAssumptions = exports.violatesAssumptions = exports.Eval_assumptions = exports.Eval_forget = exports.Eval_assume = exports.Eval_isinteger = exports.Eval_isnonzero = exports.Eval_isnegative = exports.Eval_ispositive = exports.Eval_isreal = exports.isInteger = exports.isNonzero = exports.isNegative = exports.isPositive = exports.isReal = exports.allSymbolsReal = exports.constantSign = exports.hasSymbol = exports.facts = exports.withSign = exports.clearAssumptions = void 0;
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const coeff_1 = require("./coeff");
 const eval_1 = require("./eval");
+const bigfloat_1 = require("./bigfloat");
+const float_1 = require("./float");
 const is_1 = require("./is");
 const list_1 = require("./list");
 const scan_1 = require("./scan");
@@ -25,8 +27,9 @@ function clearAssumptions() {
 }
 exports.clearAssumptions = clearAssumptions;
 // Runs f with the bound variable x temporarily assumed positive or
-// negative (x -> inf in a limit is large and positive); what the user
-// assumed about x is restored afterwards.
+// negative (x -> inf in a limit is large and positive), or an integer (the
+// n of a periodic solution family); what the user assumed about x is
+// restored afterwards.
 function withSign(x, sign, f) {
     if (!defs_1.issymbol(x)) {
         return f();
@@ -104,6 +107,49 @@ const merge = (a, b) => {
 const realFacts = (d) => close({ real: true, integer: Math.floor(d) === d, positive: d > 0, negative: d < 0, zero: d === 0 });
 // Facts about an evaluated expression.
 function facts(p) {
+    const f = structuralFacts(p);
+    // pi-4, 2^(1/2)-3^(1/2), cos(2): a real constant whose sign the rules
+    // cannot derive
+    if (f.real === true &&
+        f.zero !== true &&
+        (f.positive === undefined || f.negative === undefined) &&
+        defs_1.iscons(p) &&
+        !exports.hasSymbol(p)) {
+        const s = constantSign(p);
+        return (s && close(Object.assign(Object.assign({}, f), { positive: s > 0, negative: s < 0, zero: false }))) || f;
+    }
+    return f;
+}
+exports.facts = facts;
+const hasSymbol = (p) => defs_1.iscons(p)
+    ? p.tail().some(exports.hasSymbol)
+    : defs_1.issymbol(p) && p !== symbol_1.symbol(defs_1.PI) && p !== symbol_1.symbol(defs_1.E);
+exports.hasSymbol = hasSymbol;
+// The sign of a constant without symbols from its certified digits
+// (certifiedSign of bigfloat.ts), never from a double: sin(3^34) or
+// exp(pi*sqrt(163))-262537412640768744 have the wrong sign there. 1 or -1
+// when certain, 0 when the value cannot be told from zero, undefined when
+// it cannot be evaluated as a real number. Kept per cons cell: facts() asks
+// several times for the same expression.
+const signCache = new WeakMap();
+let decidingConstantSign = false; // lambertw starts from a double: Eval, facts
+function constantSign(p) {
+    if (decidingConstantSign) {
+        return undefined;
+    }
+    if (!signCache.has(p)) {
+        decidingConstantSign = true;
+        try {
+            signCache.set(p, bigfloat_1.certifiedSign(p));
+        }
+        finally {
+            decidingConstantSign = false;
+        }
+    }
+    return signCache.get(p);
+}
+exports.constantSign = constantSign;
+function structuralFacts(p) {
     var _a;
     if (defs_1.isrational(p)) {
         return close(Object.assign(Object.assign({}, realFacts(Math.sign(p.q.a.toJSNumber()))), { integer: is_1.isinteger(p) }));
@@ -129,7 +175,6 @@ function facts(p) {
     }
     return functionFacts(p);
 }
-exports.facts = facts;
 function symbolFacts(p) {
     var _a;
     if (p === symbol_1.symbol(defs_1.PI) || p === symbol_1.symbol(defs_1.E)) {
@@ -289,7 +334,8 @@ function functionFacts(p) {
     if (arg.real) {
         if (f === symbol_1.symbol(defs_1.COSH))
             return (_b = close({ positive: true })) !== null && _b !== void 0 ? _b : {};
-        if ([defs_1.SIN, defs_1.COS, defs_1.SINH, defs_1.TANH, defs_1.ARCTAN, defs_1.ARCSINH].some((n) => f === symbol_1.symbol(n))) {
+        // tan: real wherever it is defined, like 1/x
+        if ([defs_1.SIN, defs_1.COS, defs_1.TAN, defs_1.SINH, defs_1.TANH, defs_1.ARCTAN, defs_1.ARCSINH].some((n) => f === symbol_1.symbol(n))) {
             return { real: true };
         }
     }
@@ -455,9 +501,25 @@ exports.Eval_assumptions = Eval_assumptions;
 // made explicitly about x. The default realness of symbols doesn't count:
 // solve(x^2+1,x) keeps its complex roots unless x is assumed real.
 function violatesAssumptions(value, x) {
-    return violatedBy(facts(value), x);
+    return violatedBy(facts(value), x) || violatedBy(numericSign(value, x), x);
 }
 exports.violatesAssumptions = violatesAssumptions;
+// What the float value tells about a constant the rules above can't decide,
+// such as 1-2^(1/2) or 2*cos(8/9*pi): its sign, and that it is no integer.
+// Only computed when there are assumptions about x; a value within 1e-9 of
+// zero, or within 1e-6 of an integer, stays undecided in that respect.
+function numericSign(value, x) {
+    if (!defs_1.issymbol(x) || !assumptions.has(x.printname)) {
+        return {};
+    }
+    const f = float_1.zzfloat(value);
+    if (!defs_1.isdouble(f)) {
+        return {};
+    }
+    const sign = Math.abs(f.d) > 1e-9 ? { positive: f.d > 0, negative: f.d < 0, zero: false } : {};
+    const fraction = Math.abs(f.d - Math.round(f.d)) > 1e-6 ? { integer: false } : {};
+    return Object.assign(Object.assign({ real: true }, sign), fraction);
+}
 // the same for an approximate number re + i*im (nroots, nsolve): parts
 // within 1e-6 of an integer are taken as that integer
 // ponytail: fixed tolerance, pass one in if a caller needs another

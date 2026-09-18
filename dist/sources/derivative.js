@@ -22,6 +22,7 @@ const is_1 = require("./is");
 const list_1 = require("./list");
 const log_2 = require("./log");
 const multiply_1 = require("./multiply");
+const piecewise_1 = require("./piecewise");
 const power_1 = require("./power");
 const sgn_1 = require("./sgn");
 const simplify_1 = require("./simplify");
@@ -222,6 +223,10 @@ function d_scalar_scalar_1(p1, p2) {
     }
     if (defs_1.car(p1) === symbol_1.symbol(defs_1.INTEGRAL) && defs_1.caddr(p1) === p2) {
         return derivative_of_integral(p1);
+    }
+    // branch by branch; differentiability at the break points is not decided
+    if (piecewise_1.isPiecewise(p1)) {
+        return piecewise_1.mapPiecewiseValues(p1, (v) => derivative(v, p2));
     }
     const viaSpecial = special_1.specialDerivative(p1, (q) => derivative(q, p2));
     if (viaSpecial !== undefined) {

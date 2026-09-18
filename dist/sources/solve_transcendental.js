@@ -6,9 +6,11 @@ const find_1 = require("../runtime/find");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const abs_1 = require("./abs");
+const assume_1 = require("./assume");
 const add_1 = require("./add");
 const bignum_1 = require("./bignum");
 const denominator_1 = require("./denominator");
+const imag_1 = require("./imag");
 const derivative_1 = require("./derivative");
 const eval_1 = require("./eval");
 const float_1 = require("./float");
@@ -18,6 +20,7 @@ const misc_1 = require("./misc");
 const multiply_1 = require("./multiply");
 const numerator_1 = require("./numerator");
 const power_1 = require("./power");
+const quotient_1 = require("./quotient");
 const rationalize_1 = require("./rationalize");
 const roots_1 = require("./roots");
 const simplify_1 = require("./simplify");
@@ -25,11 +28,16 @@ const subst_1 = require("./subst");
 const MAX_DEPTH = 6;
 // the integer symbol of solve(eq, x, n): sin and cos solutions get
 // + 2*pi*n, tan solutions + pi*n. Module state, set by solveWithFamily only.
+// n is an integer while the equation is solved, so that holds() can see
+// sin(pi+2*n*pi) = 0 and drop a family at which a denominator vanishes.
 let family;
 function solveWithFamily(E, x, n) {
+    if (n === undefined) {
+        return solveEquation(E, x);
+    }
     family = n;
     try {
-        return solveEquation(E, x);
+        return assume_1.withSign(n, 'integer', () => solveEquation(E, x));
     }
     finally {
         family = undefined;
@@ -49,7 +57,7 @@ function solveEquation(E, x, depth = 0) {
         return [];
     }
     if (is_1.ispolyexpandedform(E, x)) {
-        return roots_1.rootsList(E, x);
+        return exactRoots(E, x);
     }
     if (depth > MAX_DEPTH) {
         cannot(x);
@@ -198,7 +206,7 @@ function viaKernel(Eu, u, kernel, x, depth) {
     }
     const what = kind(kernel, x);
     const result = [];
-    for (const c of roots_1.rootsList(P, u)) {
+    for (const c of exactRoots(P, u)) {
         if (find_1.Find(c, x) && what !== 'radical' && what !== 'abs') {
             cannot(x);
         }
@@ -222,7 +230,7 @@ function invert(kernel, what, c, x, depth) {
             eqs = [add_1.subtract(g, misc_1.exponential(c))];
             break;
         case 'sin': {
-            if (outsideUnitInterval(c)) {
+            if (notReal(c) || outsideUnitInterval(c)) {
                 return [];
             }
             const a = call(defs_1.ARCSIN, c);
@@ -230,7 +238,7 @@ function invert(kernel, what, c, x, depth) {
             break;
         }
         case 'cos': {
-            if (outsideUnitInterval(c)) {
+            if (notReal(c) || outsideUnitInterval(c)) {
                 return [];
             }
             const a = call(defs_1.ARCCOS, c);
@@ -238,6 +246,9 @@ function invert(kernel, what, c, x, depth) {
             break;
         }
         case 'tan':
+            if (notReal(c)) {
+                return [];
+            }
             eqs = [add_1.subtract(g, periodic(call(defs_1.ARCTAN, c), defs_1.Constants.Pi()))];
             break;
         case 'arcsin':
@@ -278,9 +289,93 @@ function call(fn, ...args) {
     // usr_symbol finds keywords too and creates soft names like lambertw
     return eval_1.Eval(list_1.makeList(symbol_1.usr_symbol(fn), ...args));
 }
+// Trig equations are solved over the reals: sin(x) = 2 has no solution, and
+// neither has sin(x) = i. Rationals are compared exactly; a radical may float
+// to 1.0000000000000002 and still be 1, which must not drop its family.
 function outsideUnitInterval(c) {
+    if (defs_1.isrational(c)) {
+        return c.a.abs().compare(c.b) > 0;
+    }
     const f = float_1.zzfloat(c);
-    return defs_1.isdouble(f) && Math.abs(f.d) > 1;
+    return defs_1.isdouble(f) && Math.abs(f.d) > 1 + 1e-9;
+}
+function notReal(c) {
+    const f = float_1.zzfloat(c);
+    return is_1.iscomplexnumberdouble(f) && Math.abs(toNumber(imag_1.imag(f))) > 1e-9;
+}
+// roots() of a polynomial whose coefficients hold radicals returns nested
+// radicals or Cardano forms even for roots like -1 or 3^(1/2)/2:
+// T^2+(1+3^(1/2)/2)*T+3^(1/2)/2 has the root -1/2-1/4*3^(1/2)-1/2*(7/4-3^(1/2))^(1/2),
+// which is -1. A root whose float value is close to r or +-sqrt(r) for a small
+// rational r is confirmed by exact substitution and divided off, the quotient
+// is solved again, and what stays unrecognised is denested by simplify.
+function exactRoots(P, u) {
+    const roots = roots_1.rootsList(P, u);
+    const found = [];
+    let Q = P;
+    for (const c of roots) {
+        const f = defs_1.isrational(c) ? NaN : toNumber(c);
+        const sign = f < 0 ? defs_1.Constants.negOne : defs_1.Constants.one;
+        const square = nearRational(f * f);
+        const v = [
+            nearRational(f),
+            square && multiply_1.multiply(sign, power_1.power(square, bignum_1.rational(1, 2)))
+        ].find((v) => v !== undefined &&
+            !found.some((w) => misc_1.equal(v, w)) &&
+            is_1.isZeroAtomOrTensor(simplify_1.simplify(eval_1.Eval(subst_1.subst(P, u, v)))));
+        if (v !== undefined) {
+            found.push(v);
+            Q = quotient_1.divpoly(Q, add_1.subtract(u, v), u);
+        }
+    }
+    if (found.length > 0) {
+        return found.concat(find_1.Find(Q, u) ? exactRoots(Q, u) : []);
+    }
+    // (real numbers only: a root with parameters in it stays as roots() gave it)
+    return roots.map((c) => realForm(!Number.isNaN(toNumber(c)) && hasNestedRadical(c) ? simplify_1.simplify(c) : c));
+}
+// roots() writes the real root (1/2-1/4*2^(1/2))^(1/2) as
+// i*(-1/2+1/4*2^(1/2))^(1/2): a real number that shows i is the root of its
+// square, with its sign.
+function realForm(c) {
+    const f = float_1.zzfloat(c);
+    if (!defs_1.isdouble(f) || !find_1.Find(c, defs_1.Constants.imaginaryunit)) {
+        return c;
+    }
+    const root = power_1.power(eval_1.Eval(misc_1.yyexpand(power_1.power(c, bignum_1.integer(2)))), bignum_1.rational(1, 2));
+    const r = f.d < 0 ? multiply_1.negate(root) : root;
+    return !find_1.Find(r, defs_1.Constants.imaginaryunit) && Math.abs(toNumber(r) - f.d) < 1e-12
+        ? r
+        : c;
+}
+// A root inside a root, (7/4-3^(1/2))^(1/2). Only these go through simplify:
+// it would also turn the 1/4*6^(1/2)-1/4*2^(1/2) that arcsin knows as
+// sin(pi/12) into another form.
+function hasNestedRadical(p, inside = false) {
+    if (!defs_1.iscons(p)) {
+        return false;
+    }
+    const radical = defs_1.ispower(p) && defs_1.isrational(defs_1.caddr(p)) && !is_1.isinteger(defs_1.caddr(p));
+    return ((radical && inside) ||
+        p.tail().some((q) => hasNestedRadical(q, inside || radical)));
+}
+// The fraction p/q with q <= 1000 next to f (continued fraction), if there
+// is one within rounding.
+function nearRational(f) {
+    let [p0, q0, p1, q1] = [0, 1, 1, 0];
+    let r = f;
+    while (Number.isFinite(r) && Math.abs(f) < 1e6) {
+        const a = Math.floor(r);
+        [p0, q0, p1, q1] = [p1, q1, a * p1 + p0, a * q1 + q0];
+        if (q1 > 1000) {
+            return undefined;
+        }
+        if (Math.abs(f - p1 / q1) < 1e-9 * Math.max(1, Math.abs(f))) {
+            return bignum_1.rational(p1, q1);
+        }
+        r = 1 / (r - a);
+    }
+    return undefined;
 }
 // g = a for each angle a, dropping angles that differ by a multiple of 2*pi
 function distinctAngles(g, angles) {
@@ -445,13 +540,57 @@ function holds(E, x, c) {
         return false;
     }
 }
-// Removes duplicates and, when every solution is a real number, sorts them.
-function tidySolutions(sols) {
-    const uniq = sols.filter((s, i) => sols.findIndex((t) => misc_1.equal(s, t)) === i);
-    const values = uniq.map(toNumber);
-    if (values.every((v) => !Number.isNaN(v))) {
-        uniq.sort((a, b) => toNumber(a) - toNumber(b));
+// Removes duplicates, merges the families in n that differ by half a period
+// and, when every solution (at n = 0) is a real number, sorts them.
+function tidySolutions(sols, n) {
+    let uniq = sols.filter((s, i) => sols.findIndex((t) => misc_1.equal(s, t)) === i);
+    if (n !== undefined) {
+        uniq = mergeHalfPeriods(uniq, n);
+    }
+    const value = (s) => toNumber(n === undefined ? s : offset(s, n));
+    if (uniq.every((s) => !Number.isNaN(value(s)))) {
+        uniq.sort((a, b) => value(a) - value(b));
     }
     return uniq;
 }
 exports.tidySolutions = tidySolutions;
+function offset(s, n) {
+    return eval_1.Eval(subst_1.subst(s, n, defs_1.Constants.zero));
+}
+// a+P*n and b+P*n with a-b = +-P/2 exactly are together (a or b)+P/2*n,
+// e.g. +-1/2*pi+2*n*pi is 1/2*pi+n*pi. Repeated until nothing merges.
+// ponytail: only halves; three families a third of a period apart (the
+// 1/2*pi+2/3*n*pi of 2*cos(x)^2+sin(x)=1) stay three, add if it matters.
+function mergeHalfPeriods(sols, n) {
+    const out = [...sols];
+    for (let i = 0; i < out.length; i++) {
+        for (let j = i + 1; j < out.length; j++) {
+            const m = mergedFamily(out[i], out[j], n);
+            if (m !== undefined) {
+                out.splice(j, 1);
+                out[i] = m;
+                // start over: the merged family may fit an earlier one
+                // (+-1/4*pi+n*pi is 1/4*pi+1/2*n*pi); ends, each merge removes one
+                i = -1;
+                break;
+            }
+        }
+    }
+    return out;
+}
+function mergedFamily(s, t, n) {
+    const period = derivative_1.derivative(s, n);
+    if (is_1.isZeroAtomOrTensor(period) || find_1.Find(period, n) || !misc_1.equal(period, derivative_1.derivative(t, n))) {
+        return undefined;
+    }
+    const half = multiply_1.divide(period, bignum_1.integer(2));
+    const [a, b] = [offset(s, n), offset(t, n)];
+    const d = add_1.subtract(a, b);
+    if (!is_1.isZeroAtomOrTensor(add_1.add(d, half)) && !is_1.isZeroAtomOrTensor(add_1.subtract(d, half))) {
+        return undefined;
+    }
+    // the offset of smaller absolute value, the positive one on a tie
+    const [va, vb] = [toNumber(a), toNumber(b)];
+    const useB = Math.abs(vb) < Math.abs(va) - 1e-12 || (Math.abs(vb) <= Math.abs(va) + 1e-12 && vb > va);
+    return add_1.add(useB ? b : a, multiply_1.multiply(half, n));
+}

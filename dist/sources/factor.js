@@ -3,20 +3,33 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.factor_small_number = exports.factor = exports.Eval_factor = void 0;
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
+const find_1 = require("../runtime/find");
 const symbol_1 = require("../runtime/symbol");
 const bignum_1 = require("./bignum");
 const eval_1 = require("./eval");
 const factorpoly_1 = require("./factorpoly");
 const guess_1 = require("./guess");
 const is_1 = require("./is");
+const factor_multivariate_1 = require("./factor_multivariate");
 const multiply_1 = require("./multiply");
 const pollard_1 = require("./pollard");
 // factor a polynomial or integer
 function Eval_factor(p1) {
     const top = eval_1.Eval(defs_1.cadr(p1));
     const p2 = eval_1.Eval(defs_1.caddr(p1));
-    const variable = p2 === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(top) : p2;
+    let variable = p2 === symbol_1.symbol(defs_1.NIL) ? guess_1.guess(top) : p2;
+    if (p2 === symbol_1.symbol(defs_1.NIL) && !find_1.Find(top, variable)) {
+        // none of x, y, z, t, s: factor(a^2-b^2) takes a
+        const symbols = [];
+        symbol_1.collectUserSymbols(top, symbols);
+        variable = symbols[0] || variable;
+    }
     let temp = factor(top, variable);
+    // factor(p) is complete: what the main variable leaves over, 4*y^2-1 in
+    // x*(4*y^2-1), is factored too
+    if (p2 === symbol_1.symbol(defs_1.NIL) && !is_1.isinteger(top)) {
+        temp = completeFactors(temp, variable);
+    }
     // more factoring?
     p1 = defs_1.cdddr(p1);
     if (defs_1.iscons(p1)) {
@@ -25,6 +38,33 @@ function Eval_factor(p1) {
     return temp;
 }
 exports.Eval_factor = Eval_factor;
+// The factors of a product once more: one without the main variable X is
+// factored in its own first symbol, one with X loses what Kronecker's
+// substitution still finds in it (the z in 2*w*z+3*x*z^2). Factoring every
+// factor again in every symbol would only turn signs, -(a+b)*(-a+b).
+function completeFactors(p, X) {
+    const factors = defs_1.ismultiply(p) ? p.tail() : [p];
+    const out = [];
+    for (const f of factors) {
+        const [base, n] = defs_1.ispower(f) && is_1.isposint(defs_1.caddr(f)) ? [defs_1.cadr(f), bignum_1.nativeInt(defs_1.caddr(f))] : [f, 1];
+        const symbols = [];
+        symbol_1.collectUserSymbols(base, symbols);
+        let parts;
+        if (defs_1.isadd(base) && symbols.length) {
+            if (!find_1.Find(base, X)) {
+                const again = completeFactors(factor(base, symbols[0]), symbols[0]);
+                parts = defs_1.ismultiply(again) ? again.tail() : [again];
+            }
+            else {
+                parts = factor_multivariate_1.factorKronecker(base, X);
+            }
+        }
+        for (let k = 0; k < n; k++) {
+            out.push(...(parts || [base]));
+        }
+    }
+    return out.length === 1 ? out[0] : out.reduce(multiply_1.multiply_noexpand);
+}
 function factor_again(p1, p2) {
     if (defs_1.ismultiply(p1)) {
         const arr = [];

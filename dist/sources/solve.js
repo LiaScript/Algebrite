@@ -81,7 +81,15 @@ function solve(p1) {
     }
     // solve(eq, x, n): n names the integer of a periodic solution family
     const family = defs_1.cadddr(p1) === symbol_1.symbol(defs_1.NIL) ? undefined : eval_1.Eval(defs_1.cadddr(p1));
-    const sols = solve_transcendental_1.tidySolutions(solve_transcendental_1.solveWithFamily(POLY1, X1, family));
+    if (family !== undefined) {
+        if (!symbol_1.is_usr_symbol(family)) {
+            run_1.stop('solve: 3rd argument must be a symbol');
+        }
+        if (find_1.Find(POLY1, family)) {
+            run_1.stop(`solve: the parameter ${family} occurs in the equation`);
+        }
+    }
+    const sols = solve_transcendental_1.tidySolutions(solve_transcendental_1.solveWithFamily(POLY1, X1, family), family);
     if (sols.length === 0) {
         run_1.stop('solve: no solution');
     }

@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.coeff = exports.Eval_coeff = void 0;
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
-const misc_1 = require("../sources/misc");
+const is_1 = require("./is");
 const add_1 = require("./add");
 const eval_1 = require("./eval");
 const filter_1 = require("./filter");
@@ -64,7 +64,8 @@ function coeff(p, x) {
         const c = eval_1.Eval(subst_1.subst(p, x, defs_1.Constants.zero));
         coefficients.push(c);
         p = add_1.subtract(p, c);
-        if (misc_1.equal(p, defs_1.Constants.zero)) {
+        // a tensor of zeros too: x-[1,2] is [x-1,x-2], and the loop ran forever
+        if (is_1.isZeroAtomOrTensor(p)) {
             return coefficients;
         }
         p = defs_1.doexpand(multiply_1.divide, p, x);

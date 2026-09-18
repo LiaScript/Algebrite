@@ -50,25 +50,13 @@ function arccos(x) {
         return bignum_1.double(Math.acos(x.d));
     }
     // if x == 1/sqrt(2) then return 1/4*pi (45 degrees)
-    // second if catches the other way of saying it, sqrt(2)/2
-    if (is_1.isoneoversqrttwo(x) ||
-        (defs_1.ismultiply(x) &&
-            is_1.equalq(defs_1.car(defs_1.cdr(x)), 1, 2) &&
-            defs_1.car(defs_1.car(defs_1.cdr(defs_1.cdr(x)))) === symbol_1.symbol(defs_1.POWER) &&
-            is_1.equaln(defs_1.car(defs_1.cdr(defs_1.car(defs_1.cdr(defs_1.cdr(x))))), 2) &&
-            is_1.equalq(defs_1.car(defs_1.cdr(defs_1.cdr(defs_1.car(defs_1.cdr(defs_1.cdr(x)))))), 1, 2))) {
+    if (is_1.isoneoversqrttwo(x)) {
         return defs_1.defs.evaluatingAsFloats
             ? bignum_1.double(Math.PI / 4.0)
             : multiply_1.multiply(bignum_1.rational(1, 4), symbol_1.symbol(defs_1.PI));
     }
     // if x == -1/sqrt(2) then return 3/4*pi (135 degrees)
-    // second if catches the other way of saying it, -sqrt(2)/2
-    if (is_1.isminusoneoversqrttwo(x) ||
-        (defs_1.ismultiply(x) &&
-            is_1.equalq(defs_1.car(defs_1.cdr(x)), -1, 2) &&
-            defs_1.car(defs_1.car(defs_1.cdr(defs_1.cdr(x)))) === symbol_1.symbol(defs_1.POWER) &&
-            is_1.equaln(defs_1.car(defs_1.cdr(defs_1.car(defs_1.cdr(defs_1.cdr(x))))), 2) &&
-            is_1.equalq(defs_1.car(defs_1.cdr(defs_1.cdr(defs_1.car(defs_1.cdr(defs_1.cdr(x)))))), 1, 2))) {
+    if (is_1.isminusoneoversqrttwo(x)) {
         return defs_1.defs.evaluatingAsFloats
             ? bignum_1.double((Math.PI * 3.0) / 4.0)
             : multiply_1.multiply(bignum_1.rational(3, 4), symbol_1.symbol(defs_1.PI));

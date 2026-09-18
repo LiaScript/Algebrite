@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.solveInequalities = exports.solveInequality = void 0;
+exports.joinPieces = exports.solveInequalities = exports.solveInequality = void 0;
 const defs_1 = require("../runtime/defs");
 const find_1 = require("../runtime/find");
 const run_1 = require("../runtime/run");
@@ -117,6 +117,13 @@ function solveInequalities(rels, x) {
     if (parametric) {
         run_1.stop('solve: inequalities with parameters are not supported');
     }
+    return joinPieces(x, pts, segments);
+}
+exports.solveInequalities = solveInequalities;
+// The runs of true segments as conditions on x: even indices are the open
+// intervals (2*j is the one below pts[j]), odd indices 2*j+1 are pts[j].
+// One piece, or(...) of several, 1 for the whole line, 0 for nothing.
+function joinPieces(x, pts, segments) {
     const pieces = [];
     let start = -1;
     for (let i = 0; i <= segments.length; i++) {
@@ -134,12 +141,9 @@ function solveInequalities(rels, x) {
     if (pieces.length === 0) {
         return defs_1.Constants.zero;
     }
-    if (pieces.length === 1 && pieces[0] === defs_1.Constants.one) {
-        return defs_1.Constants.one;
-    }
     return pieces.length === 1 ? pieces[0] : list_1.makeList(symbol_1.symbol(defs_1.OR), ...pieces);
 }
-exports.solveInequalities = solveInequalities;
+exports.joinPieces = joinPieces;
 // s*x + c op 0 with s free of x and symbols in the root: the sign of s
 // decides the direction, x op -c/s or the flipped relation. undefined when
 // E is not of that shape or has no parameters; stops when the sign of s is

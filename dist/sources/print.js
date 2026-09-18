@@ -12,6 +12,7 @@ const denominator_1 = require("./denominator");
 const eval_1 = require("./eval");
 const is_1 = require("./is");
 const multiply_1 = require("./multiply");
+const piecewise_1 = require("./piecewise");
 const numerator_1 = require("./numerator");
 const print2d_1 = require("./print2d");
 const scan_1 = require("./scan");
@@ -480,6 +481,38 @@ function print_factorial_function(p) {
     accumulator += print_char('!');
     return accumulator;
 }
+// A function name in LaTeX is an operator name, not a product of italic
+// letters: the macro where there is one, \ln for log (the natural
+// logarithm), \operatorname for the rest. One-letter names, also with
+// primes or a subscript (f, y'', f_1), stay as they are: undefined.
+// TeX puts a thin space around operator names by itself.
+const LATEX_FUNCTION_MACROS = 'sin cos tan cot sec csc arcsin arccos arctan sinh cosh tanh coth exp min max gcd det arg deg'.split(' ');
+function latexFunctionName(name) {
+    var _a;
+    if (/^[A-Za-z]('*|_.*)$/.test(name)) {
+        return undefined;
+    }
+    if (LATEX_FUNCTION_MACROS.includes(name)) {
+        return '\\' + name;
+    }
+    const renamed = {
+        log: '\\ln',
+        limit: '\\lim',
+        Gamma: '\\Gamma'
+    };
+    return (_a = renamed[name]) !== null && _a !== void 0 ? _a : `\\operatorname{${name}}`;
+}
+// limit(f,x,a[,side]) unevaluated: \lim_{x \to a^{+}}{f}
+function print_LIMIT_latex(p) {
+    const [f, x, a, side] = p.tail();
+    let direction = '';
+    if (side !== undefined) {
+        const left = defs_1.issymbol(side) ? symbol_1.get_printname(side) === 'left' : is_1.isnegativeterm(side);
+        direction = left ? '^{-}' : '^{+}';
+    }
+    const body = defs_1.isadd(f) ? '\\left(' + print_expr(f) + '\\right)' : print_expr(f);
+    return `\\lim_{${print_expr(x)} \\to ${print_expr(a)}${direction}}{${body}}`;
+}
 function print_ABS_latex(p) {
     let accumulator = '';
     accumulator += print_str('\\left |');
@@ -799,6 +832,17 @@ function print_TEST_latex(p) {
         rows.join(' \\\\ ') +
         ' \\end{array} \\right.');
 }
+// one row per branch: value & condition
+function print_piecewise_latex(p) {
+    const rows = [];
+    p = defs_1.cdr(p);
+    while (defs_1.iscons(p)) {
+        const condition = defs_1.iscons(defs_1.cdr(p)) ? print_expr(defs_1.cadr(p)) : '\\text{otherwise}';
+        rows.push(print_expr(defs_1.car(p)) + ' & ' + condition);
+        p = defs_1.cddr(p);
+    }
+    return '\\begin{cases} ' + rows.join(' \\\\ ') + ' \\end{cases}';
+}
 function print_TEST_codegen(p) {
     let accumulator = '(function(){';
     p = defs_1.cdr(p);
@@ -1104,7 +1148,11 @@ function print_power(base, exponent) {
         // print the base,
         // determining if it needs to be
         // wrapped in parentheses or not
-        if (defs_1.isadd(base) || is_1.isnegativenumber(base)) {
+        if (defs_1.defs.printMode === defs_1.PRINTMODE_LATEX && piecewise_1.isPiecewise(base)) {
+            // the cases are tall: parentheses that grow
+            accumulator += '\\left(' + print_expr(base) + '\\right)';
+        }
+        else if (defs_1.isadd(base) || is_1.isnegativenumber(base)) {
             accumulator += print_str('(');
             accumulator += print_expr(base);
             accumulator += print_str(')');
@@ -1339,6 +1387,10 @@ function print_factor(p, omitParens = false, pastFirstFactor = false) {
     }
     if (defs_1.isfactorial(p)) {
         accumulator += print_factorial_function(p);
+        return accumulator;
+    }
+    else if (piecewise_1.isPiecewise(p) && defs_1.defs.printMode === defs_1.PRINTMODE_LATEX) {
+        accumulator += print_piecewise_latex(p);
         return accumulator;
     }
     else if (defs_1.car(p) === symbol_1.symbol(defs_1.ABS) && defs_1.defs.printMode === defs_1.PRINTMODE_LATEX) {
@@ -1603,10 +1655,16 @@ function print_factor(p, omitParens = false, pastFirstFactor = false) {
         //  print_str(((struct symbol *) cadr(p))->name)
         //  return
         //}
-        accumulator += print_factor(defs_1.car(p));
+        const latexName = defs_1.defs.printMode === defs_1.PRINTMODE_LATEX && !defs_1.defs.codeGen && defs_1.issymbol(defs_1.car(p))
+            ? latexFunctionName(symbol_1.get_printname(defs_1.car(p)))
+            : undefined;
+        if (latexName === '\\lim' && (misc_1.length(p) === 4 || misc_1.length(p) === 5)) {
+            return accumulator + print_LIMIT_latex(p);
+        }
+        accumulator += latexName !== null && latexName !== void 0 ? latexName : print_factor(defs_1.car(p));
         p = defs_1.cdr(p);
         if (!omitParens) {
-            accumulator += print_str('(');
+            accumulator += print_str(latexName ? '\\left(' : '(');
         }
         if (defs_1.iscons(p)) {
             accumulator += print_expr(defs_1.car(p));
@@ -1618,7 +1676,7 @@ function print_factor(p, omitParens = false, pastFirstFactor = false) {
             }
         }
         if (!omitParens) {
-            accumulator += print_str(')');
+            accumulator += print_str(latexName ? '\\right)' : ')');
         }
         return accumulator;
     }

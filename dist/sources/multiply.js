@@ -36,9 +36,7 @@ exports.Eval_multiply = Eval_multiply;
 // so you pass i*(-1)^(1/2), it wouldnt't
 // give -1, because i is not evalled
 function multiply(arg1, arg2) {
-    if (defs_1.defs.esc_flag) {
-        run_1.stop('escape key stop');
-    }
+    run_1.check_esc_flag();
     if (defs_1.isNumericAtom(arg1) && defs_1.isNumericAtom(arg2)) {
         return bignum_1.multiply_numbers(arg1, arg2);
     }

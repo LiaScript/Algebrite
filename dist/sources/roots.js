@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.rootsList = exports.roots = exports.keepAssumedRoots = exports.Eval_roots = exports.normalizeEquation = exports.equationToExpr = void 0;
 const alloc_1 = require("../runtime/alloc");
 const defs_1 = require("../runtime/defs");
+const find_1 = require("../runtime/find");
 const run_1 = require("../runtime/run");
 const symbol_1 = require("../runtime/symbol");
 const misc_1 = require("../sources/misc");
@@ -11,10 +12,12 @@ const assume_1 = require("./assume");
 const add_1 = require("./add");
 const bignum_1 = require("./bignum");
 const coeff_1 = require("./coeff");
+const cos_1 = require("./cos");
 const eval_1 = require("./eval");
 const float_1 = require("./float");
 const factorpoly_1 = require("./factorpoly");
 const guess_1 = require("./guess");
+const list_1 = require("./list");
 const is_1 = require("./is");
 const multiply_1 = require("./multiply");
 const power_1 = require("./power");
@@ -137,6 +140,13 @@ function roots(POLY, X) {
         return results[0];
     }
     misc_1.sort(results);
+    // the trigonometric roots of a cubic read best by ascending value; any
+    // other list keeps the term order it always had
+    const values = results.map((r) => float_1.zzfloat(r));
+    if (results.some((r) => find_1.Find(r, symbol_1.symbol(defs_1.COS))) && values.every(defs_1.isdouble)) {
+        const value = new Map(results.map((r, i) => [r, values[i].d]));
+        results.sort((a, b) => value.get(a) - value.get(b));
+    }
     const tensor = alloc_1.alloc_tensor(n);
     tensor.tensor.ndim = 1;
     tensor.tensor.dim[0] = n;
@@ -214,14 +224,18 @@ function roots3(POLY, X) {
     if (defs_1.ispower(POLY) &&
         is_1.ispolyexpandedform(defs_1.cadr(POLY), X) &&
         is_1.isposint(defs_1.caddr(POLY))) {
-        const n = normalisedCoeff(defs_1.cadr(POLY), X);
-        return mini_solve(n);
+        return solveFactor(normalisedCoeff(defs_1.cadr(POLY), X));
     }
     if (is_1.ispolyexpandedform(POLY, X)) {
-        const n = normalisedCoeff(POLY, X);
-        return mini_solve(n);
+        return solveFactor(normalisedCoeff(POLY, X));
     }
     return [];
+}
+// a factor x^n+c gets the same roots as roots(x^n+c) on its own
+function solveFactor(k) {
+    return isSimpleRoot(k)
+        ? getSimpleRoots(k.length, k[k.length - 1], k[0])
+        : mini_solve(k);
 }
 // note that for many quadratic, cubic and quartic polynomials we don't
 // actually end up using the quadratic/cubic/quartic formulas in here,
@@ -277,7 +291,42 @@ function _solveDegree2(A, B, C) {
     const result2 = multiply_1.multiply(multiply_1.divide(multiply_1.negate(add_1.add(p6, B)), A), bignum_1.rational(1, 2));
     return [result1, result2];
 }
+// Casus irreducibilis: three distinct real roots, for which Cardano's
+// formula needs cube roots of complex numbers. With x = t - b/3 the monic
+// cubic is t^3+p*t+q, and for 4*p^3+27*q^2 < 0 (so p < 0)
+//   t = 2*sqrt(-p/3)*cos(theta + 2*pi*k/3), theta = arccos(3*q/(2*p)*sqrt(-3/p))/3
+// theta lies in [0, pi/3], so k = 1, -1, 0 gives ascending values.
+// undefined unless the coefficients are known to be real and the
+// discriminant is known to be negative.
+function trigonometricCubic(A, B, C, D) {
+    const [b, c, d] = [B, C, D].map((k) => multiply_1.divide(k, A));
+    if (![b, c, d].every((k) => assume_1.isReal(k) === true)) {
+        return undefined;
+    }
+    const p = add_1.subtract(c, multiply_1.divide(power_1.power(b, bignum_1.integer(2)), bignum_1.integer(3)));
+    const q = add_1.add_all([
+        multiply_1.multiply(bignum_1.rational(2, 27), power_1.power(b, bignum_1.integer(3))),
+        multiply_1.multiply(bignum_1.rational(-1, 3), multiply_1.multiply(b, c)),
+        d,
+    ]);
+    const discriminant = add_1.add(multiply_1.multiply(bignum_1.integer(4), power_1.power(p, bignum_1.integer(3))), multiply_1.multiply(bignum_1.integer(27), power_1.power(q, bignum_1.integer(2))));
+    if (assume_1.isNegative(discriminant) !== true) {
+        return undefined;
+    }
+    // sqrt(-3*p) keeps the radicals in the numerators:
+    // 2*sqrt(-p/3) = 2/3*sqrt(-3*p), 3*q/(2*p)*sqrt(-3/p) = -3*q*sqrt(-3*p)/(2*p^2)
+    const root = power_1.power(multiply_1.multiply(bignum_1.integer(-3), p), bignum_1.rational(1, 2));
+    const radius = multiply_1.multiply(bignum_1.rational(2, 3), root);
+    const cosine3theta = multiply_1.divide(multiply_1.multiply(multiply_1.multiply(bignum_1.integer(-3), q), root), multiply_1.multiply(bignum_1.integer(2), power_1.power(p, bignum_1.integer(2))));
+    const theta = multiply_1.divide(eval_1.Eval(list_1.makeList(symbol_1.symbol(defs_1.ARCCOS), cosine3theta)), bignum_1.integer(3));
+    const turn = multiply_1.multiply(bignum_1.rational(2, 3), defs_1.Constants.Pi());
+    return [add_1.add(theta, turn), add_1.subtract(theta, turn), theta].map((angle) => add_1.subtract(multiply_1.multiply(radius, cos_1.cosine(angle)), multiply_1.divide(b, bignum_1.integer(3))));
+}
 function _solveDegree3(A, B, C, D) {
+    const trigonometric = trigonometricCubic(A, B, C, D);
+    if (trigonometric !== undefined) {
+        return trigonometric;
+    }
     // C - only related calculations
     const R_c3 = multiply_1.multiply(multiply_1.multiply(C, C), C);
     // B - only related calculations

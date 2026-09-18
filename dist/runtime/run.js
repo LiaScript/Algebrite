@@ -10,6 +10,7 @@ const print2d_1 = require("../sources/print2d");
 const scan_1 = require("../sources/scan");
 const simplify_1 = require("../sources/simplify");
 const subst_1 = require("../sources/subst");
+const bignum_1 = require("../sources/bignum");
 const defs_1 = require("./defs");
 const init_1 = require("./init");
 const symbol_1 = require("./symbol");
@@ -19,6 +20,11 @@ function stop(s) {
     //if (draw_flag == 2)
     //  longjmp(draw_stop_return, 1)
     //else
+    // A fallback method that catches every error and then gives up with a
+    // message of its own (solve: no solution) would hide the timeout.
+    if (defs_1.defs.timedOut) {
+        s = timeoutMessage();
+    }
     defs_1.defs.errorMessage += 'Stop: ';
     defs_1.defs.errorMessage += s;
     //breakpoint
@@ -682,10 +688,24 @@ function top_level_eval(expr) {
         console.log('#### top level eval');
     }
     defs_1.defs.trigmode = 0;
+    startTimelimit();
     const shouldAutoexpand = symbol_1.symbol(defs_1.AUTOEXPAND);
     defs_1.defs.expanding = !is_1.isZeroAtomOrTensor(symbol_1.get_binding(shouldAutoexpand));
     const originalArgument = expr;
-    let evalledArgument = eval_1.Eval(expr);
+    let evalledArgument;
+    try {
+        evalledArgument = eval_1.Eval(expr);
+        // a timeout that a fallback method caught and answered with an
+        // unevaluated result
+        if (defs_1.defs.timedOut) {
+            stop(timeoutMessage());
+        }
+    }
+    finally {
+        // the scanner multiplies too (-1): the next statement must not be read
+        // under the expired deadline of this one
+        defs_1.defs.deadline = 0;
+    }
     // "draw", "for" and "setq" return "nil", there is no result to print
     if (evalledArgument === symbol_1.symbol(defs_1.NIL)) {
         return evalledArgument;
@@ -716,12 +736,33 @@ function top_level_eval(expr) {
     return evalledArgument;
 }
 exports.top_level_eval = top_level_eval;
+// Called from Eval, add, multiply and the long loops. The clock is read
+// every 256th call only; once the deadline has passed every call stops, so
+// a try/catch around a fallback method cannot swallow the timeout.
+let escTicks = 0;
 function check_esc_flag() {
     if (defs_1.defs.esc_flag) {
         stop('esc key');
     }
+    if (defs_1.defs.deadline &&
+        (++escTicks & 255) === 0 &&
+        Date.now() > defs_1.defs.deadline) {
+        escTicks = 255;
+        defs_1.defs.timedOut = true;
+        stop(timeoutMessage());
+    }
 }
 exports.check_esc_flag = check_esc_flag;
+const timeoutMessage = () => `time limit of ${defs_1.defs.timelimit} s exceeded, see timelimit`;
+// timelimit=20: seconds one top-level statement may run, 0 or a symbol: no
+// limit
+function startTimelimit() {
+    const limit = symbol_1.get_binding(symbol_1.usr_symbol('timelimit'));
+    defs_1.defs.timelimit = defs_1.isNumericAtom(limit) ? bignum_1.nativeDouble(limit) : 0;
+    defs_1.defs.deadline =
+        defs_1.defs.timelimit > 0 ? Date.now() + 1000 * defs_1.defs.timelimit : 0;
+    defs_1.defs.timedOut = false;
+}
 // this is called when the whole notebook is re-run
 // so we get the chance of clearing the whole state from
 // scratch.

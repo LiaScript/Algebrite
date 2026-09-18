@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mpPrimitive = exports.mpReduce = exports.monic = exports.divides = exports.mpMulTerm = exports.mpSub = exports.fromMPoly = exports.toMPoly = exports.ORDERS = void 0;
+exports.mpPrimitive = exports.mpReduce = exports.monic = exports.divides = exports.mpMulTerm = exports.mpSub = exports.fromMPoly = exports.toMPoly = exports.mpNormalize = exports.ORDERS = void 0;
 const big_integer_1 = __importDefault(require("big-integer"));
 const defs_1 = require("../runtime/defs");
 const run_1 = require("../runtime/run");
@@ -37,7 +37,7 @@ exports.ORDERS = {
     },
 };
 // Sorts, merges equal monomials and drops zero coefficients.
-function normalize(p, ord) {
+function mpNormalize(p, ord) {
     const out = [];
     for (const t of [...p].sort((s, t) => ord(t.e, s.e))) {
         const last = out[out.length - 1];
@@ -50,6 +50,7 @@ function normalize(p, ord) {
     }
     return out.filter((t) => !t.c.a.isZero());
 }
+exports.mpNormalize = mpNormalize;
 function toMPoly(p, vars, ord) {
     const expanded = misc_1.yyexpand(p);
     const terms = [];
@@ -70,14 +71,14 @@ function toMPoly(p, vars, ord) {
         }
         terms.push({ e, c });
     }
-    return normalize(terms, ord);
+    return mpNormalize(terms, ord);
 }
 exports.toMPoly = toMPoly;
 function fromMPoly(p, vars) {
     return p.reduce((sum, t) => add_1.add(sum, t.e.reduce((m, x, i) => multiply_1.multiply(m, power_1.power(vars[i], bignum_1.integer(x))), t.c)), defs_1.Constants.zero);
 }
 exports.fromMPoly = fromMPoly;
-const mpSub = (p, q, ord) => normalize(p.concat(q.map((t) => ({ e: t.e, c: qmul_1.qmul(t.c, defs_1.Constants.negOne) }))), ord);
+const mpSub = (p, q, ord) => mpNormalize(p.concat(q.map((t) => ({ e: t.e, c: qmul_1.qmul(t.c, defs_1.Constants.negOne) }))), ord);
 exports.mpSub = mpSub;
 // c*x^e*p; a monomial order is kept by multiplication
 const mpMulTerm = (p, c, e) => p.map((t) => ({ e: t.e.map((x, i) => x + e[i]), c: qmul_1.qmul(t.c, c) }));
@@ -92,6 +93,7 @@ function mpReduce(f, G, ord) {
     const r = [];
     let p = f;
     while (p.length) {
+        run_1.check_esc_flag(); // nothing here goes through Eval
         const t = p[0];
         const g = G.find((g) => exports.divides(g[0].e, t.e));
         if (g) {

@@ -1,10 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.softBuiltin = void 0;
+const fourier_1 = require("./fourier");
 const gamma_1 = require("./gamma");
 const linalg_1 = require("./linalg");
 const lists_1 = require("./lists");
 const numbers_1 = require("./numbers");
+const piecewise_1 = require("./piecewise");
 const special_1 = require("./special");
 const test_1 = require("./test");
 const zeta_1 = require("./zeta");
@@ -24,6 +26,10 @@ function softBuiltin(name) {
             chebyshevt: special_1.evalChebyshev('chebyshevt'),
             chebyshevu: special_1.evalChebyshev('chebyshevu'),
             cfrac: special_1.Eval_cfrac,
+            fourier: fourier_1.Eval_fourier,
+            invfourier: fourier_1.Eval_invfourier,
+            fouriercoeff: fourier_1.Eval_fouriercoeff,
+            fourierseries: fourier_1.Eval_fourierseries,
             fibonacci: numbers_1.Eval_fibonacci,
             harmonic: numbers_1.Eval_harmonic,
             totient: numbers_1.Eval_totient,
@@ -45,7 +51,9 @@ function softBuiltin(name) {
             table: lists_1.Eval_table,
             map: lists_1.Eval_map,
             // if(c1, v1, c2, v2, ..., default) is test under the name other CAS use
-            if: test_1.Eval_test
+            if: test_1.Eval_test,
+            piecewise: piecewise_1.Eval_piecewise,
+            aspiecewise: piecewise_1.Eval_aspiecewise
         };
         Object.keys(special_1.SPECIAL).forEach((name) => (table[name] = special_1.evalSpecial(name)));
         table.lambertw = special_1.Eval_lambertw; // takes a branch as 2nd argument

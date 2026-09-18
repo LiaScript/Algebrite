@@ -1,14 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cmp_values = exports.Eval_or = exports.Eval_and = exports.Eval_not = exports.Eval_testlt = exports.Eval_testle = exports.Eval_testgt = exports.Eval_testge = exports.Eval_testeq = exports.Eval_test = void 0;
+exports.compare = exports.cmp_values = exports.Eval_or = exports.Eval_and = exports.Eval_not = exports.Eval_testlt = exports.Eval_testle = exports.Eval_testgt = exports.Eval_testge = exports.Eval_testeq = exports.Eval_test = void 0;
 const assume_1 = require("./assume");
 const defs_1 = require("../runtime/defs");
 const symbol_1 = require("../runtime/symbol");
 const add_1 = require("./add");
 const eval_1 = require("./eval");
-const float_1 = require("./float");
 const is_1 = require("./is");
+const find_1 = require("../runtime/find");
+const logic_simplify_1 = require("./logic_simplify");
 const misc_1 = require("./misc");
+const multiply_1 = require("./multiply");
 const quantity_1 = require("./quantity");
 const simplify_1 = require("./simplify");
 // If the number of args is odd then the last arg is the default result.
@@ -54,7 +56,6 @@ exports.Eval_test = Eval_test;
 // If we get something else, then we don't know and we return the
 // unaveluated test, which is the same as saying "maybe".
 function Eval_testeq(p1) {
-    const orig = p1;
     const lhs = eval_1.Eval(defs_1.cadr(p1));
     const rhs = eval_1.Eval(defs_1.caddr(p1));
     // identical sides: no need to subtract (and inf-inf is indeterminate)
@@ -90,245 +91,97 @@ function Eval_testeq(p1) {
     else if (checkResult != null && !checkResult) {
         return defs_1.Constants.one;
     }
+    // known to differ from the assumptions
+    if (assume_1.facts(subtractionResult).zero === false) {
+        return defs_1.Constants.zero;
+    }
     // if we didn't get to a number then we
     // don't know whether the quantities are
-    // different so do nothing
-    return orig;
+    // different: the equation comes back simplified
+    return logic_simplify_1.simplifyComparison(defs_1.TESTEQ, lhs, rhs);
 }
 exports.Eval_testeq = Eval_testeq;
-// Relational operators expect a numeric result for operand difference.
-function Eval_testge(p1) {
-    const orig = p1;
-    const comparison = cmp_args(p1);
-    if (comparison == null) {
-        return orig;
+// Relational operators: decided by the sign of the operand difference (a
+// number, or known from the assumptions, also as "not negative" for >= and
+// <), otherwise the comparison comes back simplified (logic_simplify.ts).
+function Eval_relation(p1) {
+    const name = defs_1.car(p1).printname;
+    const lhs = eval_1.Eval(defs_1.cadr(p1));
+    const rhs = eval_1.Eval(defs_1.caddr(p1));
+    const { sign, known } = compare(lhs, rhs);
+    const holds = (s) => ({ [defs_1.TESTGE]: s >= 0, [defs_1.TESTGT]: s > 0, [defs_1.TESTLE]: s <= 0, [defs_1.TESTLT]: s < 0 }[name]);
+    if (sign != null) {
+        return holds(sign) ? defs_1.Constants.one : defs_1.Constants.zero;
     }
-    if (comparison >= 0) {
-        return defs_1.Constants.one;
+    // a difference known to be >= 0 (or <= 0) decides when 0 and 1 (or -1) agree
+    const weak = known.negative === false ? 1 : known.positive === false ? -1 : 0;
+    if (weak !== 0 && holds(0) === holds(weak)) {
+        return holds(0) ? defs_1.Constants.one : defs_1.Constants.zero;
     }
-    else {
-        return defs_1.Constants.zero;
-    }
+    return logic_simplify_1.simplifyComparison(name, lhs, rhs);
 }
-exports.Eval_testge = Eval_testge;
-function Eval_testgt(p1) {
-    const orig = p1;
-    const comparison = cmp_args(p1);
-    if (comparison == null) {
-        return orig;
-    }
-    if (comparison > 0) {
-        return defs_1.Constants.one;
-    }
-    else {
-        return defs_1.Constants.zero;
-    }
-}
-exports.Eval_testgt = Eval_testgt;
-function Eval_testle(p1) {
-    const orig = p1;
-    const comparison = cmp_args(p1);
-    if (comparison == null) {
-        return orig;
-    }
-    if (comparison <= 0) {
-        return defs_1.Constants.one;
-    }
-    else {
-        return defs_1.Constants.zero;
-    }
-}
-exports.Eval_testle = Eval_testle;
-function Eval_testlt(p1) {
-    const orig = p1;
-    const comparison = cmp_args(p1);
-    if (comparison == null) {
-        return orig;
-    }
-    if (comparison < 0) {
-        return defs_1.Constants.one;
-    }
-    else {
-        return defs_1.Constants.zero;
-    }
-}
-exports.Eval_testlt = Eval_testlt;
-// not definition
+exports.Eval_testge = Eval_relation;
+exports.Eval_testgt = Eval_relation;
+exports.Eval_testle = Eval_relation;
+exports.Eval_testlt = Eval_relation;
+// not, and, or: see logic_simplify.ts
 function Eval_not(p1) {
-    const wholeAndExpression = p1;
-    const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.cadr(p1));
-    if (checkResult == null) {
-        // inconclusive test on predicate
-        return wholeAndExpression;
-    }
-    else if (checkResult) {
-        // true -> false
-        return defs_1.Constants.zero;
-    }
-    else {
-        // false -> true
-        return defs_1.Constants.one;
-    }
+    return logic_simplify_1.evalNot(p1);
 }
 exports.Eval_not = Eval_not;
-/* and =====================================================================
-
-Tags
-----
-scripting, JS, internal, treenode, general concept
-
-Parameters
-----------
-a,b,...
-
-General description
--------------------
-Logical-and of predicate expressions.
-
-*/
-// and definition
 function Eval_and(p1) {
-    const wholeAndExpression = p1;
-    let andPredicates = defs_1.cdr(wholeAndExpression);
-    let somePredicateUnknown = false;
-    while (defs_1.iscons(andPredicates)) {
-        // eval each predicate
-        const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(andPredicates));
-        if (checkResult == null) {
-            // here we have stuff that is not reconducible to any
-            // numeric value (or tensor with numeric values) e.g.
-            // 'a+b', so it just means that we just don't know the
-            // truth value of this particular predicate.
-            // We'll track the fact that we found an unknown
-            // predicate and we continue with the other predicates.
-            // (note that in case some subsequent predicate will be false,
-            // it won't matter that we found some unknowns and
-            // the whole test will be immediately zero).
-            somePredicateUnknown = true;
-            andPredicates = defs_1.cdr(andPredicates);
-        }
-        else if (checkResult) {
-            // found a true, move on to the next predicate
-            andPredicates = defs_1.cdr(andPredicates);
-        }
-        else if (!checkResult) {
-            // found a false, enough to falsify everything and return
-            return defs_1.Constants.zero;
-        }
-    }
-    // We checked all the predicates and none of them
-    // was false. So they were all either true or unknown.
-    // Now, if even just one was unknown, we'll have to call this
-    // test as inconclusive and return the whole test expression.
-    // If all the predicates were known, then we can conclude
-    // that the test returns true.
-    if (somePredicateUnknown) {
-        return wholeAndExpression;
-    }
-    else {
-        return defs_1.Constants.one;
-    }
+    return logic_simplify_1.evalLogic(p1, true);
 }
 exports.Eval_and = Eval_and;
-// or definition
 function Eval_or(p1) {
-    const wholeOrExpression = p1;
-    let orPredicates = defs_1.cdr(wholeOrExpression);
-    let somePredicateUnknown = false;
-    while (defs_1.iscons(orPredicates)) {
-        // eval each predicate
-        const checkResult = is_1.isZeroLikeOrNonZeroLikeOrUndetermined(defs_1.car(orPredicates));
-        if (checkResult == null) {
-            // here we have stuff that is not reconducible to any
-            // numeric value (or tensor with numeric values) e.g.
-            // 'a+b', so it just means that we just don't know the
-            // truth value of this particular predicate.
-            // We'll track the fact that we found an unknown
-            // predicate and we continue with the other predicates.
-            // (note that in case some subsequent predicate will be false,
-            // it won't matter that we found some unknowns and
-            // the whole test will be immediately zero).
-            somePredicateUnknown = true;
-            orPredicates = defs_1.cdr(orPredicates);
-        }
-        else if (checkResult) {
-            // found a true, enough to return true
-            return defs_1.Constants.one;
-        }
-        else if (!checkResult) {
-            // found a false, move on to the next predicate
-            orPredicates = defs_1.cdr(orPredicates);
-        }
-    }
-    // We checked all the predicates and none of them
-    // was true. So they were all either false or unknown.
-    // Now, if even just one was unknown, we'll have to call this
-    // test as inconclusive and return the whole test expression.
-    // If all the predicates were known, then we can conclude
-    // that the test returns false.
-    if (somePredicateUnknown) {
-        return wholeOrExpression;
-    }
-    else {
-        return defs_1.Constants.zero;
-    }
+    return logic_simplify_1.evalLogic(p1, false);
 }
 exports.Eval_or = Eval_or;
-// use subtract for cases like A < A + 1
-// TODO you could be smarter here and
-// simplify both sides only in the case
-// of "relational operator: cannot determine..."
-// a bit like we do in Eval_testeq
-function cmp_args(p1) {
-    return cmp_values(eval_1.Eval(defs_1.cadr(p1)), eval_1.Eval(defs_1.caddr(p1)));
-}
 // Sign of arg1 - arg2 (both already evaluated), or null when undecidable.
 function cmp_values(arg1, arg2) {
+    return compare(arg1, arg2).sign;
+}
+exports.cmp_values = cmp_values;
+// inf: 1, -inf: -1
+const infinite = (p) => p === symbol_1.symbol(defs_1.INF) ? 1 : misc_1.equal(p, multiply_1.negate(symbol_1.symbol(defs_1.INF))) ? -1 : 0;
+// The sign of arg1 - arg2, and with a null sign what the assumptions say
+// about the difference (it may still be known not to be negative).
+function compare(arg1, arg2) {
     // identical arguments: no need to subtract (and inf-inf is indeterminate)
     if (misc_1.equal(arg1, arg2)) {
-        return 0;
+        return { sign: 0, known: {} };
     }
-    let t = 0;
+    // an infinity against a real value
+    const finite = (p) => !find_1.Find(p, symbol_1.symbol(defs_1.INF)) && logic_simplify_1.comparable(p) && assume_1.facts(p).real === true;
+    if (infinite(arg1) !== infinite(arg2) &&
+        [arg1, arg2].every((p) => infinite(p) !== 0 || finite(p))) {
+        return { sign: infinite(arg1) > infinite(arg2) ? 1 : -1, known: {} };
+    }
     let p1 = add_1.subtract(simplify_1.simplify(arg1), simplify_1.simplify(arg2));
     // same-dimension quantities subtract to a quantity (incompatible ones
     // already stopped inside subtract) — its sign is the magnitude's sign
     if (quantity_1.isQuantity(p1)) {
         p1 = defs_1.cadr(p1);
     }
-    const difference = p1;
-    // try floating point if necessary
-    if (p1.k !== defs_1.NUM && p1.k !== defs_1.DOUBLE) {
-        p1 = eval_1.Eval(float_1.yyfloat(p1));
-    }
-    //console.log "comparison: " + p1.toString()
     if (is_1.isZeroAtomOrTensor(p1)) {
-        //console.log "comparison isZero "
-        return 0;
+        return { sign: 0, known: {} };
     }
-    switch (p1.k) {
-        case defs_1.NUM:
-            if (defs_1.MSIGN(p1.q.a) === -1) {
-                t = -1;
-            }
-            else {
-                t = 1;
-            }
-            break;
-        case defs_1.DOUBLE:
-            //console.log "comparison p1.d: " + p1.d
-            if (p1.d < 0.0) {
-                t = -1;
-            }
-            else {
-                t = 1;
-            }
-            break;
-        default: {
-            // the sign may be known from the assumptions
-            const known = assume_1.facts(difference);
-            t = known.positive ? 1 : known.negative ? -1 : known.zero ? 0 : null;
-        }
+    if (p1.k === defs_1.NUM) {
+        return { sign: defs_1.MSIGN(p1.q.a) === -1 ? -1 : 1, known: {} };
     }
-    return t;
+    if (p1.k === defs_1.DOUBLE) {
+        return { sign: p1.d < 0.0 ? -1 : 1, known: {} };
+    }
+    // the sign may be known from the assumptions
+    const known = assume_1.facts(p1);
+    let t = known.positive ? 1 : known.negative ? -1 : known.zero ? 0 : null;
+    // Two constants: by the certified sign of the difference, never by its
+    // double (sqrt(10^20+1)-10^10 is 0.0 there; facts() only asks for it when
+    // the rules say real, arccos(1/3)-1 is not among those). Equal only with a
+    // proof, the difference simplifies to 0; what is neither stays undecided.
+    if (t === null && !assume_1.hasSymbol(p1)) {
+        t = (assume_1.constantSign(p1) || (is_1.isZeroAtomOrTensor(simplify_1.simplify(p1)) ? 0 : null));
+    }
+    return { sign: t, known };
 }
-exports.cmp_values = cmp_values;
+exports.compare = compare;
