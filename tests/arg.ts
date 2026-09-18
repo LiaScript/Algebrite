@@ -206,3 +206,66 @@ run_test([
   'arg([1,i,-1])',
   '[0,1/2*pi,pi]',
 ]);
+
+// arg of a product is the sum of the args only up to a multiple of 2*pi,
+// and which multiple depends on the values: arg(-y) = pi+arg(y) gave 2*pi
+// for y = -3, where arg(-y) = arg(3) = 0. A sum with unknown args in it is
+// only returned when it is a single c*arg(u), 0 < c <= 1, with nothing
+// added, which stays in (-pi, pi]; everything else stays arg(...).
+run_test([
+  'arg(-y)',
+  'arg(-y)',
+
+  'eval(arg(-y),y,-3)',
+  '0',
+
+  'eval(arg(-y),y,3)',
+  'pi',
+
+  // -arg(y) would be -pi for y < 0, arg(1/y) is pi
+  'arg(1/y)',
+  'arg(1/y)',
+
+  'eval(arg(1/y),y,-2)',
+  'pi',
+
+  // both negative: arg(x)+arg(y) would be 2*pi
+  'arg(x*y)',
+  'arg(x*y)',
+
+  'eval(arg(x*y),x,-2,y,-3)',
+  '0',
+
+  // a of unknown sign turns the angle by 0 or by pi
+  'eval(arg(a*exp(i*pi/5)),a,-2)',
+  '-4/5*pi',
+
+  'eval(arg(a*exp(i*pi/5)),a,2)',
+  '1/5*pi',
+
+  // still fine: positive factors do not turn, a root halves the angle
+  'arg(2*y)',
+  'arg(y)',
+
+  'arg(y^(1/2))',
+  '1/2*arg(y)',
+
+  'arg(abs(a)*exp(b+i*pi/5))',
+  '1/5*pi',
+
+  // with a known sign everything is decided
+  'assume(y,negative)',
+  '',
+
+  'arg(-y)',
+  '0',
+
+  'arg(1/y)',
+  'pi',
+
+  'arg(2*y)',
+  'pi',
+
+  'forget(y)',
+  '',
+]);
