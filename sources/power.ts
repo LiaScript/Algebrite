@@ -375,8 +375,9 @@ function yypower(base: U, exponent: U): U {
     }
   }
 
+  // (a^b)^c with b even and b*c = +-1: abs(a) or 1/abs(a)
   if (ispower(base) && b_isEven_and_c_isItsInverse) {
-    const result = abs(cadr(base));
+    const result = power(abs(cadr(base)), multiply(caddr(base), exponent));
     if (DEBUG_POWER) {
       console.log(
         '   power: car(base) == symbol(POWER) && b_isEven_and_c_isItsInverse '
