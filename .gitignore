@@ -15,3 +15,6 @@ dist/*
 
 !dist/runtime/*
 !dist/sources/*
+
+# agent worktrees
+.claude/worktrees/
