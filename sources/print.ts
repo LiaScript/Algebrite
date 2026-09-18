@@ -1863,9 +1863,28 @@ export function print_list(p: BaseAtom): string {
       accumulator += get_printname(p as Sym);
       break;
     default:
-      accumulator += '<tensor>';
+      if (istensor(p)) {
+        accumulator += print_list_tensor(p);
+      } else {
+        accumulator += '<tensor>';
+      }
   }
   return accumulator;
+}
+
+// [e1,e2,...], nested per dimension, each entry in list form
+function print_list_tensor(t: Tensor): string {
+  let k = 0;
+  const dimension = (j: number): string => {
+    const entries: string[] = [];
+    for (let i = 0; i < t.dim[j]; i++) {
+      entries.push(
+        j === t.ndim - 1 ? print_list(t.elem[k++]) : dimension(j + 1)
+      );
+    }
+    return '[' + entries.join(',') + ']';
+  };
+  return dimension(0);
 }
 
 // LaTeX juxtaposes factors, so a factor starting with a letter needs a

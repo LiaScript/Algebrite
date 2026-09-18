@@ -86,6 +86,16 @@ run_test([
   'print2dascii([[1,-1/2],[x^(-1),y]])',
   '           1\n  1     - ---\n           2\n\n  1\n ---      y\n  x',
 
+  // printlist shows tensors entry by entry
+  'printlist([1,2])',
+  '[1,2]',
+
+  'printlist([[1,x^2],[a+b,-1/2]])',
+  '[[1,(power x 2)],[(add a b),-1/2]]',
+
+  'printlist([[[1],[2]],[[3],[4]]])',
+  '[[[1],[2]],[[3],[4]]]',
+
   // differences and negated sums
   'printhuman(x-y)',
   'x - y',
