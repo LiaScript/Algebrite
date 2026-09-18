@@ -598,6 +598,7 @@ function print_factorial_function(p: BaseAtom): string {
   p = cadr(p);
   if (
     isfraction(p) ||
+    isnegativenumber(p) ||
     isadd(p) ||
     ismultiply(p) ||
     ispower(p) ||

@@ -27,7 +27,7 @@ import { filter } from './filter';
 import { guess } from './guess';
 import { inner } from './inner';
 import { inv } from './inv';
-import { isone, ispolyexpandedform, isZeroAtomOrTensor } from './is';
+import { isone, isposint, isZeroAtomOrTensor } from './is';
 import { divide, multiply, multiply_all, reciprocate } from './multiply';
 import { numerator } from './numerator';
 import { power } from './power';
@@ -93,12 +93,11 @@ function expand(F: U, X: U, factored = false): U {
   [A, B] = remove_negative_exponents(A, B, X);
 
   // if the denominator is one then always bail out
-  // also bail out if the denominator is not one but
-  // it's not anything recognizable as a polynomial.
-  if (isone(B) || isone(A)) {
-    if (!ispolyexpandedform(A, X) || isone(A)) {
-      return F;
-    }
+  // also bail out if numerator or denominator is not
+  // anything recognizable as a polynomial (divpoly and
+  // coeff would divide by zero on e.g. (x+1)^(3/2) or sin(x))
+  if (isone(A) || !ispoly(A, X) || !ispoly(B, X)) {
+    return F;
   }
 
   // Q = quotient
@@ -128,6 +127,17 @@ function expand(F: U, X: U, factored = false): U {
     result = multiply(arg1, A);
   }
   return add(result, Q);
+}
+
+// X only in sums, products and positive integer powers
+function ispoly(p: U, X: U): boolean {
+  if (!Find(p, X) || equal(p, X)) {
+    return true;
+  }
+  if (isadd(p) || ismultiply(p)) {
+    return p.tail().every((q) => ispoly(q, X));
+  }
+  return ispower(p) && isposint(caddr(p)) && ispoly(cadr(p), X);
 }
 
 function expand_tensor(p5: Tensor, p9: U, factored: boolean): U {
@@ -392,7 +402,13 @@ function expand_get_B(p3: U, p4: U, p9: U): U {
 // Returns the expansion fractions in A.
 function expand_get_A(p2: U, p4: U, p9: U, factored: boolean): U {
   if (!istensor(p4)) {
-    return reciprocate(p2);
+    // only the factor F with X in it: C = A/F already holds the constant
+    // factors, so 1/A would count them twice (1/(x*y) became 1/(x*y^2))
+    return reciprocate(
+      ismultiply(p2)
+        ? multiply_all(p2.tail().filter((p5) => Find(p5, p9)))
+        : p2
+    );
   }
   let elements: U[] = [];
   if (ismultiply(p2)) {
