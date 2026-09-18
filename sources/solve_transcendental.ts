@@ -26,6 +26,7 @@ import { Find } from '../runtime/find';
 import { stop } from '../runtime/run';
 import { symbol, usr_symbol } from '../runtime/symbol';
 import { absval } from './abs';
+import { withSign } from './assume';
 import { add, subtract } from './add';
 import { integer, rational } from './bignum';
 import { denominator } from './denominator';
@@ -56,8 +57,8 @@ import { subst } from './subst';
 // recursively. Every candidate is checked in the equation it came from, which
 // drops the extraneous roots that squaring, abs and log domains produce.
 //
-// ponytail: trig equations give the principal solutions only, no 2*pi*n
-// family; add an integer symbol to the result if periodic sets are needed.
+// Trig equations give the principal solutions, or with solve(eq, x, n) the
+// periodic families in the integer n, see solveWithFamily and tidySolutions.
 
 type Kind =
   | 'exp'
@@ -77,12 +78,17 @@ const MAX_DEPTH = 6;
 
 // the integer symbol of solve(eq, x, n): sin and cos solutions get
 // + 2*pi*n, tan solutions + pi*n. Module state, set by solveWithFamily only.
+// n is an integer while the equation is solved, so that holds() can see
+// sin(pi+2*n*pi) = 0 and drop a family at which a denominator vanishes.
 let family: U | undefined;
 
 export function solveWithFamily(E: U, x: U, n: U | undefined): U[] {
+  if (n === undefined) {
+    return solveEquation(E, x);
+  }
   family = n;
   try {
-    return solveEquation(E, x);
+    return withSign(n, 'integer', () => solveEquation(E, x));
   } finally {
     family = undefined;
   }
@@ -520,12 +526,59 @@ function holds(E: U, x: U, c: U): boolean {
   }
 }
 
-// Removes duplicates and, when every solution is a real number, sorts them.
-export function tidySolutions(sols: U[]): U[] {
-  const uniq = sols.filter((s, i) => sols.findIndex((t) => equal(s, t)) === i);
-  const values = uniq.map(toNumber);
-  if (values.every((v) => !Number.isNaN(v))) {
-    uniq.sort((a, b) => toNumber(a) - toNumber(b));
+// Removes duplicates, merges the families in n that differ by half a period
+// and, when every solution (at n = 0) is a real number, sorts them.
+export function tidySolutions(sols: U[], n?: U): U[] {
+  let uniq = sols.filter((s, i) => sols.findIndex((t) => equal(s, t)) === i);
+  if (n !== undefined) {
+    uniq = mergeHalfPeriods(uniq, n);
+  }
+  const value = (s: U) => toNumber(n === undefined ? s : offset(s, n));
+  if (uniq.every((s) => !Number.isNaN(value(s)))) {
+    uniq.sort((a, b) => value(a) - value(b));
   }
   return uniq;
+}
+
+function offset(s: U, n: U): U {
+  return Eval(subst(s, n, Constants.zero));
+}
+
+// a+P*n and b+P*n with a-b = +-P/2 exactly are together (a or b)+P/2*n,
+// e.g. +-1/2*pi+2*n*pi is 1/2*pi+n*pi. Repeated until nothing merges.
+// ponytail: only halves; three families a third of a period apart (the
+// 1/2*pi+2/3*n*pi of 2*cos(x)^2+sin(x)=1) stay three, add if it matters.
+function mergeHalfPeriods(sols: U[], n: U): U[] {
+  const out = [...sols];
+  for (let i = 0; i < out.length; i++) {
+    for (let j = i + 1; j < out.length; j++) {
+      const m = mergedFamily(out[i], out[j], n);
+      if (m !== undefined) {
+        out.splice(j, 1);
+        out[i] = m;
+        // start over: the merged family may fit an earlier one
+        // (+-1/4*pi+n*pi is 1/4*pi+1/2*n*pi); ends, each merge removes one
+        i = -1;
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+function mergedFamily(s: U, t: U, n: U): U | undefined {
+  const period = derivative(s, n);
+  if (isZeroAtomOrTensor(period) || Find(period, n) || !equal(period, derivative(t, n))) {
+    return undefined;
+  }
+  const half = divide(period, integer(2));
+  const [a, b] = [offset(s, n), offset(t, n)];
+  const d = subtract(a, b);
+  if (!isZeroAtomOrTensor(add(d, half)) && !isZeroAtomOrTensor(subtract(d, half))) {
+    return undefined;
+  }
+  // the offset of smaller absolute value, the positive one on a tie
+  const [va, vb] = [toNumber(a), toNumber(b)];
+  const useB = Math.abs(vb) < Math.abs(va) - 1e-12 || (Math.abs(vb) <= Math.abs(va) + 1e-12 && vb > va);
+  return add(useB ? b : a, multiply(half, n));
 }

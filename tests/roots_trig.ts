@@ -207,11 +207,22 @@ run_test([
   '',
 
   // a = 2: -3.7587704831, 0.6945927107, 3.0641777725
-  'float(subst(2,a,r[1]*r[2]*r[3]))',
-  '-8.0',
+  // the product of the roots is -a^3
+  'abs(float(subst(2,a,r[1]*r[2]*r[3]))+8)<10^(-9)',
+  '1',
 
-  'simplify(subst(r[1],x,x^3-3*a^2*x+a^3))',
-  '0',
+  // not numbers, so in term order
+  'r',
+  '[2*a*cos(2/9*pi),2*a*cos(4/9*pi),2*a*cos(8/9*pi)]',
+
+  'abs(float(subst(2,a,subst(r[1],x,x^3-3*a^2*x+a^3))))<10^(-9)',
+  '1',
+
+  'abs(float(subst(2,a,subst(r[2],x,x^3-3*a^2*x+a^3))))<10^(-9)',
+  '1',
+
+  'abs(float(subst(2,a,subst(r[3],x,x^3-3*a^2*x+a^3))))<10^(-9)',
+  '1',
 
   'imag(r[1])',
   '0',
@@ -220,6 +231,39 @@ run_test([
   '0',
 
   'imag(r[3])',
+  '0',
+
+  'forget(a)',
+  '',
+
+  // a < 0: sqrt(a^2) = -a, the arccos argument is 1/2
+  // a = -2: x^3-12*x-8, roots 4*cos(1/9*pi), 4*cos(5/9*pi), 4*cos(7/9*pi)
+  'assume(a,negative)',
+  '',
+
+  'roots(x^3-3*a^2*x+a^3,x)',
+  '[-2*a*cos(1/9*pi),-2*a*cos(5/9*pi),-2*a*cos(7/9*pi)]',
+
+  'forget(a)',
+  '',
+
+  // a != 0 is enough for a negative discriminant
+  'assume(a,nonzero)',
+  '',
+
+  'r=roots(x^3-3*a^2*x+a^3,x)',
+  '',
+
+  'abs(float(subst(-2,a,subst(r[1],x,x^3-3*a^2*x+a^3))))<10^(-9)',
+  '1',
+
+  'abs(float(subst(-2,a,subst(r[2],x,x^3-3*a^2*x+a^3))))<10^(-9)',
+  '1',
+
+  'abs(float(subst(5,a,subst(r[3],x,x^3-3*a^2*x+a^3))))<10^(-9)',
+  '1',
+
+  'imag(r[1])',
   '0',
 
   'forget(a)',
@@ -411,6 +455,32 @@ run_test([
 
   'roots(x^3-3*x+1)',
   '2*cos(8/9*pi)',
+
+  'forget(x)',
+  '',
+
+  // none of the three is an integer, (x-2)*(x^3-3*x+1) has the root 2
+  'assume(x,integer)',
+  '',
+
+  'roots(x^3-3*x+1)',
+  'Stop: roots: no solution satisfies the assumptions about x',
+
+  'roots(x^4-2*x^3-3*x^2+7*x-2)',
+  '2',
+
+  'solve(2*x^2=1,x)',
+  'Stop: solve: no solution satisfies the assumptions about x',
+
+  'forget(x)',
+  '',
+
+  // the quartic x^4-4*x^2+x+1 has two negative and two positive roots
+  'assume(x<0)',
+  '',
+
+  'float(roots(x^4-4*x^2+x+1))',
+  '[-2.061499...,-0.396339...]',
 
   'forget(x)',
   '',

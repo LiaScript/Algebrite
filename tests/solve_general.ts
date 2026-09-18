@@ -83,6 +83,17 @@ run_test([
   'solve(cos(x)^2=1/4,x,n)',
   '[-1/3*pi+n*pi,1/3*pi+n*pi]',
 
+  // sin(x) = +-1/2*sqrt(2), i.e. cos(2*x) = 0: four families merge to two,
+  // +-1/4*pi+n*pi, and these merge once more
+  'solve(sin(x)^2=1/2,x,n)',
+  '1/4*pi+1/2*n*pi',
+
+  'solve(cos(x)^2=1,x,n)',
+  'n*pi',
+
+  'solve(abs(sin(x))=1/2,x,n)',
+  '[-1/6*pi+n*pi,1/6*pi+n*pi]',
+
   // tan(x) = +-sqrt(3): period pi, the offsets differ by 2/3*pi, no merge
   'solve(tan(x)^2=3,x,n)',
   '[-1/3*pi+n*pi,1/3*pi+n*pi]',
@@ -104,6 +115,19 @@ run_test([
 
   'solve(sin(2*x)=1,x,n)',
   '1/4*pi+n*pi',
+
+  'solve(sin(3*x)=0,x,n)',
+  '1/3*n*pi',
+
+  'solve(cos(pi*x)=0,x,n)',
+  '1/2+n',
+
+  'solve(tan(x/2)=1,x,n)',
+  '1/2*pi+2*n*pi',
+
+  // cos(x) = cos(1): x = +-1+2*n*pi
+  'solve(cos(x)=cos(1),x,n)',
+  '[-1+2*n*pi,1+2*n*pi]',
 
   // other names
   'solve(sin(t)=1/2,t,m)',
@@ -244,8 +268,23 @@ run_test([
   'tan(solve(tan(x)=1,x,n))',
   '1',
 
-  'cos(3*solve(cos(3*x+1)=1/2,x,n)+1)',
-  '[1/2,1/2]',
+  'r=solve(cos(3*x+1)=1/2,x,n)',
+  '',
+
+  'cos(3*r[1]+1)',
+  '1/2',
+
+  'cos(3*r[2]+1)',
+  '1/2',
+
+  'r=solve(sin(x)^2=1/4,x,n)',
+  '',
+
+  'sin(r[1])^2',
+  '1/4',
+
+  'sin(r[2])^2',
+  '1/4',
 
   'forget(n)',
   '',
@@ -274,6 +313,23 @@ run_test([
   'forget(n)',
   '',
 
+  // n already an integer: it stays one
+  'assume(n,integer)',
+  '',
+
+  'solve(tan(x)=1,x,n)',
+  '1/4*pi+n*pi',
+
+  'isinteger(n)',
+  '1',
+
+  'forget(n)',
+  '',
+
+  // float(solve(...)) converts the families afterwards
+  'float(solve(sin(x)=1/2,x,n))',
+  '[0.523599...+6.283185...*n,2.617994...+6.283185...*n]',
+
   // assumptions about x: the sign of a family is unknown, it stays
   'assume(x,positive)',
   '',
@@ -300,6 +356,16 @@ run_test([
   'Stop: solve: 3rd argument must be a symbol',
 
   'solve(sin(x)=1/2,x,a+b)',
+  'Stop: solve: 3rd argument must be a symbol',
+
+  'solve(sin(x)=1/2,x,pi)',
+  'Stop: solve: 3rd argument must be a symbol',
+
+  // a symbol with a value is that value
+  'm=3',
+  '',
+
+  'solve(sin(x)=1/2,x,m)',
   'Stop: solve: 3rd argument must be a symbol',
 ]);
 

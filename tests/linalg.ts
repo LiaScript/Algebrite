@@ -102,8 +102,8 @@ run_test([
   '[[1.543081...,1.175201...],[1.175201...,1.543081...]]',
 
   // irrational eigenvalues of a 3x3 matrix: the three real roots of
-  // x^3-16*x^2-12*x+3 (casus irreducibilis, complex radicals). These used to
-  // take 14 s in a hopeless attempt to denest the cube roots.
+  // x^3-16*x^2-12*x+3 (casus irreducibilis). With complex radicals these used
+  // to take 14 s in a hopeless attempt to denest the cube roots.
   // trace 16 and determinant -3 are the sum and product of the eigenvalues
   'M=[[1,2,3],[4,5,6],[7,8,10]]',
   '',
@@ -117,7 +117,17 @@ run_test([
   'abs(float(v[1]*v[2]*v[3])+3)<10^(-9)',
   '1',
 
-  // 0.198247, 16.707493 and -0.905740 up to rounding in the imaginary part
-  'abs(float(v[2])-16.707493)<10^(-5)',
+  // -0.905740, 0.198247 and 16.707493: the trigonometric form of the roots,
+  // ascending and exactly real (see roots_trig.ts)
+  'abs(float(v[1])+0.905740)<10^(-5)',
   '1',
+
+  'abs(float(v[2])-0.198247)<10^(-5)',
+  '1',
+
+  'abs(float(v[3])-16.707493)<10^(-5)',
+  '1',
+
+  'imag(v[3])',
+  '0',
 ]);
