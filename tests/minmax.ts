@@ -49,4 +49,43 @@ run_test([
 
   'max(x,7)',
   '7',
+
+  'x=quote(x)',
+  '',
+
+  'max()',
+  'Stop: max: no data',
+
+  'min()',
+  'Stop: min: no data',
+
+  'min(3)',
+  '3',
+
+  // rationals and infinity
+  'max(1/3,1/4)',
+  '1/3',
+
+  'min(-1/3,-1/4)',
+  '-1/3',
+
+  'max(pi,22/7)',
+  '22/7',
+
+  'max(inf,10^100)',
+  'inf',
+
+  'min(-inf,0)',
+  '-inf',
+
+  // comparable symbolic arguments
+  'max(x,x+1)',
+  'x+1',
+
+  'min(x-1,x,x+1)',
+  'x-1',
+
+  // complex numbers have no order
+  'max(i,1)',
+  'max(i,1)',
 ]);
