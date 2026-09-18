@@ -276,6 +276,8 @@ const builtin_fns = [
   'trigexpand',
   'trigsimp',
   'nsolve',
+  'laplace',
+  'invlaplace',
   'max',
   'min',
   'mod',

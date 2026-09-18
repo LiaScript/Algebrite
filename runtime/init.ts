@@ -89,6 +89,7 @@ import { Eval_lookup } from '../sources/lookup';
 import { Eval_mean, Eval_median, Eval_random, Eval_sd, Eval_ssd, Eval_svariance, Eval_variance } from '../sources/stats';
 import { Eval_trigexpand } from '../sources/trigexpand';
 import { Eval_nsolve } from '../sources/nsolve';
+import { Eval_invlaplace, Eval_laplace } from '../sources/laplace';
 import { Eval_max, Eval_min } from '../sources/minmax';
 import { Eval_mod } from '../sources/mod';
 import { Eval_multiply } from '../sources/multiply';
@@ -247,6 +248,8 @@ import {
   TRIGEXPAND,
   TRIGSIMP,
   NSOLVE,
+  LAPLACE,
+  INVLAPLACE,
   MAX,
   MAX_FIXED_PRINTOUT_DIGITS,
   METAA,
@@ -524,7 +527,6 @@ export function defn() {
   std_symbol(ISINTEGER, Eval_isinteger);
   std_symbol(ISPRIME, Eval_isprime);
   std_symbol(LAGUERRE, Eval_laguerre);
-  //  std_symbol(LAPLACE, Eval_laplace)
   std_symbol(LCM, Eval_lcm);
   std_symbol(LEADING, Eval_leading);
   std_symbol(LEGENDRE, Eval_legendre);
@@ -542,6 +544,8 @@ export function defn() {
   std_symbol(TRIGEXPAND, Eval_trigexpand);
   std_symbol(TRIGSIMP, Eval_trigsimp);
   std_symbol(NSOLVE, Eval_nsolve);
+  std_symbol(LAPLACE, Eval_laplace);
+  std_symbol(INVLAPLACE, Eval_invlaplace);
   std_symbol(MAX, Eval_max);
   std_symbol(MIN, Eval_min);
   std_symbol(MOD, Eval_mod);

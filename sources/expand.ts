@@ -58,6 +58,10 @@ export function Eval_apart(p1: U) {
   const F = Eval(cadr(p1));
   const p2 = Eval(caddr(p1));
   const X = p2 === symbol(NIL) ? guess(F) : p2;
+  return apart(F, X);
+}
+
+export function apart(F: U, X: U): U {
   return expand(F, X, true);
 }
 
